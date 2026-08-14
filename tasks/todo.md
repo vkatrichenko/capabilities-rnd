@@ -84,6 +84,16 @@ rather than just asserting it.
       > hops-mcp, sowinsights. Can you confirm read-only analysis of those is fine under the
       > existing approval? Changes still go to hops dev only.
 - [x] **`methodology/log.md`** — open and current since 1a (entries for 1a, 1b, 1c, 1d).
+- [x] **Broader source sweep** (2026-08-14, user-requested) →
+      `research/sources/sdlc-security-landscape.md`: secret-scanning layering consensus
+      (gitleaks pre-commit + TruffleHog-verify CI + push protection), Veracode 45%-vulnerable
+      AI-code data, slopsquatting (19.7% hallucinated packages, USENIX 2025), dependency
+      cooldowns (pnpm default since v11 — closes audit SCS-04 for one line), CSA/OWASP-agentic
+      MCP controls (validate the 1c pinning finding), NIST SP 800-218A, OWASP CI/CD Top 10,
+      OpenSSF Scorecard. Ends with a cost-ranked Phase 2 shortlist.
+- [ ] Deep-read before the article cites them (marked ★ in the landscape file): USENIX
+      slopsquatting paper, Veracode report, OWASP Agentic Top 10, TruffleHog verification docs,
+      OpenSSF Scorecard checks.
 
 ### 1e. Phase 1 closeout — HTML presentation
 

@@ -154,3 +154,25 @@ research.
 **Outputs.** `research/sources/anthropic-ai-native-sdlc-security.md`. Phase 1 research legs
 (1a–1d) complete; 1e (HTML report) unblocked except for the Dasha answer, which gates nothing in
 the report itself.
+
+---
+
+## 2026-08-14 — Phase 1d extension: broader source sweep (user-requested)
+
+**Goal.** Collect additional SDLC-security sources beyond the Anthropic article — more
+approaches/options for increasing security.
+
+**Method.** Six parallel targeted web searches, one per angle: slopsquatting/package
+hallucination, MCP security, NIST/OWASP frameworks, AI-generated-code vulnerability studies,
+secret-scanning tool landscape, supply-chain frameworks + dependency cooldowns. Search-level
+extraction only — sources needing a deep read before citation are marked ★ in the output file
+and queued in `tasks/todo.md`. Each source recorded with the *control option it yields* and its
+fit to the verified Phase 1a–c state, not as a raw link list.
+
+**Cross-validation wins.** Two sweep results land directly on Phase 1 findings: dependency
+cooldowns (pnpm `minimumReleaseAge`, default since v11) close the hops audit's SKIPped SCS-04
+for one line of config; the CSA/OWASP-agentic MCP guidance (pin versions, watch tool-description
+changes) independently validates the 1c unpinned-MCP finding and gives it a citation trail.
+
+**Outputs.** `research/sources/sdlc-security-landscape.md` with a cost-ranked Phase 2 options
+shortlist.
