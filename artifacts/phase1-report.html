@@ -489,32 +489,58 @@
   <h3>The roadmap — ordered by impact ÷ effort</h3>
   <p class="note">Scope: changes land in hops (dev only) per the approved scope — items for other
   repos are recommendations to their owners.</p>
+</div>
+<div class="wide">
   <div class="tblwrap"><table>
-    <tr><th></th><th>Practice</th><th>Effort</th><th>Where</th><th>Why / what it closes</th></tr>
-    <tr><td class="num-cell">1</td><td><b>Rotation triage with verification</b> (TruffleHog verifiers — safe, read-only liveness checks)</td>
-        <td><span class="chip c-pass">HOURS</span></td><td>barley (owners)</td><td>Answers "which of the 24 must rotate NOW" without touching credentials by hand</td></tr>
-    <tr><td class="num-cell">2</td><td><b>Port the hops gitleaks gate</b> (CI job + tuned config + pre-commit hook)</td>
-        <td><span class="chip c-pass">LOW</span></td><td>barley, hops-mcp, sowinsights (rec.)</td><td>The measured 22-vs-2 gap; barley's pre-commit framework makes it a config entry</td></tr>
-    <tr><td class="num-cell">3</td><td><b>Dependency cooldown</b> — pnpm <code>minimumReleaseAge</code></td>
-        <td><span class="chip c-pass">ONE LINE</span></td><td>hops (hop-ui)</td><td>Closes the audit's skipped SCS-04; blocks the registry-compromise install window</td></tr>
-    <tr><td class="num-cell">4</td><td><b>MCP pinning check</b> — flag <code>:latest</code> / <code>@canary</code> / unpinned git URLs in <code>.mcp.json</code></td>
-        <td><span class="chip c-pass">SMALL SCRIPT</span></td><td>all repos</td><td>Closes the rug-pull window (CSA / OWASP ASI01); nothing on the market gates this today</td></tr>
-    <tr><td class="num-cell">5</td><td><b>PRV-17 fix</b> — declare the agent-config surface security-sensitive; changes to hooks/MCP/skills require review</td>
-        <td><span class="chip c-pass">A PARAGRAPH</span></td><td>hops</td><td>Open audit WARN; entry point to Anthropic-style protected zones</td></tr>
-    <tr><td class="num-cell">6</td><td><b>Hallucinated-package CI check</b> — new dependencies must exist, pre-date the PR, show real usage</td>
-        <td><span class="chip c-warn">MEDIUM</span></td><td>hops → generalize</td><td>Slopsquatting is the AI-native supply-chain attack; novel, article-worthy</td></tr>
-    <tr><td class="num-cell">7</td><td><b>Un-gate the dependency audit</b> — osv on all PRs, all modules</td>
-        <td><span class="chip c-pass">LOW</span></td><td>hops</td><td>The gate exists; its trigger is the hole</td></tr>
-    <tr><td class="num-cell">8</td><td><b>Fail-closed cassette scrubbing</b> — allowlist kept fields or entropy/format-based redaction at record time</td>
-        <td><span class="chip c-warn">MEDIUM</span></td><td>barley (rec.), pattern → article</td><td>Root cause of the in-HEAD tokens; denylists fail open on every new API field</td></tr>
-    <tr><td class="num-cell">9</td><td><b>Hook-content scan on the real path</b> (<code>scripts/claude-hooks/</code>)</td>
-        <td><span class="chip c-pass">LOW</span></td><td>hops</td><td>Covers the AIS-03 phantom skip</td></tr>
-    <tr><td class="num-cell">10</td><td><b>OpenSSF Scorecard</b> per repo</td>
-        <td><span class="chip c-pass">CI ACTION</span></td><td>all repos</td><td>Third-party posture number; before/after metric for the publication</td></tr>
-    <tr><td class="num-cell">11</td><td><b>Security-review command / skill org-wide</b> + the bug→instruction-file loop</td>
-        <td><span class="chip c-warn">MEDIUM</span></td><td>all repos</td><td>Anthropic's core shift-left pattern; hops had the command and lost it in a revert</td></tr>
-    <tr><td class="num-cell">12</td><td><b>Threat-model document</b> (AS-11) + report AS-13/AIS-03/SEC-04 detector bugs upstream</td>
-        <td><span class="chip c-warn">MEDIUM</span></td><td>hops / AWOS owners</td><td>Open audit WARN; fixes the audit for everyone downstream</td></tr>
+    <tr><th></th><th>Practice</th><th>Effort</th><th>Where</th><th>Why it matters</th><th>How it fixes it</th></tr>
+    <tr><td class="num-cell">1</td><td><b>Rotation triage with verification</b></td>
+        <td><span class="chip c-pass">HOURS</span></td><td>barley (owners)</td>
+        <td>24 leaked real-format credentials have unknown liveness — any live one is an open door, and checking by hand means handling secrets</td>
+        <td>Run TruffleHog verifiers (safe, read-only API probes) over the findings: live credentials get rotated first, dead ones are closed out with evidence</td></tr>
+    <tr><td class="num-cell">2</td><td><b>Port the hops gitleaks gate</b></td>
+        <td><span class="chip c-pass">LOW</span></td><td>barley, hops-mcp, sowinsights (rec.)</td>
+        <td>The measured gap: 22 leaks in the ungated repo vs 2 in the gated one — every unscanned commit is fresh exposure</td>
+        <td>Copy the hops CI job + tuned <code>.gitleaks.toml</code>; in barley, add the gitleaks hook to the pre-commit framework that already exists</td></tr>
+    <tr><td class="num-cell">3</td><td><b>Dependency cooldown</b></td>
+        <td><span class="chip c-pass">ONE LINE</span></td><td>hops (hop-ui)</td>
+        <td>Compromised package versions are usually detected and pulled within ~24h — installing day-zero releases inherits exactly that window (audit check SCS-04, currently unmet)</td>
+        <td>Set pnpm <code>minimumReleaseAge: 1440</code> in hop-ui; trusted internal packages go on the exclude list</td></tr>
+    <tr><td class="num-cell">4</td><td><b>MCP pinning check</b></td>
+        <td><span class="chip c-pass">SMALL SCRIPT</span></td><td>all repos</td>
+        <td>MCP servers run with developer privileges; a mutable version means a compromised update executes on every session start — the "rug pull" (CSA / OWASP ASI01). All four repos are exposed today</td>
+        <td>A CI/pre-commit script flags <code>:latest</code>, <code>@canary</code>, and ref-less git URLs in <code>.mcp.json</code>; servers get pinned to a digest, version, or commit</td></tr>
+    <tr><td class="num-cell">5</td><td><b>PRV-17 — protect the agent-config surface</b></td>
+        <td><span class="chip c-pass">A PARAGRAPH</span></td><td>hops</td>
+        <td>CLAUDE.md, hooks, skills and MCP config steer everything agents do — tampering there hijacks every future session, and today no rule marks it sensitive (open audit WARN)</td>
+        <td>Add the rule to agent instruction files: the agent-config surface is security-sensitive, and changes to <code>.claude/</code>, hooks, or <code>.mcp.json</code> require human review</td></tr>
+    <tr><td class="num-cell">6</td><td><b>Hallucinated-package CI check</b></td>
+        <td><span class="chip c-warn">MEDIUM</span></td><td>hops → generalize</td>
+        <td>19.7% of LLM-recommended packages don't exist (USENIX 2025); attackers pre-register the names and agents install their own suggestions — typosquatting defenses don't cover it</td>
+        <td>CI job on every dependency diff: each newly added package must exist on the registry, pre-date the PR, and show real usage/downloads — else the PR blocks</td></tr>
+    <tr><td class="num-cell">7</td><td><b>Un-gate the dependency audit</b></td>
+        <td><span class="chip c-pass">LOW</span></td><td>hops</td>
+        <td>Vulnerable dependencies land in unlabeled PRs and backend modules exactly as often — today the osv audit simply doesn't run there</td>
+        <td>Remove the <code>frontend</code>-label condition and extend the job to all modules (npm and gradle)</td></tr>
+    <tr><td class="num-cell">8</td><td><b>Fail-closed cassette scrubbing</b></td>
+        <td><span class="chip c-warn">MEDIUM</span></td><td>barley (rec.), pattern → article</td>
+        <td>Denylist scrubbers miss every API field they haven't seen — that is exactly how a live runner token reached HEAD despite scrubbing being in place</td>
+        <td>Invert the design: allowlist the fields a cassette may keep (or apply entropy/format-based redaction at record time), then re-record the affected cassettes</td></tr>
+    <tr><td class="num-cell">9</td><td><b>Hook-content scan on the real path</b></td>
+        <td><span class="chip c-pass">LOW</span></td><td>hops</td>
+        <td>Hooks execute arbitrary shell on every agent action, and the audit's malicious-hook check skipped them entirely over a path assumption (AIS-03)</td>
+        <td>Scan <code>scripts/claude-hooks/</code> — and any path referenced from <code>settings.json</code> — for exfiltration and download-and-execute patterns, locally and in CI</td></tr>
+    <tr><td class="num-cell">10</td><td><b>OpenSSF Scorecard</b></td>
+        <td><span class="chip c-pass">CI ACTION</span></td><td>all repos</td>
+        <td>Self-assessment persuades neither clients nor auditors; an independent, recognized score does — and tracks drift over time</td>
+        <td>Add the Scorecard action per repo; record the score each audit cycle as the before/after metric for this capability</td></tr>
+    <tr><td class="num-cell">11</td><td><b>Security-review at generation time + close the loop</b></td>
+        <td><span class="chip c-warn">MEDIUM</span></td><td>all repos</td>
+        <td>45% of AI-generated code is vulnerable and the rate isn't improving with newer models — the cheapest catch is before commit, and every finding should harden the instructions (Anthropic's shift-left)</td>
+        <td>Reinstate <code>/security-review</code> as an org-wide skill (hops lost its command in a revert); adopt the rule that each finding lands as a CLAUDE.md/skill update, not just a fix</td></tr>
+    <tr><td class="num-cell">12</td><td><b>Threat model + report detector bugs upstream</b></td>
+        <td><span class="chip c-warn">MEDIUM</span></td><td>hops / AWOS owners</td>
+        <td>Without a threat model, controls stay ad hoc (open audit WARN AS-11); and the audit's detector bugs (AS-13, AIS-03, SEC-04) mislead every team that runs it</td>
+        <td>Write a short threat-model doc for hops (doubles as publication material); file the three detector issues with the AWOS owners</td></tr>
   </table></div>
 </div>
 </section>
