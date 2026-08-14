@@ -51,17 +51,23 @@ rather than just asserting it.
       phantom skip (hooks in `scripts/claude-hooks/` never scanned — detector assumes
       `.claude/hooks/`), so ai-security's 100% is overstated.
 
-### 1c. `barley`, `hops-mcp`, `sowinsights` — the lighter pass
+### 1c. `barley`, `hops-mcp`, `sowinsights` — the lighter pass ✅ (2026-08-14)
 
-- [ ] **`barley`** — read its `context/audits/2026-06-03/security.md` (older markdown schema, not
-      score-comparable with the newest `hops` runs — say so rather than comparing numbers). Study
-      `.pre-commit-config.yaml`, especially the local `pii-scan-evals-datasets` regex scanner: a
-      repo-grown control worth writing up. Terraform/`.tflint.hcl` is out of scope (IaC security).
-- [ ] **`hops-mcp`** — small, modern TS MCP server, no security tooling at all. The cleanest test of
-      "what does a from-scratch baseline cost?" Also: an MCP server is itself an AI-SDLC attack
-      surface — check `.mcp.json` and the tool definitions.
-- [ ] **`sowinsights`** — the low-water mark: no `.claude/`, no AWOS, no lockfile, `.pyc` files
-      committed. Confirm the `.pyc` commit and check `.env_example` for real values.
+→ `research/findings/satellite-repos-1c.md`
+
+- [x] **`barley`** — 06-03 audit read (62%/C). Its side finding: **live prod RDS password +
+      LangSmith key + OAuth secret in plaintext `.claude/settings.local.json` allow-patterns**
+      (gitignored, on disk; rotation recommended 06-03, status unknown → joins rotation list).
+      Its SEC-04 "no committed secrets" PASS is wrong — the grep excluded `tests/`, where the
+      cassette tokens live. **VCR root cause found**: headers filtered well; body scrubber is a
+      key denylist that misses `runners_token` → fail-open scrubbing, no gate behind it.
+- [x] **`hops-mcp`** — clean code/history; finding is `.mcp.json`: third-party `serena` MCP run
+      from an **unpinned git URL** via uvx.
+- [x] **`sowinsights`** — low-water mark confirmed; `.env_example` clean (Secrets-Manager name,
+      not value); mutable `python:3.11-bullseye` base image noted.
+- [x] **NEW — cross-repo MCP supply-chain pattern**: every stdio MCP config executes a
+      mutable-version third party (`:latest` image / git URL / `@latest` / `@canary`). AIS-04
+      passes it anyway. Phase 2 candidate: an MCP-config pinning check — generalizable, in scope.
 
 ### 1d. Sources and process
 
@@ -94,7 +100,9 @@ Spotted during the initial survey; each needs confirming before it becomes a Pha
       `research/findings/secret-scan-2026-08-14.md`.
 - [ ] **NEW — barley rotation check (owner action, not ours):** 3 real-format tokens still in HEAD
       + 13 Slack tokens in Terraform history (2024-12→2025-07, dev & prod). Raise with the barley
-      owners via Ruslan/Rodion — removal ≠ revocation.
+      owners via Ruslan/Rodion — removal ≠ revocation. **1c addition:** their own 06-03 audit also
+      flagged a live prod RDS password, LangSmith key, and OAuth secret in local
+      `.claude/settings.local.json` — rotation status unknown; include in the same ask.
 - [ ] `hops`: `osv-audit-hop-ui` only runs when the PR carries the `frontend` label — dependency
       audit is skipped on unlabelled PRs, and covers `hop-ui` only. `hop-agent`, `e2e` and
       `hop-backend` (gradle) have Dependabot but no PR-time audit gate.

@@ -99,3 +99,32 @@ in-repo data.
 **Outputs.** `research/findings/hops-audit-analysis.md` (open items, remediation loop with dated
 commits, three audit blind spots), `research/baseline/hops-security-baseline.md` (5 layers,
 claims-vs-catches).
+
+---
+
+## 2026-08-14 — Phase 1c: satellite repos (barley, hops-mcp, sowinsights)
+
+**Goal.** Lighter pass on the three non-target repos; close the open question from 1a (why did
+scrubbed cassettes still leak a token?).
+
+**Method.**
+1. Read barley's own `context/audits/2026-06-03/security.md` before re-deriving anything — it
+   already held a critical side finding (live credentials in local `.claude/settings.local.json`
+   allow-patterns) that filesystem scanning of *tracked* files can never see.
+2. Root-caused the 1a cassette leak by reading the control, not just the leak:
+   `tests/integration/conftest.py` → `filter_headers` (good) vs `_scrub_text` key-denylist
+   (fail-open). Located the token's position in the cassette (`"runners_token"` response field)
+   with a script that prints surrounding context but never the value.
+3. Audited each `.mcp.json` (all four repos) as an execution surface: launch command + version
+   pin state per server. This produced the cross-repo unpinned-MCP pattern.
+4. hops-mcp/sowinsights: placeholder checks on env templates (masked output), `child_process`/
+   `eval` grep, Dockerfile base-image pin state.
+
+**Cross-validation note.** barley's audit SEC-04 ("no committed secrets", PASS) contradicts the
+1a gitleaks findings — resolved in gitleaks' favor: SEC-04's grep excluded `tests/`, where the
+tokens sit. Second instance (after hops AS-13/AIS-03) of audit detector scoping producing a
+false verdict; now a systemic finding.
+
+**Outputs.** `research/findings/satellite-repos-1c.md`. Rotation list extended (barley local
+settings credentials). Phase 2 backlog gained the MCP-pinning check and the fail-closed
+scrubbing pattern.
