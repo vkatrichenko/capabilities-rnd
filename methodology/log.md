@@ -128,3 +128,29 @@ false verdict; now a systemic finding.
 **Outputs.** `research/findings/satellite-repos-1c.md`. Rotation list extended (barley local
 settings credentials). Phase 2 backlog gained the MCP-pinning check and the fail-closed
 scrubbing pattern.
+
+---
+
+## 2026-08-14 — Phase 1d: external sources
+
+**Goal.** Review the Anthropic security article named in the charter; queue the Dasha
+confirmation.
+
+**Method.** Web search resolved the charter's informal name ("Future of Engineering" article) to
+the actual piece: *How Anthropic secures its AI-native software development lifecycle*
+(claude.com/blog, Deputy CISO). Extracted practices per SDLC stage, then — the useful step —
+built a practice→BarHopping mapping table against the verified Phase 1a–c state, so each
+practice lands as either "exists here", "transferable action", or "out of scope with reason".
+
+**Correction caught during mapping:** claimed hops has a `/security-review` command from a 1a
+history sighting — at HEAD it does not (added, then reverted with an unrelated merge; only the
+`security-guidance` plugin is enabled). Verified with `git log --follow --diff-filter=AD`.
+Reinforces the existing lesson: history sightings are not HEAD facts.
+
+**Human dependency.** Dasha confirmation (audit material outside repos; read-only scope over the
+three sibling repos) — drafted ready-to-send in `tasks/todo.md`; blocked on a human, not on
+research.
+
+**Outputs.** `research/sources/anthropic-ai-native-sdlc-security.md`. Phase 1 research legs
+(1a–1d) complete; 1e (HTML report) unblocked except for the Dasha answer, which gates nothing in
+the report itself.
