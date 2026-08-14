@@ -140,8 +140,8 @@ re-raised as new is noise, and the file exists precisely to stop that.
 
 ## The AWOS audits
 
-The audit results are **already in the repos** — `<repo>/context/audits/`. Do not chase them
-elsewhere; ask Dasha Goranina only for material that sits outside them.
+The audit results are **already in the repos** — `<repo>/context/audits/`. Confirmed by
+Vladyslav (2026-08-14): everything audit-related lives there; nothing sits outside the repos.
 
 - **`hops`** — 5 runs: `2026-03-31`, `2026-04-21`, `2026-04-22`, `2026-07-17_14-00-48`,
   `2026-08-03_19-15-15` (newest).

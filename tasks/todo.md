@@ -76,14 +76,13 @@ rather than just asserting it.
       secures its AI-native software development lifecycle" (claude.com/blog). Includes the
       practice→BarHopping mapping table — the Phase 2 fuel. Two companion articles noted as
       optional follow-ups (Zero Trust for Agents; CISO's guide to agentic AI).
-- [ ] **Confirm with Dasha Goranina** — HUMAN ACTION, ready-to-send draft:
-      > Hi Dasha! Two quick things on the capabilities research: (1) The AWOS audit results are
-      > already in the hops and barley repos (`context/audits/`) — is there any audit material
-      > that lives outside the repos that I should also see? (2) The charter names HOPS as the
-      > test project; for the research (read-only, no changes) I also compared it against the
-      > sibling repos in the BarHopping org — barley, hops-mcp, sowinsights. Can you confirm
-      > read-only analysis of those is fine under the existing approval? Changes still go to
-      > hops dev only.
+- [x] **Audit material location confirmed** (Vladyslav, 2026-08-14): everything audit-related is
+      in `context/audits/` — nothing lives outside the repos. No ask to Dasha needed for this.
+- [ ] **Confirm with Dasha Goranina** — remaining question only, ready-to-send draft:
+      > Hi Dasha! The charter names HOPS as the test project; for the research (read-only, no
+      > changes) I also compared it against the sibling repos in the BarHopping org — barley,
+      > hops-mcp, sowinsights. Can you confirm read-only analysis of those is fine under the
+      > existing approval? Changes still go to hops dev only.
 - [x] **`methodology/log.md`** — open and current since 1a (entries for 1a, 1b, 1c, 1d).
 
 ### 1e. Phase 1 closeout — HTML presentation
