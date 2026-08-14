@@ -107,8 +107,14 @@ rather than just asserting it.
       practice × benchmark source × status × implemented × missing — the blueprint for future
       projects and the basis of the client capability story. Header carries an INTERNAL EDITION
       banner: §2 names repos/findings.
-- [ ] **Client-safe variant** before any external presentation: strip §2 repo names, leak
-      details, and the rotation callout; keep §1 blueprint + anonymized evidence ("measured a
+- [x] **Restructured into tabs + published as artifact (2026-08-14, user request):** six tabs —
+      Overview (managers + engineers) / Industry standards / AWOS audit (sourced from
+      github.com/provectus/awos + our mined run data) / HOPS implementation / Gaps & roadmap /
+      Methodology. Published (private, share via the page's share menu):
+      https://claude.ai/code/artifact/22daff05-9a26-4289-a3c3-81e2cee4cf11
+      Redeploy = republish the same file path.
+- [ ] **Client-safe variant** before any external presentation: strip repo names, leak details,
+      and the rotation callout from Gaps; keep the blueprint + anonymized evidence ("measured a
       10× leak-rate difference between gated and ungated projects").
 
 **→ PHASE 1 COMPLETE.** Only open thread: Dasha's read-only-scope confirmation (1d) and the
