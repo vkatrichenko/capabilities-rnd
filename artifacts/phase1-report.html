@@ -232,86 +232,86 @@
     <tr><th>SDLC security practice (industry standard)</th><th>Benchmark source</th><th class="center">Status</th><th>Implemented today</th><th>Missing</th></tr>
     <tr class="grouprow"><td colspan="5">Secrets</td></tr>
     <tr><td><b>Layered secret scanning</b> — fast local pre-commit + CI gate with tuned config + server-side backstop</td>
-        <td>2026 tooling consensus (gitleaks/TruffleHog); Anthropic "deterministic scanners"</td>
+        <td><a href="https://github.com/gitleaks/gitleaks" target="_blank" rel="noopener">gitleaks</a> / <a href="https://github.com/trufflesecurity/trufflehog" target="_blank" rel="noopener">TruffleHog</a> tooling consensus; <a href="https://claude.com/blog/how-anthropic-secures-its-ai-native-software-development-lifecycle" target="_blank" rel="noopener">Anthropic "deterministic scanners"</a></td>
         <td class="center"><span class="chip c-pass">IMPLEMENTED</span></td>
         <td>Three layers in hops: advisory pre-commit, agent-time hook, unconditional CI gitleaks with false-positives-only allowlist — history verifiably clean since the gate</td>
         <td>Org-wide rollout (1 of 4 repos); GitHub push protection; TruffleHog liveness verification for rotation triage</td></tr>
     <tr><td><b>Agent-time secret guard</b> — the coding agent itself cannot read or write secret material</td>
-        <td>Anthropic containment model; CSA agentic guidance</td>
+        <td><a href="https://claude.com/blog/how-anthropic-secures-its-ai-native-software-development-lifecycle" target="_blank" rel="noopener">Anthropic containment model</a>; <a href="https://labs.cloudsecurityalliance.org/agentic/agentic-mcp-security-best-practices-v1/" target="_blank" rel="noopener">CSA agentic guidance</a></td>
         <td class="center"><span class="chip c-pass">IMPLEMENTED</span></td>
         <td><code>PreToolUse</code> hook blocks secret access on every agent tool call; <code>PostToolUse</code> re-installs the git hook</td>
         <td>Org-wide rollout; never store credentials in agent permission allow-patterns (real incident found)</td></tr>
     <tr><td><b>Secret-free repo hygiene</b> — env templates with placeholders, secrets-manager references not values</td>
-        <td>OWASP ASVS 5.0 (13.3.1)</td>
+        <td><a href="https://owasp.org/www-project-application-security-verification-standard/" target="_blank" rel="noopener">OWASP ASVS 5.0</a> (13.3.1)</td>
         <td class="center"><span class="chip c-pass">IMPLEMENTED</span></td>
         <td>Per-module <code>.env.example</code>; Secrets-Manager <i>names</i> in config, values at runtime</td>
         <td>Sensitive-filetype gitignore coverage uneven across repos</td></tr>
     <tr><td><b>Test-data hygiene</b> — recorded HTTP fixtures and datasets scrubbed before commit</td>
-        <td>fail-closed redaction; VCR filtering practice</td>
+        <td>fail-closed redaction; <a href="https://vcrpy.readthedocs.io/en/latest/advanced.html#filter-sensitive-data-from-the-request" target="_blank" rel="noopener">VCR filtering practice</a></td>
         <td class="center"><span class="chip c-warn">PARTIAL</span></td>
         <td>Header filtering (auth, cookies, API keys) + custom PII scanner for eval datasets</td>
         <td>Body scrubbing is a fail-open denylist — needs allowlist/entropy-based redaction (real leak traced to this)</td></tr>
     <tr class="grouprow"><td colspan="5">AI-generated code</td></tr>
     <tr><td><b>Deterministic SAST gate on every PR</b> — AI-authored code never merges on review alone</td>
-        <td>Veracode 45%-vulnerable data; Anthropic SAST-on-PR</td>
+        <td><a href="https://www.veracode.com/resources/analyst-reports/2025-genai-code-security-report/" target="_blank" rel="noopener">Veracode 45%-vulnerable data</a>; <a href="https://claude.com/blog/how-anthropic-secures-its-ai-native-software-development-lifecycle" target="_blank" rel="noopener">Anthropic SAST-on-PR</a></td>
         <td class="center"><span class="chip c-pass">IMPLEMENTED</span></td>
         <td>SonarQube MR gate + detekt (Kotlin); unconditional secret scan</td>
         <td>Explicit rule coverage for the weakest AI classes (XSS, log injection); SAST in the smaller repos</td></tr>
     <tr><td><b>AI code review with independent context</b> — reviewer separate from the generating agent</td>
-        <td>Anthropic multi-agent review (narrow scope, proof-of-finding)</td>
+        <td><a href="https://claude.com/blog/how-anthropic-secures-its-ai-native-software-development-lifecycle" target="_blank" rel="noopener">Anthropic multi-agent review</a> (narrow scope, proof-of-finding)</td>
         <td class="center"><span class="chip c-warn">PARTIAL</span></td>
         <td>CodeRabbit on PRs in the two main repos, tuned configs</td>
         <td>Narrow-focus security reviewers with mandatory evidence; generation-time <code>/security-review</code> step</td></tr>
     <tr><td><b>Close the loop: finding → instruction file</b> — every discovered bug updates agent guidance</td>
-        <td>Anthropic's definition of AI-native shift-left</td>
+        <td><a href="https://claude.com/blog/how-anthropic-secures-its-ai-native-software-development-lifecycle" target="_blank" rel="noopener">Anthropic's definition of AI-native shift-left</a></td>
         <td class="center"><span class="chip c-warn">PARTIAL</span></td>
         <td>Accepted-risk register with reasoning; tuned scanner configs cite their audit findings</td>
         <td>Systematic practice — today it happens per-finding, not by rule</td></tr>
     <tr class="grouprow"><td colspan="5">Supply chain</td></tr>
     <tr><td><b>Lockfiles + exact pinning + reviewed updates</b></td>
-        <td>SLSA / OpenSSF; npm/pnpm/poetry practice</td>
+        <td><a href="https://slsa.dev" target="_blank" rel="noopener">SLSA</a> / <a href="https://github.com/ossf/package-manager-best-practices/blob/main/published/npm.md" target="_blank" rel="noopener">OpenSSF package-manager practices</a></td>
         <td class="center"><span class="chip c-pass">IMPLEMENTED</span></td>
         <td>Lockfiles across npm/pnpm/poetry; 115/121 deps exact-pinned; Dependabot with human review</td>
         <td>Gradle transitive lockfile; Dependabot beyond the main repo; one PoC repo unpinned entirely</td></tr>
     <tr><td><b>Dependency vulnerability audit in CI</b> — unconditional, all modules</td>
-        <td>OWASP CI/CD Top 10</td>
+        <td><a href="https://owasp.org/www-project-top-10-ci-cd-security-risks/" target="_blank" rel="noopener">OWASP CI/CD Top 10</a></td>
         <td class="center"><span class="chip c-warn">PARTIAL</span></td>
         <td>osv audit exists in the MR pipeline</td>
         <td>Runs only on labeled frontend PRs, one module — must be unconditional, all modules, all repos</td></tr>
     <tr><td><b>Dependency cooldown / quarantine</b> — never install a version younger than N days</td>
-        <td>pnpm <code>minimumReleaseAge</code> (default-on since v11), npm <code>min-release-age</code></td>
+        <td><a href="https://pnpm.io/supply-chain-security" target="_blank" rel="noopener">pnpm <code>minimumReleaseAge</code></a> (default-on since v11), npm <code>min-release-age</code></td>
         <td class="center"><span class="chip c-fail">MISSING</span></td>
         <td>—</td>
         <td>One line of config for pnpm projects; closes the registry-compromise install window (audit check SCS-04)</td></tr>
     <tr><td><b>Hallucinated-package defense</b> — new dependencies must exist, pre-date the PR, show real usage</td>
-        <td>USENIX 2025 slopsquatting study</td>
+        <td><a href="https://www.usenix.org/conference/usenixsecurity25/presentation/spracklen" target="_blank" rel="noopener">USENIX 2025 slopsquatting study</a> (<a href="https://arxiv.org/abs/2406.10279" target="_blank" rel="noopener">arXiv</a>)</td>
         <td class="center"><span class="chip c-info">PLANNED</span></td>
         <td>—</td>
         <td>CI check to build in Phase 2 — the AI-native supply-chain attack; nothing on the market gates it</td></tr>
     <tr class="grouprow"><td colspan="5">AI toolchain</td></tr>
     <tr><td><b>Pinned, integrity-checked agent toolchain</b> — MCP servers version-pinned; tool-description changes alerted</td>
-        <td>CSA MCP best practices; OWASP Agentic Top 10 (ASI01 "rug pull")</td>
+        <td><a href="https://labs.cloudsecurityalliance.org/agentic/agentic-mcp-security-best-practices-v1/" target="_blank" rel="noopener">CSA MCP best practices</a>; <a href="https://genai.owasp.org/" target="_blank" rel="noopener">OWASP Agentic Top 10</a> (ASI01 "rug pull")</td>
         <td class="center"><span class="chip c-fail">MISSING</span></td>
         <td>—</td>
         <td>Every stdio MCP today runs a mutable version (<code>:latest</code> / <code>@canary</code> / unpinned git URL); pinning check planned for Phase 2</td></tr>
     <tr><td><b>Protected agent-config surface</b> — CLAUDE.md, hooks, skills, MCP config treated as security-sensitive</td>
-        <td>Anthropic protected zones; audit check PRV-17</td>
+        <td><a href="https://claude.com/blog/how-anthropic-secures-its-ai-native-software-development-lifecycle" target="_blank" rel="noopener">Anthropic protected zones</a>; audit check PRV-17</td>
         <td class="center"><span class="chip c-warn">PARTIAL</span></td>
         <td>Agent files and hooks tracked in git; process guard on docs</td>
         <td>No rule declares the surface security-sensitive or requires review for changes to it</td></tr>
     <tr class="grouprow"><td colspan="5">Governance</td></tr>
     <tr><td><b>Continuous audit with a working remediation loop</b> — findings become fixes on a measured cadence</td>
-        <td>NIST SSDF / SP 800-218A; Anthropic audit-driven gates</td>
+        <td><a href="https://csrc.nist.gov/projects/ssdf" target="_blank" rel="noopener">NIST SSDF</a> / <a href="https://csrc.nist.gov/pubs/sp/800/218/a/final" target="_blank" rel="noopener">SP 800-218A</a>; Anthropic audit-driven gates</td>
         <td class="center"><span class="chip c-pass">IMPLEMENTED</span></td>
         <td>Recurring 12-dimension audits; measured fail→fix→pass loop of 13 days; accepted-risk register</td>
         <td>Audits cover 2 of 4 repos; no waiver mechanism; detector scoping bugs found — reported upstream</td></tr>
     <tr><td><b>Threat model / security requirements document</b></td>
-        <td>OWASP ASVS 5.0 (design); audit check AS-11</td>
+        <td><a href="https://owasp.org/www-project-application-security-verification-standard/" target="_blank" rel="noopener">OWASP ASVS 5.0</a> (design) + <a href="https://owasp.org/www-community/Threat_Modeling" target="_blank" rel="noopener">OWASP Threat Modeling</a>; audit check AS-11</td>
         <td class="center"><span class="chip c-fail">MISSING</span></td>
         <td>—</td>
         <td>Short threat-model doc planned in Phase 2; doubles as publication material</td></tr>
     <tr><td><b>Third-party posture scoring</b> — an external number tracking repo security over time</td>
-        <td>OpenSSF Scorecard</td>
+        <td><a href="https://github.com/ossf/scorecard" target="_blank" rel="noopener">OpenSSF Scorecard</a></td>
         <td class="center"><span class="chip c-info">PLANNED</span></td>
         <td>—</td>
         <td>CI action per repo; the before/after metric for this capability</td></tr>
