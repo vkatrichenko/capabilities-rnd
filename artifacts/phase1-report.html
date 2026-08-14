@@ -50,8 +50,9 @@
   .meta b{ color:var(--muted); font-weight:600; }
 
   /* ── KPI row ── */
-  .kpis{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:1px;
+  .kpis{ display:grid; grid-template-columns:repeat(auto-fit,minmax(128px,1fr)); gap:1px;
          background:var(--line); border:1px solid var(--line); border-radius:8px; overflow:hidden; margin:2.25rem 0 0; }
+  .kpi:last-child{ grid-column:-2/-1; }
   .kpi{ background:var(--bg); padding:.9rem 1rem .8rem; }
   .kpi .n{ font-size:1.65rem; font-weight:650; letter-spacing:-.01em; font-variant-numeric:tabular-nums; line-height:1.1; }
   .kpi .n small{ font-size:.9rem; font-weight:500; color:var(--muted); }
@@ -119,14 +120,16 @@
 <header>
   <div class="eyebrow">DevOps Capabilities Research · Provectus</div>
   <h1>AI SDLC Security — Phase 1 Report</h1>
-  <p class="standfirst">What already exists across the BarHopping repos, what is missing, and which
-  security practices to implement next. Research phase complete; every claim below traces to a
-  verified file path, a scan, or a cited source.</p>
+  <p class="standfirst">Industry best practices for securing AI-assisted development — measured
+  against what our projects already implement and what is missing. This research is the blueprint
+  for security in future projects and the basis of the client-facing capability. Every claim
+  traces to a verified file path, a scan, or a cited source.</p>
   <div class="meta">
     <span><b>Date</b> 2026-08-14</span>
     <span><b>Researcher</b> Vladyslav Katrychenko</span>
     <span><b>Scope</b> code &amp; repo security in AI-assisted development</span>
     <span><b>Repos</b> hops · barley · hops-mcp · sowinsights (read-only)</span>
+    <span><span class="chip c-warn">INTERNAL EDITION</span> — §2 names repos and findings; produce the client variant before external use</span>
   </div>
 </header>
 
@@ -140,40 +143,114 @@
 
 <!-- ══════════════ SECTION 1 ══════════════ -->
 <div class="section">
-  <div class="sec-head"><span class="num">1</span><h2>What already exists</h2></div>
+  <div class="sec-head"><span class="num">1</span><h2>Industry best practice vs. what we implement</h2></div>
 
-  <p>The four repos are a natural experiment: comparable AI-assisted development intensity,
-  radically different security posture. <b>hops is the only repo with any secret scanning</b> —
-  and the only one whose history stayed clean after its gate went live.</p>
+  <p>The blueprint table: each row is an industry-consensus practice for securing AI-assisted
+  development and CI/CD, with its source, what our projects already implement, and what is
+  missing. Status reflects the strongest implementation in the org — per-repo variance is §2's
+  subject.</p>
 </div>
 </div>
 
 <div class="wide">
   <div class="tblwrap">
   <table>
-    <tr><th>Control</th><th class="center">hops</th><th class="center">barley</th><th class="center">hops-mcp</th><th class="center">sowinsights</th></tr>
-    <tr><td>Secret scan — CI (gitleaks, unconditional)</td>
-        <td class="center"><span class="chip c-pass">YES</span></td><td class="center"><span class="chip c-fail">NO</span></td><td class="center"><span class="chip c-fail">NO</span></td><td class="center"><span class="chip c-fail">NO</span></td></tr>
-    <tr><td>Secret scan — local pre-commit</td>
-        <td class="center"><span class="chip c-pass">YES</span></td><td class="center"><span class="chip c-fail">NO</span></td><td class="center"><span class="chip c-fail">NO</span></td><td class="center"><span class="chip c-fail">NO</span></td></tr>
-    <tr><td>Agent-time secret guard (Claude hook)</td>
-        <td class="center"><span class="chip c-pass">YES</span></td><td class="center"><span class="chip c-fail">NO</span></td><td class="center"><span class="chip c-fail">NO</span></td><td class="center"><span class="chip c-fail">NO</span></td></tr>
-    <tr><td>Dependency audit in CI</td>
-        <td class="center"><span class="chip c-warn">PARTIAL</span></td><td class="center"><span class="chip c-fail">NO</span></td><td class="center"><span class="chip c-fail">NO</span></td><td class="center"><span class="chip c-fail">NO</span></td></tr>
-    <tr><td>Dependabot</td>
-        <td class="center"><span class="chip c-pass">YES</span></td><td class="center"><span class="chip c-fail">NO</span></td><td class="center"><span class="chip c-fail">NO</span></td><td class="center"><span class="chip c-fail">NO</span></td></tr>
-    <tr><td>Static analysis with security rules</td>
-        <td class="center"><span class="chip c-pass">SONAR + DETEKT</span></td><td class="center"><span class="chip c-warn">LINT ONLY</span></td><td class="center"><span class="chip c-warn">LINT ONLY</span></td><td class="center"><span class="chip c-fail">NO</span></td></tr>
-    <tr><td>AI code review (CodeRabbit)</td>
-        <td class="center"><span class="chip c-pass">YES</span></td><td class="center"><span class="chip c-pass">YES</span></td><td class="center"><span class="chip c-fail">NO</span></td><td class="center"><span class="chip c-fail">NO</span></td></tr>
-    <tr><td>Lockfiles</td>
-        <td class="center"><span class="chip c-pass">NPM/PNPM</span> <span class="chip c-warn">GRADLE PARTIAL</span></td><td class="center"><span class="chip c-pass">POETRY</span></td><td class="center"><span class="chip c-pass">NPM</span></td><td class="center"><span class="chip c-fail">NONE</span></td></tr>
-    <tr><td>AWOS audits on record</td>
-        <td class="center"><span class="chip c-pass">5 RUNS</span></td><td class="center"><span class="chip c-pass">3 RUNS</span></td><td class="center"><span class="chip c-fail">NEVER</span></td><td class="center"><span class="chip c-fail">NEVER</span></td></tr>
+    <tr><th>SDLC security practice (industry standard)</th><th>Benchmark source</th><th class="center">Status</th><th>Implemented today</th><th>Missing</th></tr>
+
+    <tr><td colspan="5" style="background:var(--surface);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600">Secrets</td></tr>
+    <tr><td><b>Layered secret scanning</b> — fast local pre-commit + CI gate with tuned config + server-side backstop</td>
+        <td>2026 tooling consensus (gitleaks/TruffleHog); Anthropic “deterministic scanners”</td>
+        <td class="center"><span class="chip c-pass">IMPLEMENTED</span></td>
+        <td>Three layers in hops: advisory pre-commit, agent-time hook, unconditional CI gitleaks with false-positives-only allowlist — history verifiably clean since the gate</td>
+        <td>Org-wide rollout (1 of 4 repos); GitHub push protection as server backstop; TruffleHog liveness verification for rotation triage</td></tr>
+    <tr><td><b>Agent-time secret guard</b> — the coding agent itself cannot read or write secret material</td>
+        <td>Anthropic containment model; CSA agentic guidance</td>
+        <td class="center"><span class="chip c-pass">IMPLEMENTED</span></td>
+        <td><code>PreToolUse</code> hook blocks secret access on every agent tool call; <code>PostToolUse</code> re-installs the git hook</td>
+        <td>Org-wide rollout; never store credentials in agent permission allow-patterns (real incident found)</td></tr>
+    <tr><td><b>Secret-free repo hygiene</b> — env templates with placeholders, secrets-manager references not values</td>
+        <td>OWASP ASVS 5.0 (13.3.1)</td>
+        <td class="center"><span class="chip c-pass">IMPLEMENTED</span></td>
+        <td>Per-module <code>.env.example</code>; Secrets-Manager <i>names</i> in config, values at runtime</td>
+        <td>Sensitive-filetype gitignore coverage uneven across repos</td></tr>
+    <tr><td><b>Test-data hygiene</b> — recorded HTTP fixtures and datasets scrubbed before commit</td>
+        <td>fail-closed redaction; VCR filtering practice</td>
+        <td class="center"><span class="chip c-warn">PARTIAL</span></td>
+        <td>Header filtering (auth, cookies, API keys) + custom PII scanner for eval datasets</td>
+        <td>Body scrubbing is a fail-open denylist — needs allowlist/entropy-based redaction (real leak traced to this)</td></tr>
+
+    <tr><td colspan="5" style="background:var(--surface);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600">AI-generated code</td></tr>
+    <tr><td><b>Deterministic SAST gate on every PR</b> — AI-authored code never merges on review alone</td>
+        <td>Veracode: 45% of AI code vulnerable, flat across model generations; Anthropic SAST-on-PR</td>
+        <td class="center"><span class="chip c-pass">IMPLEMENTED</span></td>
+        <td>SonarQube MR gate + detekt (Kotlin); unconditional secret scan</td>
+        <td>Explicit rule coverage for the weakest AI classes (XSS, log injection); SAST in the smaller repos</td></tr>
+    <tr><td><b>AI code review with independent context</b> — reviewer separate from the generating agent</td>
+        <td>Anthropic multi-agent review (narrow scope, proof-of-finding)</td>
+        <td class="center"><span class="chip c-warn">PARTIAL</span></td>
+        <td>CodeRabbit on PRs in the two main repos, tuned configs</td>
+        <td>Narrow-focus security reviewers with mandatory evidence; generation-time <code>/security-review</code> step</td></tr>
+    <tr><td><b>Close the loop: finding → instruction file</b> — every discovered bug updates agent guidance</td>
+        <td>Anthropic’s definition of AI-native shift-left</td>
+        <td class="center"><span class="chip c-warn">PARTIAL</span></td>
+        <td>Accepted-risk register with reasoning; tuned scanner configs cite their audit findings</td>
+        <td>Systematic practice — today it happens per-finding, not by rule</td></tr>
+
+    <tr><td colspan="5" style="background:var(--surface);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600">Supply chain</td></tr>
+    <tr><td><b>Lockfiles + exact pinning + reviewed updates</b></td>
+        <td>SLSA / OpenSSF; npm/pnpm/poetry practice</td>
+        <td class="center"><span class="chip c-pass">IMPLEMENTED</span></td>
+        <td>Lockfiles across npm/pnpm/poetry; 115/121 deps exact-pinned; Dependabot with human review</td>
+        <td>Gradle transitive lockfile; Dependabot beyond the main repo; one PoC repo unpinned entirely</td></tr>
+    <tr><td><b>Dependency vulnerability audit in CI</b> — unconditional, all modules</td>
+        <td>OWASP CI/CD Top 10</td>
+        <td class="center"><span class="chip c-warn">PARTIAL</span></td>
+        <td>osv audit exists in the MR pipeline</td>
+        <td>Runs only on labeled frontend PRs, one module — must be unconditional, all modules, all repos</td></tr>
+    <tr><td><b>Dependency cooldown / quarantine</b> — never install a version younger than N days</td>
+        <td>pnpm <code>minimumReleaseAge</code> (default-on since v11), npm <code>min-release-age</code></td>
+        <td class="center"><span class="chip c-fail">MISSING</span></td>
+        <td>—</td>
+        <td>One line of config for pnpm projects; closes the registry-compromise install window (audit check SCS-04)</td></tr>
+    <tr><td><b>Hallucinated-package defense</b> — new dependencies must exist, pre-date the PR, show real usage</td>
+        <td>USENIX 2025: 19.7% of LLM-recommended packages don’t exist (slopsquatting)</td>
+        <td class="center"><span class="chip c-info">PLANNED</span></td>
+        <td>—</td>
+        <td>CI check to build in Phase 2 — the AI-native supply-chain attack; nothing on the market gates it</td></tr>
+
+    <tr><td colspan="5" style="background:var(--surface);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600">AI toolchain</td></tr>
+    <tr><td><b>Pinned, integrity-checked agent toolchain</b> — MCP servers version-pinned; tool-description changes alerted</td>
+        <td>CSA MCP best practices; OWASP Agentic Top 10 (ASI01 “rug pull”)</td>
+        <td class="center"><span class="chip c-fail">MISSING</span></td>
+        <td>—</td>
+        <td>Every stdio MCP today runs a mutable version (<code>:latest</code> / <code>@canary</code> / unpinned git URL); pinning check planned for Phase 2</td></tr>
+    <tr><td><b>Protected agent-config surface</b> — CLAUDE.md, hooks, skills, MCP config treated as security-sensitive</td>
+        <td>Anthropic protected zones; audit check PRV-17</td>
+        <td class="center"><span class="chip c-warn">PARTIAL</span></td>
+        <td>Agent files and hooks tracked in git; process guard on docs</td>
+        <td>No rule declares the surface security-sensitive or requires review for changes to it</td></tr>
+
+    <tr><td colspan="5" style="background:var(--surface);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600">Governance</td></tr>
+    <tr><td><b>Continuous audit with a working remediation loop</b> — findings become fixes on a measured cadence</td>
+        <td>NIST SSDF / SP 800-218A; Anthropic audit-driven gates</td>
+        <td class="center"><span class="chip c-pass">IMPLEMENTED</span></td>
+        <td>Recurring multi-dimension audits (OWASP ASVS, LLM Top 10 based); measured fail→fix→pass loop of 13 days; accepted-risk register</td>
+        <td>Audits cover 2 of 4 repos; no waiver mechanism (accepted risks re-flag every run); detector scoping bugs found — reported upstream</td></tr>
+    <tr><td><b>Threat model / security requirements document</b></td>
+        <td>OWASP ASVS 5.0 (design); audit check AS-11</td>
+        <td class="center"><span class="chip c-fail">MISSING</span></td>
+        <td>—</td>
+        <td>Short threat-model doc planned in Phase 2; doubles as publication material</td></tr>
+    <tr><td><b>Third-party posture scoring</b> — an external number tracking repo security over time</td>
+        <td>OpenSSF Scorecard</td>
+        <td class="center"><span class="chip c-info">PLANNED</span></td>
+        <td>—</td>
+        <td>CI action per repo; the before/after metric for this capability</td></tr>
   </table>
   </div>
-  <p class="note">Every cell verified against the live repo on 2026-08-14; proof paths in
-  <code>research/baseline/cross-repo-matrix.md</code>.</p>
+  <p class="note">Status = strongest implementation in the org today, verified against live repos
+  2026-08-14; proof paths in <code>research/baseline/</code>. Sources detailed in
+  <code>research/sources/</code>.</p>
 </div>
 
 <div class="col">

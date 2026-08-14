@@ -103,6 +103,13 @@ rather than just asserting it.
       hops scope vs owner recommendations. Render-verified in both themes via headless Chrome.
       Local file only — NOT published anywhere (internal-only constraint). This is the Monday
       2026-08-18 progress answer.
+- [x] **Reframed as blueprint (2026-08-14, user request):** §1 table is now industry best
+      practice × benchmark source × status × implemented × missing — the blueprint for future
+      projects and the basis of the client capability story. Header carries an INTERNAL EDITION
+      banner: §2 names repos/findings.
+- [ ] **Client-safe variant** before any external presentation: strip §2 repo names, leak
+      details, and the rotation callout; keep §1 blueprint + anonymized evidence ("measured a
+      10× leak-rate difference between gated and ungated projects").
 
 **→ PHASE 1 COMPLETE.** Only open thread: Dasha's read-only-scope confirmation (1d) and the
 barley rotation ask — both human actions, neither blocks Phase 2.
