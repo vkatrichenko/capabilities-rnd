@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI SDLC Security — Phase 1 Report</title>
+<style>
+  :root{
+    --bg:#FAFAF7; --surface:#F1F2ED; --ink:#1B201D; --muted:#5C665F; --faint:#8A948C;
+    --line:#DDE2DB; --accent:#0F5E5A; --accent-ink:#0B4744;
+    --fail:#B3261E; --fail-bg:#FBEAE8; --warn:#9A6700; --warn-bg:#FAF1DC;
+    --pass:#14603A; --pass-bg:#E4F1E7; --info:#3A5A80; --info-bg:#E8EEF5;
+    --bar:#12716B;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14181A; --surface:#1D2325; --ink:#E8ECE9; --muted:#9BA69E; --faint:#6E7A72;
+      --line:#2C3436; --accent:#5CC0B8; --accent-ink:#7ED4CC;
+      --fail:#F2867E; --fail-bg:#3A2220; --warn:#E3B341; --warn-bg:#332A18;
+      --pass:#6FCF97; --pass-bg:#1B3226; --info:#8AB4E8; --info-bg:#1E2A38;
+      --bar:#3FA79F;
+    }
+  }
+  @media print{
+    :root{ --bg:#fff; --surface:#f5f5f2; --ink:#111; --muted:#555; --line:#ccc; }
+    .section{ break-inside:avoid-page; }
+    tr{ break-inside:avoid; }
+  }
+  *{ box-sizing:border-box; margin:0; }
+  body{
+    background:var(--bg); color:var(--ink);
+    font:16px/1.6 "Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif;
+    padding:0 1.25rem 5rem;
+  }
+  .col{ max-width:46rem; margin:0 auto; }
+  .wide{ max-width:62rem; margin:0 auto; }
+  code, .mono{ font-family:ui-monospace,"SF Mono","Cascadia Code",Menlo,monospace; font-size:.86em; }
+  code{ background:var(--surface); padding:.1em .35em; border-radius:3px; }
+  a{ color:var(--accent); }
+
+  /* ── masthead ── */
+  header{ padding:3.5rem 0 0; }
+  .eyebrow{
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:.72rem; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--accent); font-weight:600;
+  }
+  h1{ font-size:2.1rem; line-height:1.15; font-weight:650; letter-spacing:-.01em; text-wrap:balance; margin:.5rem 0 .75rem; }
+  .standfirst{ color:var(--muted); max-width:38rem; }
+  .meta{ display:flex; flex-wrap:wrap; gap:.4rem 1.5rem; margin-top:1.25rem; font-size:.82rem; color:var(--faint); }
+  .meta b{ color:var(--muted); font-weight:600; }
+
+  /* ── KPI row ── */
+  .kpis{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:1px;
+         background:var(--line); border:1px solid var(--line); border-radius:8px; overflow:hidden; margin:2.25rem 0 0; }
+  .kpi{ background:var(--bg); padding:.9rem 1rem .8rem; }
+  .kpi .n{ font-size:1.65rem; font-weight:650; letter-spacing:-.01em; font-variant-numeric:tabular-nums; line-height:1.1; }
+  .kpi .n small{ font-size:.9rem; font-weight:500; color:var(--muted); }
+  .kpi .l{ font-size:.74rem; color:var(--muted); margin-top:.2rem; line-height:1.35; }
+
+  /* ── sections ── */
+  .section{ margin-top:4rem; }
+  .sec-head{ display:flex; align-items:baseline; gap:.9rem; border-bottom:2px solid var(--ink); padding-bottom:.5rem; margin-bottom:1.5rem; }
+  .sec-head .num{ font-family:ui-monospace,Menlo,monospace; font-size:.85rem; color:var(--accent); font-weight:600; }
+  h2{ font-size:1.45rem; font-weight:650; letter-spacing:-.01em; text-wrap:balance; }
+  h3{ font-size:1.02rem; font-weight:650; margin:2rem 0 .6rem; }
+  p{ margin:.65rem 0; } p+p{ margin-top:.75rem; }
+  .note{ font-size:.85rem; color:var(--muted); }
+  ul{ padding-left:1.2rem; margin:.6rem 0; } li{ margin:.3rem 0; }
+
+  /* ── chips ── */
+  .chip{ display:inline-block; font-family:ui-monospace,Menlo,monospace; font-size:.68rem; font-weight:700;
+         letter-spacing:.06em; padding:.14em .5em; border-radius:999px; vertical-align:.08em; white-space:nowrap; }
+  .c-fail{ color:var(--fail); background:var(--fail-bg); }
+  .c-warn{ color:var(--warn); background:var(--warn-bg); }
+  .c-pass{ color:var(--pass); background:var(--pass-bg); }
+  .c-info{ color:var(--info); background:var(--info-bg); }
+
+  /* ── tables ── */
+  .tblwrap{ overflow-x:auto; margin:1rem 0; border:1px solid var(--line); border-radius:8px; }
+  table{ border-collapse:collapse; width:100%; font-size:.86rem; }
+  th{ text-align:left; font-size:.7rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted);
+      padding:.6rem .8rem; border-bottom:1px solid var(--line); background:var(--surface); white-space:nowrap; }
+  td{ padding:.55rem .8rem; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr:last-child td{ border-bottom:none; }
+  td.center, th.center{ text-align:center; }
+  .num-cell{ font-variant-numeric:tabular-nums; }
+
+  /* ── bar viz ── */
+  .bars{ margin:1.25rem 0 .25rem; display:grid; gap:.55rem; }
+  .barrow{ display:grid; grid-template-columns:6.5rem minmax(0,1fr) 13.5rem; align-items:center; gap:.75rem; }
+  .barrow .label{ font-family:ui-monospace,Menlo,monospace; font-size:.8rem; text-align:right; color:var(--muted); }
+  .track{ position:relative; height:22px; }
+  .fill{ position:absolute; inset:0 auto 0 0; background:var(--bar); border-radius:0 4px 4px 0; min-width:2px; }
+  .fill.zero{ background:var(--line); width:2px; }
+  .barval{ font-family:ui-monospace,Menlo,monospace; font-size:.78rem; font-variant-numeric:tabular-nums; line-height:1.3; }
+  .viz-cap{ font-size:.78rem; color:var(--faint); margin-top:.5rem; }
+
+  /* ── timeline ── */
+  .timeline{ margin:1.5rem 0; padding-left:1.1rem; border-left:2px solid var(--line); display:grid; gap:1.1rem; }
+  .tl{ position:relative; }
+  .tl::before{ content:""; position:absolute; left:calc(-1.1rem - 6px); top:.42em; width:8px; height:8px;
+               border-radius:50%; background:var(--accent); border:2px solid var(--bg); }
+  .tl .d{ font-family:ui-monospace,Menlo,monospace; font-size:.74rem; color:var(--accent); font-weight:600; }
+  .tl .t{ font-size:.9rem; }
+
+  /* ── callouts ── */
+  .call{ border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:6px;
+         background:var(--surface); padding:.9rem 1.1rem; margin:1.25rem 0; font-size:.92rem; }
+  .call.red{ border-left-color:var(--fail); }
+  .call b:first-child{ display:block; margin-bottom:.25rem; }
+
+  footer{ margin-top:5rem; padding-top:1.25rem; border-top:1px solid var(--line);
+          font-size:.78rem; color:var(--faint); }
+</style>
+</head>
+<body>
+
+<div class="col">
+<header>
+  <div class="eyebrow">DevOps Capabilities Research · Provectus</div>
+  <h1>AI SDLC Security — Phase 1 Report</h1>
+  <p class="standfirst">What already exists across the BarHopping repos, what is missing, and which
+  security practices to implement next. Research phase complete; every claim below traces to a
+  verified file path, a scan, or a cited source.</p>
+  <div class="meta">
+    <span><b>Date</b> 2026-08-14</span>
+    <span><b>Researcher</b> Vladyslav Katrychenko</span>
+    <span><b>Scope</b> code &amp; repo security in AI-assisted development</span>
+    <span><b>Repos</b> hops · barley · hops-mcp · sowinsights (read-only)</span>
+  </div>
+</header>
+
+<div class="kpis">
+  <div class="kpi"><div class="n">14,729</div><div class="l">commits scanned, full history, all four repos (gitleaks 8.24.3)</div></div>
+  <div class="kpi"><div class="n">22 <small>vs</small> 2</div><div class="l">real-format credentials ever leaked: barley (no gate) vs hops (gated)</div></div>
+  <div class="kpi"><div class="n">3</div><div class="l">tokens still in barley HEAD today — rotation needed</div></div>
+  <div class="kpi"><div class="n">99.4%</div><div class="l">false-positive rate of an untuned scanner — tuning is not optional</div></div>
+  <div class="kpi"><div class="n">13 <small>days</small></div><div class="l">hops audit-fail → gitleaks gate live: the remediation loop works</div></div>
+</div>
+
+<!-- ══════════════ SECTION 1 ══════════════ -->
+<div class="section">
+  <div class="sec-head"><span class="num">1</span><h2>What already exists</h2></div>
+
+  <p>The four repos are a natural experiment: comparable AI-assisted development intensity,
+  radically different security posture. <b>hops is the only repo with any secret scanning</b> —
+  and the only one whose history stayed clean after its gate went live.</p>
+</div>
+</div>
+
+<div class="wide">
+  <div class="tblwrap">
+  <table>
+    <tr><th>Control</th><th class="center">hops</th><th class="center">barley</th><th class="center">hops-mcp</th><th class="center">sowinsights</th></tr>
+    <tr><td>Secret scan — CI (gitleaks, unconditional)</td>
+        <td class="center"><span class="chip c-pass">YES</span></td><td class="center"><span class="chip c-fail">NO</span></td><td class="center"><span class="chip c-fail">NO</span></td><td class="center"><span class="chip c-fail">NO</span></td></tr>
+    <tr><td>Secret scan — local pre-commit</td>
+        <td class="center"><span class="chip c-pass">YES</span></td><td class="center"><span class="chip c-fail">NO</span></td><td class="center"><span class="chip c-fail">NO</span></td><td class="center"><span class="chip c-fail">NO</span></td></tr>
+    <tr><td>Agent-time secret guard (Claude hook)</td>
+        <td class="center"><span class="chip c-pass">YES</span></td><td class="center"><span class="chip c-fail">NO</span></td><td class="center"><span class="chip c-fail">NO</span></td><td class="center"><span class="chip c-fail">NO</span></td></tr>
+    <tr><td>Dependency audit in CI</td>
+        <td class="center"><span class="chip c-warn">PARTIAL</span></td><td class="center"><span class="chip c-fail">NO</span></td><td class="center"><span class="chip c-fail">NO</span></td><td class="center"><span class="chip c-fail">NO</span></td></tr>
+    <tr><td>Dependabot</td>
+        <td class="center"><span class="chip c-pass">YES</span></td><td class="center"><span class="chip c-fail">NO</span></td><td class="center"><span class="chip c-fail">NO</span></td><td class="center"><span class="chip c-fail">NO</span></td></tr>
+    <tr><td>Static analysis with security rules</td>
+        <td class="center"><span class="chip c-pass">SONAR + DETEKT</span></td><td class="center"><span class="chip c-warn">LINT ONLY</span></td><td class="center"><span class="chip c-warn">LINT ONLY</span></td><td class="center"><span class="chip c-fail">NO</span></td></tr>
+    <tr><td>AI code review (CodeRabbit)</td>
+        <td class="center"><span class="chip c-pass">YES</span></td><td class="center"><span class="chip c-pass">YES</span></td><td class="center"><span class="chip c-fail">NO</span></td><td class="center"><span class="chip c-fail">NO</span></td></tr>
+    <tr><td>Lockfiles</td>
+        <td class="center"><span class="chip c-pass">NPM/PNPM</span> <span class="chip c-warn">GRADLE PARTIAL</span></td><td class="center"><span class="chip c-pass">POETRY</span></td><td class="center"><span class="chip c-pass">NPM</span></td><td class="center"><span class="chip c-fail">NONE</span></td></tr>
+    <tr><td>AWOS audits on record</td>
+        <td class="center"><span class="chip c-pass">5 RUNS</span></td><td class="center"><span class="chip c-pass">3 RUNS</span></td><td class="center"><span class="chip c-fail">NEVER</span></td><td class="center"><span class="chip c-fail">NEVER</span></td></tr>
+  </table>
+  </div>
+  <p class="note">Every cell verified against the live repo on 2026-08-14; proof paths in
+  <code>research/baseline/cross-repo-matrix.md</code>.</p>
+</div>
+
+<div class="col">
+  <h3>hops: three-layer secrets defense, and it measurably works</h3>
+  <p>An advisory local hook (<code>scripts/pre-commit</code>) → an agent-time block
+  (<code>PreToolUse</code> → <code>block-secrets.sh</code>) → an unconditional CI gitleaks gate with
+  a tuned, false-positives-only allowlist (<code>.gitleaks.toml</code>). This matches the 2026
+  industry consensus layering exactly. The worktree scans clean under its own config.</p>
+
+  <h3>The remediation loop — strongest evidence collected</h3>
+  <div class="timeline">
+    <div class="tl"><div class="d">2026-07-17</div><div class="t">AWOS audit fails <b>PRV-01</b> — no secret-scanning gate. App-sec coverage 66%, prevention 66%.</div></div>
+    <div class="tl"><div class="d">2026-07-30</div><div class="t"><code>.gitleaks.toml</code> + CI job land (commit <code>835529c5a</code>) — the config header itself cites “audit 2026-07-17, R7 / PRV-01”.</div></div>
+    <div class="tl"><div class="d">2026-08-03</div><div class="t">Re-audit: PRV-01 <span class="chip c-pass">PASS</span>. Prevention 66→81.5%, app-sec 66→80%, supply-chain 83.3→96.2%.</div></div>
+  </div>
+  <p>Audit findings demonstrably drive fixes within days. The same loop fixed rate limiting
+  (AS-09) and dependency pinning (SCS-03) in the same window.</p>
+
+  <h3>Partial credit elsewhere</h3>
+  <ul>
+    <li><b>barley</b> has a pre-commit <i>framework</i> (ruff, biome, a custom PII scanner for eval
+    datasets) and deliberate VCR cassette scrubbing — controls exist, but none of them scan for
+    secrets, and the scrubber has a hole (§2).</li>
+    <li><b>hops-mcp</b> is small and clean (no leaked secrets ever, placeholders correct) — just
+    unprotected.</li>
+    <li><b>sowinsights</b> is a PoC with effectively nothing — and nothing marks it as
+    “PoC-tier” either.</li>
+  </ul>
+</div>
+
+<!-- ══════════════ SECTION 2 ══════════════ -->
+<div class="col">
+<div class="section">
+  <div class="sec-head"><span class="num">2</span><h2>What is missing</h2></div>
+
+  <h3>The gap is measurable: gated vs ungated</h3>
+  <p>Full-history secret scan, same tool, same ruleset, all four repos. Unique real-format
+  credentials (Slack tokens, GitLab runner tokens, private keys, AWS keys — formats that cannot
+  match by accident):</p>
+
+  <div class="bars" role="img" aria-label="Real-format credentials ever committed: barley 22 of which 3 still in HEAD, hops 2 both pre-gate, hops-mcp 0, sowinsights 0">
+    <div class="barrow"><span class="label">barley</span><div class="track"><div class="fill" style="width:100%"></div></div><span class="barval"><b>22</b> · <span style="color:var(--fail);font-weight:700">3 still in HEAD</span></span></div>
+    <div class="barrow"><span class="label">hops</span><div class="track"><div class="fill" style="width:9.1%"></div></div><span class="barval"><b>2</b> · pre-gate, removed</span></div>
+    <div class="barrow"><span class="label">hops-mcp</span><div class="track"><div class="fill zero"></div></div><span class="barval">0</span></div>
+    <div class="barrow"><span class="label">sowinsights</span><div class="track"><div class="fill zero"></div></div><span class="barval">0</span></div>
+  </div>
+  <p class="viz-cap">Unique (file, secret) pairs, high-confidence-format rules only, full git history.
+  No credential was tested for validity — rotation decisions belong to the owners.</p>
+
+  <div class="call red">
+    <b>Action needed now (barley owners): rotation check</b>
+    Still in HEAD: 2× GitLab runner-registration tokens in committed VCR cassettes
+    (<span class="mono">GR1348…</span>) and 1× Slack bot token in <code>reports/smoke.html</code>.
+    In history (removal ≠ revocation): 13 Slack tokens hardcoded in Terraform across dev <i>and</i>
+    prod (2024-12 → 2025-07), one full service-account private key. barley’s own June audit
+    additionally found a <b>production RDS password</b>, a LangSmith key and an OAuth secret in
+    local <code>.claude/settings.local.json</code> allow-patterns — rotation status unknown.
+  </div>
+
+  <h3>How the leaks happen — the vectors are AI-SDLC-shaped</h3>
+  <ul>
+    <li><b>Recorded test cassettes.</b> barley scrubs cassettes — headers properly, bodies via a
+    key <i>denylist</i> (<code>access_token</code>, Zoom fields, emails). GitLab returns the runner
+    token under <code>runners_token</code> — not on the list → committed verbatim. Denylist
+    scrubbing fails open on every new API field.</li>
+    <li><b>Committed artifacts.</b> A test report (<code>smoke.html</code>) embedding a live bot token.</li>
+    <li><b>IaC values pasted inline.</b> Slack tokens in Terraform locals for 8 months.</li>
+    <li><b>Agent permission allow-patterns as a secrets store.</b> Live credentials inside
+    Claude settings allow-lists — an AI-native vector that no code scanner sees.</li>
+  </ul>
+  <p>Not one of the 24 real-format leaks was in application source code. Defense-in-depth is what
+  turns “the scrubber has a hole” into a non-event — hops has the backstop, barley does not.</p>
+
+  <h3>The AI toolchain itself is unpinned</h3>
+  <div class="tblwrap"><table>
+    <tr><th>Repo</th><th>MCP server</th><th>Launch</th><th>Pin state</th></tr>
+    <tr><td>hops</td><td>github</td><td class="mono">docker run …github-mcp-server:latest (+ PAT)</td><td><span class="chip c-warn">:LATEST</span></td></tr>
+    <tr><td>hops-mcp</td><td>serena (3rd-party)</td><td class="mono">uvx --from git+https://…/serena</td><td><span class="chip c-fail">NO REF AT ALL</span></td></tr>
+    <tr><td>barley</td><td>bedrock-agentcore</td><td class="mono">uvx awslabs.…@latest</td><td><span class="chip c-warn">@LATEST</span></td></tr>
+    <tr><td>barley</td><td>prompt-kit</td><td class="mono">npx -y shadcn@canary mcp</td><td><span class="chip c-fail">@CANARY, AUTO-YES</span></td></tr>
+  </table></div>
+  <p>Every stdio MCP config executes a mutable-version third party with the developer’s (and the
+  agent’s) local privileges — the AI-SDLC equivalent of <code>curl | bash</code> at every session
+  start. CSA and the OWASP Agentic Top 10 (ASI01) both name exactly this “rug-pull” window; the
+  AWOS audit currently passes it.</p>
+
+  <h3>The audits themselves have blind spots</h3>
+  <div class="tblwrap"><table>
+    <tr><th>Audit verdict</th><th>Reality (verified by hand)</th></tr>
+    <tr><td>hops AS-13 <span class="chip c-fail">FAIL</span> “no .env.example found”</td>
+        <td>Four exist, all pre-dating the run — detector checks repo root only, misses per-module templates in a monorepo</td></tr>
+    <tr><td>hops AIS-03 <span class="chip c-info">SKIP</span> “no .claude/hooks/ directory”</td>
+        <td>The hooks live in <code>scripts/claude-hooks/</code> — the malicious-hook scan never read them; ai-security’s 100% is overstated</td></tr>
+    <tr><td>barley SEC-04 <span class="chip c-pass">PASS</span> “no committed secrets”</td>
+        <td>Its grep excluded <code>tests/</code> — exactly where the committed tokens sit</td></tr>
+    <tr><td>hops AS-01 <span class="chip c-fail">FAIL</span> every run</td>
+        <td>A documented accepted risk (cluster-internal URLs, TLS at ALB) — the audit has no waiver mechanism, so a permanent 8-point FAIL trains readers to ignore FAILs</td></tr>
+  </table></div>
+  <p>Systemic pattern across both audited repos: detector scoping assumptions (root-only paths,
+  directory conventions, excluded dirs) produce false verdicts in <i>both</i> directions.
+  Report upstream to the AWOS audit owners.</p>
+
+  <h3>Remaining hops gaps (from the 2026-08-03 audit + hand verification)</h3>
+  <ul>
+    <li><span class="chip c-warn">PRV-17</span> agent-config surface (CLAUDE.md, hooks, MCP config) not declared security-sensitive in agent instructions</li>
+    <li><span class="chip c-warn">SCS-08</span> 121 direct npm dependencies — large attack surface</li>
+    <li><span class="chip c-warn">AS-11</span> no threat-model / security-requirements document</li>
+    <li><span class="chip c-warn">CI</span> dependency audit (<code>osv</code>) runs only on PRs labeled <code>frontend</code>, and only for hop-ui</li>
+    <li><span class="chip c-warn">GRADLE</span> version catalog pins directs; no transitive lockfile</li>
+  </ul>
+</div>
+
+<!-- ══════════════ SECTION 3 ══════════════ -->
+<div class="section">
+  <div class="sec-head"><span class="num">3</span><h2>What should be implemented</h2></div>
+
+  <p>Ordered by impact ÷ effort. Scope note: <b>changes land in hops (dev only) per the approved
+  scope</b> — items for other repos are recommendations to their owners. Sources: Anthropic’s
+  AI-native SDLC security playbook, Veracode GenAI report (45% of AI-generated code vulnerable,
+  flat across model generations), USENIX 2025 slopsquatting study (19.7% of LLM-recommended
+  packages don’t exist), CSA/OWASP agentic guidance, NIST SP 800-218A.</p>
+
+  <div class="tblwrap"><table>
+    <tr><th></th><th>Practice</th><th>Effort</th><th>Where</th><th>Why / what it closes</th></tr>
+    <tr><td class="num-cell">1</td><td><b>Rotation triage with verification</b> (TruffleHog verifiers — safe, read-only liveness checks)</td>
+        <td><span class="chip c-pass">HOURS</span></td><td>barley (owners)</td><td>Answers “which of the 24 must rotate NOW” without touching credentials by hand</td></tr>
+    <tr><td class="num-cell">2</td><td><b>Port the hops gitleaks gate</b> (CI job + tuned config + pre-commit hook)</td>
+        <td><span class="chip c-pass">LOW</span></td><td>barley, hops-mcp, sowinsights (rec.)</td><td>The measured 22-vs-2 gap; barley’s pre-commit framework makes it a config entry</td></tr>
+    <tr><td class="num-cell">3</td><td><b>Dependency cooldown</b> — pnpm <code>minimumReleaseAge</code> (default-on since pnpm 11)</td>
+        <td><span class="chip c-pass">ONE LINE</span></td><td>hops (hop-ui)</td><td>Closes the audit’s skipped SCS-04 quarantine check; blocks the registry-compromise install window</td></tr>
+    <tr><td class="num-cell">4</td><td><b>MCP pinning check</b> — flag <code>:latest</code> / <code>@canary</code> / unpinned git URLs in <code>.mcp.json</code></td>
+        <td><span class="chip c-pass">SMALL SCRIPT</span></td><td>all repos</td><td>Closes the rug-pull window (CSA / OWASP ASI01); nothing on the market gates this today</td></tr>
+    <tr><td class="num-cell">5</td><td><b>PRV-17 fix</b> — declare the agent-config surface security-sensitive in CLAUDE.md; changes to hooks/MCP/skills require review</td>
+        <td><span class="chip c-pass">A PARAGRAPH</span></td><td>hops</td><td>Open audit WARN; the entry point to Anthropic-style protected zones</td></tr>
+    <tr><td class="num-cell">6</td><td><b>Hallucinated-package CI check</b> — every newly-added dependency must exist, pre-date the PR, and have real usage</td>
+        <td><span class="chip c-warn">MEDIUM</span></td><td>hops → generalize</td><td>Slopsquatting is the AI-native supply-chain attack; novel, article-worthy</td></tr>
+    <tr><td class="num-cell">7</td><td><b>Un-gate the dependency audit</b> — osv on all PRs, all modules (not label-gated, not hop-ui-only)</td>
+        <td><span class="chip c-pass">LOW</span></td><td>hops</td><td>The gate exists; its trigger is the hole</td></tr>
+    <tr><td class="num-cell">8</td><td><b>Fail-closed cassette scrubbing</b> — allowlist kept fields or entropy/format-based redaction at record time</td>
+        <td><span class="chip c-warn">MEDIUM</span></td><td>barley (rec.), pattern → article</td><td>Root cause of the in-HEAD tokens; denylists fail open on every new API field</td></tr>
+    <tr><td class="num-cell">9</td><td><b>Hook-content scan on the real path</b> (<code>scripts/claude-hooks/</code>), don’t wait for the audit fix</td>
+        <td><span class="chip c-pass">LOW</span></td><td>hops</td><td>Covers the AIS-03 phantom skip</td></tr>
+    <tr><td class="num-cell">10</td><td><b>OpenSSF Scorecard</b> per repo</td>
+        <td><span class="chip c-pass">CI ACTION</span></td><td>all repos</td><td>Third-party posture number; before/after metric for the publication</td></tr>
+    <tr><td class="num-cell">11</td><td><b>Security-review command / skill org-wide</b> + the bug→instruction-file loop</td>
+        <td><span class="chip c-warn">MEDIUM</span></td><td>all repos</td><td>Anthropic’s core shift-left pattern; hops had the command and lost it in a revert</td></tr>
+    <tr><td class="num-cell">12</td><td><b>Threat-model document</b> (AS-11) + report AS-13/AIS-03/SEC-04 detector bugs upstream</td>
+        <td><span class="chip c-warn">MEDIUM</span></td><td>hops / AWOS owners</td><td>Open audit WARN; fixes the audit for everyone downstream</td></tr>
+  </table></div>
+
+  <div class="call">
+    <b>The thesis this evidence supports</b>
+    At ~80% AI-authored code, the industry answer (Anthropic) is not more human review — it is
+    deterministic gates, narrow-scope review agents with mandatory evidence, and logged
+    accountability. BarHopping shows both sides of that bet in one org: hops with the first
+    layer installed (2 leaks, both pre-gate, loop closes findings in days) and barley without it
+    (22 leaks, 3 live in HEAD, its own audit’s rotation advice unactioned). The gap is the
+    capability story.
+  </div>
+</div>
+
+<!-- ══════════════ method ══════════════ -->
+<div class="section">
+  <div class="sec-head"><span class="num">§</span><h2>Method &amp; next steps</h2></div>
+  <p class="note">Same tool and ruleset across repos (gitleaks 8.24.3 — the version hops’ own CI
+  pins); findings deduped, classified in-HEAD vs history-only, manually reviewed with values
+  masked; no credential tested for validity; every audit claim re-verified against the repo by
+  hand. All repos read-only, verified untouched. Full trail:
+  <code>methodology/log.md</code>, findings in <code>research/</code> — every number in this
+  report has a file behind it.</p>
+  <p><b>Next (Phase 2):</b> implement the hops-scoped items above (dev-only, AWOS workflow),
+  capture before/after evidence per item; then Phase 3 generalizes the portable checks and the
+  measured deltas into the publication.</p>
+</div>
+
+<footer>
+  DevOps Capabilities Research — Phase 1 · 2026-08-14 · Vladyslav Katrychenko ·
+  advisors R. Sadretdinov, R. Ugarov · internal, redacted: secret values never appear in this
+  document or the underlying research files.
+</footer>
+</div>
+
+</body>
+</html>

@@ -95,19 +95,17 @@ rather than just asserting it.
       slopsquatting paper, Veracode report, OWASP Agentic Top 10, TruffleHog verification docs,
       OpenSSF Scorecard checks.
 
-### 1e. Phase 1 closeout — HTML presentation
+### 1e. Phase 1 closeout — HTML presentation ✅ (2026-08-14)
 
-- [ ] **Generate `artifacts/phase1-report.html`** — a self-contained HTML presentation of Phase 1,
-      built **only after 1a–1d are all done** so it reflects the complete picture. Three sections:
-      1. **What already exists** — the verified cross-repo control matrix + the hops baseline,
-         from `research/baseline/`.
-      2. **What is missing** — the gap analysis: per-repo holes, the secret-scan findings
-         (redacted), audit FAIL/WARN checks, from `research/findings/`.
-      3. **What should be implemented** — prioritized recommendations (impact × effort), split
-         into `hops` changes (Phase 2 scope) vs recommendations for the other three repos.
-      Self-contained (inline CSS, no external assets), redacted to the same standard as the
-      findings files — it will be shown to the team. This doubles as the Monday 2026-08-18
-      progress answer.
+- [x] **`artifacts/phase1-report.html`** — self-contained (inline CSS, no external assets,
+      light + dark + print), redacted to the findings-file standard. Three sections as specified:
+      exists / missing / implement, with the 12-item cost-ranked recommendation table split into
+      hops scope vs owner recommendations. Render-verified in both themes via headless Chrome.
+      Local file only — NOT published anywhere (internal-only constraint). This is the Monday
+      2026-08-18 progress answer.
+
+**→ PHASE 1 COMPLETE.** Only open thread: Dasha's read-only-scope confirmation (1d) and the
+barley rotation ask — both human actions, neither blocks Phase 2.
 
 ### Known gaps already visible — verify, then size
 
