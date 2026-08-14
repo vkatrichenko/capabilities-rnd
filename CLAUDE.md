@@ -104,7 +104,7 @@ secret scanning at all** — local or in CI. Snapshot 2026-08-14; verify before 
 | Dependabot | ✅ npm + gradle + actions | ❌ | ❌ | ❌ |
 | Static analysis | ✅ SonarQube, detekt | ⚠️ ruff / biome (lint, not security) | ⚠️ eslint | ❌ |
 | AI code review | ✅ `.coderabbit.yaml` | ✅ `.coderabbit.yml` | ❌ | ❌ |
-| Lockfile | ⚠️ `e2e` + `hop-agent` only — **`hop-ui` and gradle `hop-backend` have none** | ✅ `poetry.lock` | ✅ `package-lock.json` | ❌ `requirements.txt` only |
+| Lockfile | ✅ npm/pnpm all locked (`hop-ui` pnpm, `e2e`+`hop-agent` npm); ⚠️ gradle: version catalog only, no transitive lock | ✅ `poetry.lock` | ✅ `package-lock.json` | ❌ `requirements.txt` only |
 | AWOS audits on record | ✅ 5 runs, newest 2026-08-03 | ✅ 3 runs, newest 2026-06-03 | ❌ | ❌ |
 | AWOS + `.claude/` config | ✅ | ✅ | ✅ | ❌ |
 
@@ -151,27 +151,31 @@ elsewhere; ask Dasha Goranina only for material that sits outside them.
   comparing the numbers.
 - **`hops-mcp`, `sowinsights`** — never audited.
 
-The scores below are from the newest `hops` run.
-
 Each run directory holds one JSON per dimension — the machine-readable source, with `score`,
 `coverage`, and a `checks[]` array — plus `report.md`, `report.html`, `recommendations.md`, and
 `collected/` (raw `ci`, `git`, `code_host`, `docs`, `tracker` data).
 
-Dimensions that map onto this capability, with scores from the 2026-08-03 run:
+**Read the numbers correctly: the `score` field is a raw weight sum, NOT a percentage.** The
+health metric is `coverage` = awarded / applicable-max — that is what `report.md` headlines.
+Dimensions that map onto this capability, from the 2026-08-03 `hops` run:
 
-| Dimension | Score | Why it matters here |
+| Dimension | Health (coverage) | Why it matters here |
 |---|---|---|
-| `prevention-coverage` | 32.6 | Whether good state is protected against regression — the weakest area |
-| `supply-chain-security` | 37.5 | Lockfile integrity, version pinning, package provenance |
-| `ai-security` | 45 | Malicious/suspicious content in agent definitions, skills, hooks, MCP configs |
-| `application-security` | 64.8 | OWASP ASVS 5.0.0 |
-| `ai-sdlc-adoption` | 50.2 | Context for how AI-assisted the development actually is |
+| `ai-security` | 100% (overstated — AIS-03 skipped, see below) | Malicious/suspicious content in agent definitions, skills, hooks, MCP configs |
+| `ai-sdlc-adoption` | 86.6% | Context for how AI-assisted the development actually is |
+| `supply-chain-security` | 96.2% | Lockfile integrity, version pinning, package provenance |
+| `prevention-coverage` | 81.5% | Whether good state is protected against regression |
+| `application-security` | 80.0% | OWASP ASVS 5.0.0 |
 
-Older runs (`2026-03-31`, `2026-04-21`, `2026-04-22`, `2026-07-17_14-00-48`) let you show movement
-over time — useful evidence for the article. Note the schema changed: the older runs are markdown
-per dimension, the two newest are JSON.
+HOPS's audited posture is **strong** — the research value is the remediation loop (07-17 fails →
+fixes land within days → 08-03 passes) and the audit's own blind spots (AS-13 false positive:
+detector misses per-module `.env.example`; AIS-03 phantom skip: hooks live in
+`scripts/claude-hooks/`, not `.claude/hooks/`, so the malicious-hook check never ran). Detail in
+`research/findings/hops-audit-analysis.md`.
 
-The three low-scoring dimensions are the natural Phase 2 backlog.
+Older runs (`2026-03-31`, `2026-04-21`, `2026-04-22`) use a different markdown schema and check
+set — not numerically comparable; use only for narrative. `2026-07-17_14-00-48` is
+JSON-comparable with `2026-08-03` and is the "before" of the before/after.
 
 ## Methodology is a deliverable, not a byproduct
 

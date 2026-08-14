@@ -15,39 +15,41 @@ must be non-mutating. Only `hops` is a change target in Phase 2.
 The comparison *is* a finding. `hops` is the only repo with any secret scanning; quantify that gap
 rather than just asserting it.
 
-- [ ] **Verify the cross-repo control matrix** in `CLAUDE.md` against each live repo, and write it
-      up as `research/baseline/cross-repo-matrix.md`. Every cell needs the file path that proves it.
-- [ ] **Run the same non-mutating scan across all four** — a consistent GitLeaks pass (detect, no
-      write) plus a dependency/lockfile check. Same tool, same config, same day: that is what makes
-      the numbers comparable. Raw output to `scratch/`, redacted to `artifacts/`.
-- [ ] **Git-history secret scan**, not just working tree — a committed-then-deleted secret is still
-      in the history, and this is the core in-scope risk. Do all four.
-- [ ] **Supply-chain posture per repo**: lockfile present, versions pinned, provenance checked.
-      Known: `sowinsights` has `requirements.txt` and no lockfile; `barley` uses `poetry.lock`;
-      `hops-mcp` uses `package-lock.json`.
-- [ ] **AI-assistance surface per repo**: `.claude/` agents, skills, hooks, `.mcp.json`, `.awos/`.
-      Which repos let an agent write code, and what guards that path. `sowinsights` has none of it —
-      note whether that means less AI-generated code or just less control over it.
-- [ ] **Correlate AI-assistance against security posture.** The article's central question: does
-      heavier AI-assisted development show up as more security tooling, or less? Both `hops` and
-      `barley` are heavily AI-assisted and land in very different places.
+- [x] **Verify the cross-repo control matrix** → `research/baseline/cross-repo-matrix.md`
+      (2026-08-14, every cell with its proof path).
+- [x] **Run the same non-mutating scan across all four** — gitleaks 8.24.3 (the hops CI gate
+      version), default config, full history + hops worktree with its own tuned config. Raw JSON in
+      `scratch/`; redacted report → `research/findings/secret-scan-2026-08-14.md`.
+- [x] **Git-history secret scan** — done as above. Headline: hops post-gate history clean; barley
+      has 22 real-format credentials in history, **3 still in HEAD** (2× gitlab-rrt in VCR
+      cassettes, 1× slack-bot-token in `reports/smoke.html`) → owner rotation check needed.
+- [x] **Supply-chain posture per repo** — in the matrix. `sowinsights`: 13 deps, 0 pinned, no
+      lockfile, `.pyc` committed. `hops`: lockfiles only in `e2e/` + `hop-agent/`.
+- [x] **AI-assistance surface per repo** — counts in the matrix (agents/skills/commands/hooks/MCP).
+      hops-mcp's single hook is quality (tsc/eslint), not security — only `hops` guards the agent
+      write path.
+- [x] **Correlate AI-assistance against security posture** — barley has the *largest* AI surface
+      and *zero* secret scanning; tooling is audit-driven (hops gate ← audit R7/PRV-01), not
+      adoption-driven. Written up in the matrix; quantified by the scan.
 
-### 1b. `hops` — the deep pass
+### 1b. `hops` — the deep pass ✅ (2026-08-14)
 
-- [ ] **Mine the newest AWOS audit.** `hops/context/audits/2026-08-03_19-15-15/` — extract every
-      FAIL and WARN check from `prevention-coverage.json` (32.6), `supply-chain-security.json`
-      (37.5), `ai-security.json` (45) and `application-security.json` (64.8) into
-      `research/findings/`. The JSONs are the machine-readable source; `recommendations.md` and
-      `report.md` are the narrative.
-- [ ] **Chart the score movement across runs.** `2026-03-31`, `2026-04-21`, `2026-04-22`,
-      `2026-07-17_14-00-48`, `2026-08-03_19-15-15`. Note the schema change — older runs are markdown
-      per dimension, the two newest are JSON. Delta over time is article evidence.
-- [ ] **Write `research/baseline/hops-security-baseline.md`.** Start from the baseline table in
-      `CLAUDE.md`, verify every row against the live repo, and record what each control actually
-      catches versus what it claims to.
-- [ ] **Read `hops/docs/processes/security-notes.md`.** Accepted risks with recorded reasoning
-      (AS-01 transport, AS-09 auth rate limiting). Anything in there re-raised as a new finding is
-      noise.
+- [x] **Mine the newest AWOS audit** → `research/findings/hops-audit-analysis.md`. Key correction:
+      `score` is a raw weight sum, not a percent — real health is `coverage` (ai-sec 100%,
+      supply-chain 96.2%, prevention 81.5%, app-sec 80%). Open items: PRV-05, PRV-08, PRV-17,
+      SCS-08, AS-01 (accepted risk), AS-11, AS-13 (audit FP).
+- [x] **Chart the movement across runs** — 07-17 → 08-03: prevention 66→81.5, supply-chain
+      83.3→96.2, app-sec 66→80. Causal chain dated: PRV-01 FAIL (07-17) → `.gitleaks.toml` commit
+      `835529c5a` (07-30) → PASS (08-03). Older 3 runs: different schema, narrative only.
+- [x] **Write `research/baseline/hops-security-baseline.md`** — 5 layers verified, claims-vs-catches
+      noted per control.
+- [x] **Read `hops/docs/processes/security-notes.md`** — AS-01 + AS-09 accepted/designed with
+      reasoning; audit re-flags AS-01 every run (no waiver mechanism — reconciliation gap, in the
+      findings).
+- [x] **NEW — audit blind spots found (report upstream to AWOS audit owners):** AS-13 false
+      positive (4 per-module `.env.example` files exist; detector checks root only) and AIS-03
+      phantom skip (hooks in `scripts/claude-hooks/` never scanned — detector assumes
+      `.claude/hooks/`), so ai-security's 100% is overstated.
 
 ### 1c. `barley`, `hops-mcp`, `sowinsights` — the lighter pass
 
@@ -69,24 +71,42 @@ rather than just asserting it.
       approval — the charter names HOPS specifically.
 - [ ] **Open `methodology/log.md`** with the method used so far, including this scaffolding step.
 
+### 1e. Phase 1 closeout — HTML presentation
+
+- [ ] **Generate `artifacts/phase1-report.html`** — a self-contained HTML presentation of Phase 1,
+      built **only after 1a–1d are all done** so it reflects the complete picture. Three sections:
+      1. **What already exists** — the verified cross-repo control matrix + the hops baseline,
+         from `research/baseline/`.
+      2. **What is missing** — the gap analysis: per-repo holes, the secret-scan findings
+         (redacted), audit FAIL/WARN checks, from `research/findings/`.
+      3. **What should be implemented** — prioritized recommendations (impact × effort), split
+         into `hops` changes (Phase 2 scope) vs recommendations for the other three repos.
+      Self-contained (inline CSS, no external assets), redacted to the same standard as the
+      findings files — it will be shown to the team. This doubles as the Monday 2026-08-18
+      progress answer.
+
 ### Known gaps already visible — verify, then size
 
 Spotted during the initial survey; each needs confirming before it becomes a Phase 2 item.
 
-- [ ] **Three of four repos have no secret scanning** — `barley`, `hops-mcp`, `sowinsights` have
-      none, local or CI. This is the headline gap.
+- [x] **Three of four repos have no secret scanning** — verified and now quantified: the ungated
+      `barley` carries 22 real-format credentials in history vs `hops`' 2 (both pre-gate). See
+      `research/findings/secret-scan-2026-08-14.md`.
+- [ ] **NEW — barley rotation check (owner action, not ours):** 3 real-format tokens still in HEAD
+      + 13 Slack tokens in Terraform history (2024-12→2025-07, dev & prod). Raise with the barley
+      owners via Ruslan/Rodion — removal ≠ revocation.
 - [ ] `hops`: `osv-audit-hop-ui` only runs when the PR carries the `frontend` label — dependency
       audit is skipped on unlabelled PRs, and covers `hop-ui` only. `hop-agent`, `e2e` and
       `hop-backend` (gradle) have Dependabot but no PR-time audit gate.
 - [ ] `hops`: `scripts/pre-commit` is advisory with a `SKIP_SECRETS=1` escape hatch; its
       `SUSPICIOUS_FILES_PATTERN` is anchored `\.env$`, so `.env.example` is not covered locally.
       CI gitleaks is the real gate — confirm the gap between the two.
-- [ ] `hops`: `prevention-coverage` at 32.6 is the lowest score — find which failure-mode clusters
-      are unprotected against regression.
-- [ ] `hops`: **only `e2e/` and `hop-agent/` commit a `package-lock.json`.** `hop-ui` has a
-      `package.json` with no lockfile, and `hop-backend` has no gradle lockfile — unpinned transitive
-      dependencies in the two largest modules. Directly in scope (supply-chain), and a likely driver
-      of the 37.5 `supply-chain-security` score. Verify against that dimension's checks.
+- [x] ~~`prevention-coverage` at 32.6 is the lowest score~~ — **corrected**: 32.6 was a raw weight
+      sum; real health 81.5%. The open regression gaps are PRV-05 (module boundaries), PRV-08
+      (docs checks), PRV-17 (agent-config surface) — see `hops-audit-analysis.md`.
+- [x] ~~`hop-ui` has no lockfile~~ — **corrected**: `hop-ui/pnpm-lock.yaml` exists (earlier grep
+      missed pnpm). Remaining real gap: `hop-backend` gradle has a version catalog but no
+      transitive lockfile / dependency-verification metadata.
 - [ ] `barley`: pre-commit exists but carries no secret scanning — the framework is already in
       place, so adding `gitleaks` there is a genuine quick win (recommendation only, not a change).
 - [ ] `sowinsights`: no lockfile and committed `.pyc` — smallest repo, largest relative gap.
