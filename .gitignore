@@ -1,0 +1,25 @@
+# Un-redacted scanner output — never commit. See artifacts/README.md.
+scratch/
+
+# Credentials and key material
+*.env
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+credentials.json
+secrets.yaml
+secrets.yml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+*.swp
