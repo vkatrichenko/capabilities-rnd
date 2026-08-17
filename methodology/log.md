@@ -193,3 +193,23 @@ Chrome screenshots; one layout defect (bar-label collision at 100% width) caught
 that pass.
 
 **Outputs.** `artifacts/phase1-report.html`. Phase 1 closed.
+
+---
+
+## 2026-08-14 — Phase 2 planning
+
+**Trigger.** Phase 1 report approved by managers; report restructured into a six-tab artifact
+and shared (roadmap table split into why-it-matters / how-it-fixes-it, benchmark sources
+linked).
+
+**Plan shape.** The approved 12-item roadmap converted into an executable checklist in
+`tasks/todo.md`: Gate 0 (human messages + measurement baselines captured *before* the first
+change), Wave 1 (four config-level PRs), Wave 2 (three portable tools, built and self-tested in
+`tooling/` before gating anything in hops), a measurement checkpoint (audit re-run = the
+before/after evidence), Wave 3 (medium items incl. the flagship hallucinated-package check),
+plus owner recommendations kept explicitly out of our change scope.
+
+**Process decision.** Small direct PRs per item, each citing the audit-check ID — the same
+pattern the gitleaks gate used — rather than a full AWOS spec cycle; courtesy heads-up to the
+HOPS tech lead in the first PR. Execution is deliberately item-by-item on explicit go, nothing
+started at planning time.

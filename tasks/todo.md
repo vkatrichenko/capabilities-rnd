@@ -148,15 +148,60 @@ Spotted during the initial survey; each needs confirming before it becomes a Pha
       place, so adding `gitleaks` there is a genuine quick win (recommendation only, not a change).
 - [ ] `sowinsights`: no lockfile and committed `.pyc` — smallest repo, largest relative gap.
 
-## Phase 2 — Expand
+## Phase 2 — Expand (approved plan, 2026-08-14)
 
-Build checks in `tooling/`, port into **`hops` only**. **Dev environment only. Never push without
-asking.** `hops` uses a mandatory AWOS workflow — read `hops/CLAUDE.md` first.
+Report approved by managers. Process: **one small hops PR per item**, referencing the audit-check
+ID it closes (the same pattern the gitleaks gate used — single PR citing R7/PRV-01); no full AWOS
+spec cycle for these config/security changes, courtesy heads-up to the HOPS tech lead in the
+first PR. **Dev env only. Never push without explicit confirmation.** Items execute one at a
+time, each on an explicit go.
 
-- [ ] Prioritize the Phase 1 gaps by (impact × effort), quick wins first.
-- [ ] Implement, and capture before/after evidence in `artifacts/` for each.
-- [ ] Write gaps found in `barley` / `hops-mcp` / `sowinsights` as **recommendations**, not changes —
-      they are outside the approved change scope. Their value is proving the tooling generalizes.
+### Gate 0 — before any hops change
+- [ ] Send rotation ask to barley owners (report red callout) — human action, time-sensitive
+- [ ] Send Dasha the sibling-repo scope confirmation (drafted in 1d) — human action
+- [ ] Capture OpenSSF Scorecard baseline for hops (read-only) → `artifacts/`, redacted
+- [ ] Record the "before" reference: 2026-08-03 audit scores + clean gitleaks worktree state
+      (already in `research/baseline/` — link them into a single before-state note)
+
+### Wave 1 — config quick wins (hops, one PR each)
+- [ ] **W1.1** pnpm cooldown: `minimumReleaseAge: 1440` + exclude list in `hop-ui` (closes
+      SCS-04); verify: adding a <24h-old package fails locally. Confirm whether hop-ui config
+      lives in `pnpm-workspace.yaml` or `.npmrc` first.
+- [ ] **W1.2** Un-gate dependency audit: drop the `frontend`-label condition on the osv job in
+      `.github/workflows/hops-mr-check.yml`; extend to `hop-agent/`, `e2e/` (npm) and
+      `hop-backend` (gradle); verify: osv runs on an unlabeled PR
+- [ ] **W1.3** PRV-17: security-sensitive declaration for the agent-config surface in hops
+      `CLAUDE.md` (+ module CLAUDE.mds if the audit reads them); review rule for `.claude/`,
+      hooks, `.mcp.json` changes
+- [ ] **W1.4** Pin the github MCP image to a digest in hops `.mcp.json` (kills `:latest`)
+
+### Wave 2 — portable tools (build in `tooling/`, self-test, then port to hops)
+- [ ] **W2.1** MCP pinning check — flags `:latest`/`@canary`/ref-less git URLs in `.mcp.json`;
+      fixture self-tests first; then hops CI job; read-only run across all four repos for the
+      article table
+- [ ] **W2.2** Hook-content scan: `scripts/claude-hooks/` + any path referenced from
+      `.claude/settings.json` (covers the AIS-03 phantom skip); self-test, then hops CI
+- [ ] **W2.3** OpenSSF Scorecard action in hops CI; delta vs the Gate 0 baseline
+
+### Measurement checkpoint (after Waves 1–2)
+- [ ] Re-run `/awos:ai-readiness-audit` on hops — capture the score delta (SCS-04, PRV-17,
+      ai-security coverage); acceptance: no dimension regresses
+- [ ] Re-run gitleaks (tuned) + osv; evidence per item → `artifacts/` (before / PR link / after)
+- [ ] `methodology/log.md` entry for the wave
+
+### Wave 3 — medium items
+- [ ] **W3.1** Hallucinated-package CI check — design note in `research/findings/` first, then
+      `tooling/ci/`, then hops (flagship novel check)
+- [ ] **W3.2** Threat-model doc for hops (closes AS-11); doubles as publication material
+- [ ] **W3.3** Reinstate `/security-review` as a hops skill + the finding→instruction-file loop
+      rule
+- [ ] **W3.4** File AWOS detector bugs upstream (AS-13 root-only `.env.example`, AIS-03
+      `.claude/hooks/` path, barley SEC-04 tests-exclusion) → issues on `provectus/awos`
+
+### Recommendations to owners (not our changes)
+- [ ] Hand barley owners the gitleaks-port recipe + fail-closed scrubbing pattern (write-up in
+      `research/findings/`, share in channel)
+- [ ] Check GitHub push-protection availability on the org plan (question, not a change)
 
 ## Phase 3 — Generalize
 
