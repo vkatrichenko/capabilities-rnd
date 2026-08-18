@@ -194,20 +194,17 @@ the baseline is unrecoverable.
       > changes) I also compared it against the sibling repos in the BarHopping org — barley,
       > hops-mcp, sowinsights. Can you confirm read-only analysis of those is fine under the
       > existing approval? Changes still go to hops dev only.
-- [ ] **G0.3 — OpenSSF Scorecard baseline** for hops (read-only) → `artifacts/`, redacted.
-      **Blocked:** both `gh` tokens are refused by `provectus-barhopping` SAML SSO
-      (`vkatrichenko` → "Resource protected by organization SAML enforcement", `vkatrychenko` →
-      404). Git over SSH works; the REST/GraphQL API does not, and Scorecard needs it.
-      Unblock: run `gh api repos/provectus-barhopping/hops --jq .visibility`, open the SSO URL it
-      prints, grant the token access to the org.
-      Then: `docker run --rm -e GITHUB_AUTH_TOKEN="$(gh auth token)"
-      gcr.io/openssf/scorecard:stable --repo=github.com/provectus-barhopping/hops --format=json`.
-      Record the image digest, the Scorecard version, and **every check that returns `-1`
-      (inconclusive)** — otherwise the W2.3 delta gets read against a check that never ran.
+- [x] **G0.3 — OpenSSF Scorecard baseline** (2026-08-18) →
+      `artifacts/scorecard-baseline-hops.md`. Full remote mode, Scorecard v5.1.1-45-g40bbc9c9,
+      image pinned by digest, target `origin/main` @ `f640dee9f`. **Aggregate 5.4/10.**
+      SSO unblocked by re-running `gh auth login --web` (the standalone authorization_request URL
+      did not bind to the CLI token; the device-code flow did).
+      Only inconclusive check: Signed-Releases (−1, no releases exist).
 - [x] **G0.4 — the "before" reference** → `research/baseline/phase2-before-state.md` (2026-08-18).
       Link-only note: 2026-08-03 audit coverage, tuned-gitleaks worktree state, control matrix,
       the pinned hops commit, and the two pre-existing toolchain facts found while scoping W1.1.
-      Scorecard row stays open until G0.3 lands.
+      Scorecard row filled in from G0.3. **Corrected:** the pinned commit is origin/main
+      `f640dee9f`, not the local clone's `0a5303371` — the local clone was 5 days behind.
 
 ### Wave 1 — config quick wins (hops, one PR each)
 - [ ] **W1.1** pnpm cooldown: `minimumReleaseAge` (+ `minimumReleaseAgeExclude`, and decide on
@@ -229,13 +226,20 @@ the baseline is unrecoverable.
       Verify: adding a <24h-old package fails locally, and the CI job resolves the pinned pnpm.
 - [ ] **W1.2** Un-gate dependency audit: drop the `frontend`-label condition on the osv job in
       `.github/workflows/hops-mr-check.yml`; extend to `hop-agent/`, `e2e/` (npm) and
-      `hop-backend` (gradle); verify: osv runs on an unlabeled PR
+      `hop-backend` (gradle); verify: osv runs on an unlabeled PR.
+      **Now has a number (2026-08-18):** Scorecard's OSV pass reports **65 open advisories** on the
+      repo while the audit is label-gated to `hop-ui`. Triage them with `osv-scanner` directly —
+      Scorecard gives IDs only, no severity or reachability, so "65" is not "65 exploitable".
 - [ ] **W1.3** PRV-17: security-sensitive declaration for the agent-config surface in hops
       `CLAUDE.md` (+ module CLAUDE.mds if the audit reads them); review rule for `.claude/`,
       hooks, `.mcp.json` changes
 - [ ] **W1.4** Pin the github MCP image to a digest in hops `.mcp.json` (kills `:latest`).
       No audit delta — AIS-04 already PASSes the unpinned config; evidence is the diff plus
-      W2.1's checker output.
+      W2.1's checker output. **Widen it (2026-08-18):** Scorecard found **17 unpinned third-party
+      GitHub Actions** (`hops-dev.yml` ×5, `hops-main.yml` ×5, `hops-mr-check.yml` ×5,
+      `hops-demo.yml`, `hops-preview.yml`) — the CI-side twin of the `.mcp.json` finding, same
+      control, and this one moves Scorecard's Pinned-Dependencies. Pin both surfaces in one item;
+      leave the 100 GitHub-owned actions alone (low risk, high churn).
 
 - [ ] **W1.5 — NEW (2026-08-18, found at Gate 0)** Relocate the agent hook to `.claude/hooks/`
       (move or symlink `scripts/claude-hooks/block-secrets.sh`; keep `.claude/settings.json`
@@ -277,6 +281,12 @@ the baseline is unrecoverable.
       `.claude/hooks/` path, barley SEC-04 tests-exclusion) → issues on `provectus/awos`
 
 ### Recommendations to owners (not our changes)
+- [ ] **NEW, highest value (2026-08-18) — require `secret-scan` as a status check on `hops` `main`.**
+      Verified from two GitHub endpoints: `main` requires a PR + 1 approval and **zero passing
+      checks** (`enforcement_level: "off"`, enterprise ruleset carries only `deletion`,
+      `non_fast_forward`, `pull_request`). The gitleaks gate, SonarQube and osv are all advisory at
+      merge time. Repo-settings change, needs an admin — ours is not one. Raise with the HOPS tech
+      lead alongside the W1 heads-up. Detail: `artifacts/scorecard-baseline-hops.md` finding 1.
 - [ ] Hand barley owners the gitleaks-port recipe + fail-closed scrubbing pattern (write-up in
       `research/findings/`, share in channel)
 - [ ] Check GitHub push-protection availability on the org plan (question, not a change)

@@ -259,3 +259,52 @@ appear.
 
 **Outputs.** `research/baseline/phase2-before-state.md`; Gate 0 and Wave 1 rewritten in
 `tasks/todo.md`. G0.3 open (SSO), G0.1/G0.2 pending send.
+
+---
+
+## 2026-08-18 — Phase 2 Gate 0 (continued): Scorecard baseline
+
+**Unblocking.** The SAML SSO 403 was on the GitHub CLI's OAuth token, not the SSH key — the key
+was already authorized, which is why git worked and the API did not. Two things that did *not*
+work: the `authorization_request` URL returned in the 403 header, and the OAuth-app page's
+org-access ✓ (that is an app-level grant, a different object from the per-token SAML grant).
+What worked was re-running `gh auth login --web` and completing the device-code flow, which
+performs the SSO handshake inline. Worth recording because the error message points at the URL
+that does not fix it.
+
+**Method.** Scorecard v5.1.1-45-g40bbc9c9, image pinned by digest, full remote mode with
+`--show-details`, run twice — the first run without details, which turned out to be useless
+(scores with no evidence). Raw JSON to `scratch/`; the artifact carries the digest and the
+scanned commit so the run is reproducible.
+
+**Verification discipline.** Two Scorecard claims were checked against GitHub directly rather
+than reported as-is, because both would have been headline statements:
+
+- *"branch protection is not maximal"* → confirmed from two independent endpoints
+  (`/rules/branches/main` and `/branches/main`), because Scorecard's branch-protection read
+  degrades silently without admin and we do not have admin. Both agree: `main` requires a PR and
+  1 approval and **zero passing status checks**.
+- *"SAST tool is not run on all commits"* → **rejected.** hops runs a self-hosted SonarQube MR
+  scan; Scorecard detects CodeQL and hosted SonarCloud only. Recorded as a false negative so W2.3
+  does not chase it.
+
+**The finding that matters.** The secret-scan gitleaks gate — the control this whole capability
+story rests on — does not block a merge. Then, searching all 13 AWOS dimensions for any
+branch-protection or required-status-check concept: nothing. PRV-01/03/04/06 each assert a gate
+**exists in CI**, never that it **blocks a merge**, so `prevention-coverage` 81.5% measures the
+presence of prevention, not its force. Two audits, complementary blind spots — Scorecard has the
+enforcement check AWOS lacks, AWOS has the agent-surface checks Scorecard lacks, and each misses
+things the other catches on the same repo, in both directions.
+
+Generalizable: **"the control exists" and "the control is enforced" are separate measurements,
+and most audit tooling makes only the first.** That is a capability claim, not a HOPS one.
+
+**Scope discipline.** Requiring the status check is a repository-settings change needing an
+admin, so it is a recommendation to the HOPS tech lead, not a Phase 2 PR — logged under
+"Recommendations to owners" rather than quietly widened into our change scope.
+
+**Outputs.** `artifacts/scorecard-baseline-hops.md` (G0.3 closed);
+`research/baseline/phase2-before-state.md` gained a fourth correction and the right pinned commit
+(origin `f640dee9f` — the local clone was 5 days stale, which the note now says); W1.2 gained a
+number (65 open advisories against a label-gated audit) and W1.4 gained the 17 unpinned
+third-party actions.

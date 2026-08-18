@@ -4,10 +4,11 @@ Captured **2026-08-18**, at Gate 0, before any change lands in `hops`. Every Wav
 measurement points back here. No new measurement was run for this note except the audit-JSON
 re-reads recorded in "corrections" below — it links the Phase 1 evidence that already exists.
 
-**Pinned commit:** `hops` @ `0a5303371ae2d3f1771498b8cb35ef0930c595b0` (`0a5303371`, 2026-08-13,
-"feat(products): add Programs product category type (#489)"), branch `main`, worktree clean.
-Local clone, **not fetched from origin** — re-verify against `origin/main` when the first PR
-branches.
+**Pinned commit:** `hops` @ `f640dee9f99c35997d11fb16ba2170b48e14df13` — `origin/main` at
+2026-08-18T14:42:52Z, confirmed via the GitHub API and the commit Scorecard scanned. The local
+clone was at `0a5303371` (2026-08-13) and is **behind origin**; the Phase 1 evidence was gathered
+against that older tree, so any per-file claim below is as-of the local clone, while the Scorecard
+row is as-of origin. Re-fetch before branching the first PR.
 
 ## The linked evidence
 
@@ -18,7 +19,7 @@ branches.
 | Cross-repo control matrix | `research/baseline/cross-repo-matrix.md` |
 | `hops` control inventory, 5 layers | `research/baseline/hops-security-baseline.md` |
 | Satellite-repo findings | `research/findings/satellite-repos-1c.md` |
-| OpenSSF Scorecard baseline | **open — Gate 0 G0.3**, blocked on SAML SSO authorization |
+| OpenSSF Scorecard baseline | `artifacts/scorecard-baseline-hops.md` (2026-08-18, aggregate 5.4/10) |
 
 ## Audit coverage — the numbers the checkpoint compares against
 
@@ -93,6 +94,28 @@ Two consequences for Phase 2:
   strings in `.claude/settings.json`, not just files under a hooks directory. Three of `hops`'
   four hooks exist only as inline shell.
 
+### 4. The gate is not enforced at the merge boundary — and no audit here measures that
+
+Found while capturing the Scorecard baseline; verified independently of Scorecard from two GitHub
+endpoints. `main` requires a PR and 1 approval and **zero passing status checks**
+(`required_status_checks: {checks: [], contexts: [], enforcement_level: "off"}`; the enterprise
+ruleset carries only `deletion`, `non_fast_forward`, `pull_request`). The `secret-scan` gitleaks
+job, the SonarQube MR scan and the osv audit are all advisory at merge time.
+
+Searching all 13 audit dimensions for any branch-protection or required-status-check concept
+returns nothing: PRV-01/03/04/06 all assert that a gate **exists in CI**, never that it **blocks a
+merge**. So `prevention-coverage` 81.5% measures the presence of prevention, not its force.
+
+Two consequences:
+
+- **A recommendation, not a PR.** Requiring `secret-scan` as a status check is a repository
+  settings change needing an admin; our token is not one. It goes to the HOPS tech lead. It is
+  also the highest-value thing Gate 0 surfaced.
+- **A capability finding.** "The control exists" and "the control is enforced" are different
+  measurements, and the audit tooling in use only makes the first. Scorecard's Branch-Protection
+  check is the complement — the argument for running both. Full detail:
+  `artifacts/scorecard-baseline-hops.md`.
+
 ## What the measurement checkpoint can actually claim
 
 | Item | Measurable as an audit delta? | Evidence instead |
@@ -102,6 +125,6 @@ Two consequences for Phase 2:
 | W1.3 PRV-17 declaration | **Yes** — WARN 1/2 → PASS 2/2 | Audit re-run |
 | W1.4 pin github MCP digest | No — AIS-04 already PASSes unpinned | `.mcp.json` diff + the W2.1 checker output |
 | Hook relocation (new) | **Yes** — ADP-04 FAIL 0/5 → PASS, AIS-03 SKIP → runs | Audit re-run |
-| W2.3 Scorecard | **Yes**, vs G0.3 | Blocked until G0.3 lands |
+| W2.3 Scorecard | **Yes**, vs G0.3 | Baseline captured: aggregate 5.4/10. Compare per-check only — 4 checks are open-source norms that a private repo cannot and should not move, SAST 0 is a false negative, Signed-Releases is inconclusive |
 
 Acceptance for the checkpoint stays as approved: **no dimension regresses.**
