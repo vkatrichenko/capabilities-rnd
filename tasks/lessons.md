@@ -29,3 +29,15 @@ into two files before the audit's SCS-01 evidence contradicted it.
 ecosystem (npm/pnpm/yarn/bun; poetry/uv/pipenv; gradle catalog/lockfile/verification-metadata) —
 or better, assert from what IS there (the package manager in use) rather than from absence in a
 hand-rolled pattern.
+
+## 2026-08-18 — Treated a SKIPped audit check as a closeable gap
+
+The approved Phase 2 plan said W1.1 "closes SCS-04". SCS-04 is `SKIP`/`applies:false` — the
+detector cannot evaluate quarantine age offline and skips it by design, so no change to the repo
+can flip it. The plan promised a before/after number that could never appear. Found only by
+re-reading the audit JSON at Gate 0, after the plan was approved.
+
+**Rule:** before planning work against an audit check, read that check's `status` and `applies`
+fields *and its evidence strings* from the JSON — not the summary. `SKIP` means "not measured"
+and `FAIL` means "measured and absent"; only the second is closeable. State up front which
+planned items produce a measurable delta and which need their own evidence.

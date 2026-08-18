@@ -78,11 +78,8 @@ rather than just asserting it.
       optional follow-ups (Zero Trust for Agents; CISO's guide to agentic AI).
 - [x] **Audit material location confirmed** (Vladyslav, 2026-08-14): everything audit-related is
       in `context/audits/` — nothing lives outside the repos. No ask to Dasha needed for this.
-- [ ] **Confirm with Dasha Goranina** — remaining question only, ready-to-send draft:
-      > Hi Dasha! The charter names HOPS as the test project; for the research (read-only, no
-      > changes) I also compared it against the sibling repos in the BarHopping org — barley,
-      > hops-mcp, sowinsights. Can you confirm read-only analysis of those is fine under the
-      > existing approval? Changes still go to hops dev only.
+- [ ] **Confirm with Dasha Goranina** — remaining question only; draft moved to Phase 2 **G0.2**,
+      which is where it is now tracked.
 - [x] **`methodology/log.md`** — open and current since 1a (entries for 1a, 1b, 1c, 1d).
 - [x] **Broader source sweep** (2026-08-14, user-requested) →
       `research/sources/sdlc-security-landscape.md`: secret-scanning layering consensus
@@ -157,35 +154,116 @@ first PR. **Dev env only. Never push without explicit confirmation.** Items exec
 time, each on an explicit go.
 
 ### Gate 0 — before any hops change
-- [ ] Send rotation ask to barley owners (report red callout) — human action, time-sensitive
-- [ ] Send Dasha the sibling-repo scope confirmation (drafted in 1d) — human action
-- [ ] Capture OpenSSF Scorecard baseline for hops (read-only) → `artifacts/`, redacted
-- [ ] Record the "before" reference: 2026-08-03 audit scores + clean gitleaks worktree state
-      (already in `research/baseline/` — link them into a single before-state note)
+
+Gate 0 exists so the before/after evidence is captured **before** the first PR — once W1.1 merges,
+the baseline is unrecoverable.
+
+- [ ] **G0.1 — rotation ask to barley owners** (via Ruslan / Rodion). Human action,
+      time-sensitive. Ready to send:
+      > Hi! While researching AI-SDLC security across the BarHopping org (read-only, no changes)
+      > I ran gitleaks 8.24.3 over the git history of all four repos. barley has credential
+      > material that needs an **owner-side rotation check** — I did not test any of it for
+      > validity, so "is it still live?" is your call, not mine.
+      >
+      > Still in HEAD (3):
+      > • GitLab runner token, ×2 VCR cassettes under `tests/integration/fixtures/vcr_cassettes/`
+      >   (committed 2026-03-27)
+      > • Slack bot token embedded in `reports/smoke.html` (committed 2025-09-24)
+      >
+      > History-only, removed from HEAD but present in every existing clone: 13 Slack tokens
+      > (bot / app / user) hardcoded in `terraform/**` across **dev and production**, 2024-12 →
+      > 2025-07; one service-account private key in `tests/credentials.json`; two STS temporary
+      > AWS keys (self-expiring). **Removal from HEAD is not revocation** — these are still
+      > readable in history.
+      >
+      > Separately, your own 2026-06-03 audit (`context/audits/2026-06-03/security.md`) flagged a
+      > live production RDS password, a LangSmith API key and an AgentCore OAuth client secret
+      > sitting in plaintext allow-patterns in `.claude/settings.local.json` (gitignored, on
+      > disk). It recommended rotation at the time; I can't tell from the repo whether that
+      > happened — worth confirming in the same pass.
+      >
+      > Full redacted detail (rule + file + date + masked prefix, no values):
+      > `capabilities-rnd/research/findings/secret-scan-2026-08-14.md`.
+      >
+      > A follow-up with the concrete fixes — porting the hops gitleaks gate into your existing
+      > `.pre-commit-config.yaml`, and the fail-closed cassette-scrubbing pattern that would have
+      > stopped the runner token being recorded — is coming separately; this message is only the
+      > rotation ask, because that part is time-sensitive.
+- [ ] **G0.2 — Dasha Goranina, sibling-repo scope confirmation.** Human action. Ready to send:
+      > Hi Dasha! The charter names HOPS as the test project; for the research (read-only, no
+      > changes) I also compared it against the sibling repos in the BarHopping org — barley,
+      > hops-mcp, sowinsights. Can you confirm read-only analysis of those is fine under the
+      > existing approval? Changes still go to hops dev only.
+- [ ] **G0.3 — OpenSSF Scorecard baseline** for hops (read-only) → `artifacts/`, redacted.
+      **Blocked:** both `gh` tokens are refused by `provectus-barhopping` SAML SSO
+      (`vkatrichenko` → "Resource protected by organization SAML enforcement", `vkatrychenko` →
+      404). Git over SSH works; the REST/GraphQL API does not, and Scorecard needs it.
+      Unblock: run `gh api repos/provectus-barhopping/hops --jq .visibility`, open the SSO URL it
+      prints, grant the token access to the org.
+      Then: `docker run --rm -e GITHUB_AUTH_TOKEN="$(gh auth token)"
+      gcr.io/openssf/scorecard:stable --repo=github.com/provectus-barhopping/hops --format=json`.
+      Record the image digest, the Scorecard version, and **every check that returns `-1`
+      (inconclusive)** — otherwise the W2.3 delta gets read against a check that never ran.
+- [x] **G0.4 — the "before" reference** → `research/baseline/phase2-before-state.md` (2026-08-18).
+      Link-only note: 2026-08-03 audit coverage, tuned-gitleaks worktree state, control matrix,
+      the pinned hops commit, and the two pre-existing toolchain facts found while scoping W1.1.
+      Scorecard row stays open until G0.3 lands.
 
 ### Wave 1 — config quick wins (hops, one PR each)
-- [ ] **W1.1** pnpm cooldown: `minimumReleaseAge: 1440` + exclude list in `hop-ui` (closes
-      SCS-04); verify: adding a <24h-old package fails locally. Confirm whether hop-ui config
-      lives in `pnpm-workspace.yaml` or `.npmrc` first.
+- [ ] **W1.1** pnpm cooldown: `minimumReleaseAge` (+ `minimumReleaseAgeExclude`, and decide on
+      `minimumReleaseAgeStrict`) in `hop-ui/pnpm-workspace.yaml`.
+      **Correction — it does not "close SCS-04".** SCS-04 is `SKIP`/`applies:false` in the
+      2026-08-03 run: the detector cannot evaluate quarantine age offline and skips it by design,
+      so a re-run will skip it again. Evidence must be a **local reproduction** (install of a
+      <cooldown-age package fails), not a score delta.
+      **Window is a decision, not a default:** AWOS calibrates SCS-04 at 7 days (`10080`), pnpm's
+      default is 1 day (`1440`). Pick one deliberately — the article has to defend the number.
+      **Config location settled** (2026-08-18, pnpm docs): these are `pnpm-workspace.yaml`
+      settings, not `.npmrc`; `hop-ui/.npmrc` holds only `save-prefix=''`.
+      **Added scope — pin the pnpm toolchain first.** `.github/workflows/hops-mr-check.yml:63`
+      runs `npm install -g pnpm` (floating), and `hop-ui/package.json` has no `packageManager`
+      field, only `engines.pnpm: ">=9.15.2"`. `minimumReleaseAge` is silently ignored by pnpm
+      versions that predate it, so a cooldown on a floating toolchain proves nothing. Decide:
+      `packageManager` + corepack, or `pnpm/action-setup` with an explicit version. Confirm the
+      exact pnpm version that introduced the setting before pinning.
+      Verify: adding a <24h-old package fails locally, and the CI job resolves the pinned pnpm.
 - [ ] **W1.2** Un-gate dependency audit: drop the `frontend`-label condition on the osv job in
       `.github/workflows/hops-mr-check.yml`; extend to `hop-agent/`, `e2e/` (npm) and
       `hop-backend` (gradle); verify: osv runs on an unlabeled PR
 - [ ] **W1.3** PRV-17: security-sensitive declaration for the agent-config surface in hops
       `CLAUDE.md` (+ module CLAUDE.mds if the audit reads them); review rule for `.claude/`,
       hooks, `.mcp.json` changes
-- [ ] **W1.4** Pin the github MCP image to a digest in hops `.mcp.json` (kills `:latest`)
+- [ ] **W1.4** Pin the github MCP image to a digest in hops `.mcp.json` (kills `:latest`).
+      No audit delta — AIS-04 already PASSes the unpinned config; evidence is the diff plus
+      W2.1's checker output.
+
+- [ ] **W1.5 — NEW (2026-08-18, found at Gate 0)** Relocate the agent hook to `.claude/hooks/`
+      (move or symlink `scripts/claude-hooks/block-secrets.sh`; keep `.claude/settings.json`
+      working). The detector's `.claude/hooks/` path assumption costs hops **twice**: `AIS-03`
+      SKIPs (so the malicious-hook-content check never runs — ai-security's 100% is overstated)
+      and **`ADP-04` FAILs 0/5** for hooks that demonstrably exist. This is the cheapest item in
+      Wave 1 with a *real* audit delta: ADP-04 FAIL→PASS (+5, ai-sdlc-adoption 86.6%→95.2%) and
+      AIS-03 starts executing. Sequence with **W3.4**: relocating works around the bug, filing it
+      upstream fixes it for every repo — do both, workaround first, and use it as evidence in the
+      bug report. Detail: `research/baseline/phase2-before-state.md`.
 
 ### Wave 2 — portable tools (build in `tooling/`, self-test, then port to hops)
 - [ ] **W2.1** MCP pinning check — flags `:latest`/`@canary`/ref-less git URLs in `.mcp.json`;
       fixture self-tests first; then hops CI job; read-only run across all four repos for the
       article table
 - [ ] **W2.2** Hook-content scan: `scripts/claude-hooks/` + any path referenced from
-      `.claude/settings.json` (covers the AIS-03 phantom skip); self-test, then hops CI
+      `.claude/settings.json` (covers the AIS-03 phantom skip); self-test, then hops CI.
+      **Scope is wider than written:** 3 of hops' 4 registered hooks exist only as *inline*
+      `command` strings inside `.claude/settings.json` — the scanner must read those too, not
+      just files under a hooks directory.
 - [ ] **W2.3** OpenSSF Scorecard action in hops CI; delta vs the Gate 0 baseline
 
 ### Measurement checkpoint (after Waves 1–2)
-- [ ] Re-run `/awos:ai-readiness-audit` on hops — capture the score delta (SCS-04, PRV-17,
-      ai-security coverage); acceptance: no dimension regresses
+- [ ] Re-run `/awos:ai-readiness-audit` on hops — acceptance: **no dimension regresses**.
+      Only three of the wave's items produce an audit delta at all: **PRV-17** (WARN 1/2 → PASS),
+      **ADP-04** (FAIL 0/5 → PASS) and **AIS-03** (SKIP → actually executes). SCS-04 will skip
+      again regardless of W1.1 — do not report it as a win. Baseline to compare against:
+      `research/baseline/phase2-before-state.md`.
 - [ ] Re-run gitleaks (tuned) + osv; evidence per item → `artifacts/` (before / PR link / after)
 - [ ] `methodology/log.md` entry for the wave
 

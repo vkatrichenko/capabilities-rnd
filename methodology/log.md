@@ -213,3 +213,49 @@ plus owner recommendations kept explicitly out of our change scope.
 pattern the gitleaks gate used — rather than a full AWOS spec cycle; courtesy heads-up to the
 HOPS tech lead in the first PR. Execution is deliberately item-by-item on explicit go, nothing
 started at planning time.
+
+---
+
+## 2026-08-18 — Phase 2 Gate 0
+
+**Goal.** Capture the before-state and clear the human asks *before* the first `hops` change —
+once W1.1 merges the baseline is unrecoverable.
+
+**Method.** Two of the four Gate 0 items are messages only the researcher can send; both drafts
+were written into `tasks/todo.md` next to the item they close (G0.1 barley rotation ask, G0.2
+Dasha scope confirmation) so the text sent is on record, redacted to the findings-file standard.
+The before-state note was built link-only — no re-measurement — from the Phase 1 files, plus a
+re-read of the 2026-08-03 audit JSON to pin the exact per-check weights the checkpoint will be
+compared against.
+
+**Blocker found.** The OpenSSF Scorecard baseline (G0.3) cannot run: both `gh` accounts are
+refused by `provectus-barhopping` SAML SSO — `vkatrichenko` gets "Resource protected by
+organization SAML enforcement", `vkatrychenko` gets 404. Git over SSH works (that is how the
+repos are cloned); the REST/GraphQL API does not, and Scorecard needs it. Unblocking is a
+one-time browser authorization. Recorded rather than worked around, because the local-mode
+fallback degrades exactly the checks (branch protection, code review) that make the baseline
+worth having.
+
+**Three corrections to the approved plan** — the reason to re-read the audit JSON rather than
+trust the Phase 1 summary of it:
+
+1. **W1.1 cannot "close SCS-04".** SCS-04 is `SKIP`/`applies:false`: its own evidence says
+   quarantine age "requires live registry API calls" and is "intentionally skipped by the static
+   detector". A re-run will skip it again. The cooldown still has merit, but its evidence has to
+   be a local reproduction, not a score delta.
+2. **The planned window is below AWOS's own bar.** SCS-04 is calibrated at 7 days (`10080`);
+   the plan said `1440`. Now an explicit decision rather than a copied default.
+3. **The `.claude/hooks/` path assumption costs hops twice.** Phase 1 found the AIS-03 phantom
+   skip; the same root cause also **FAILs ADP-04 (0/5)** for hooks that exist. That produced a new
+   Wave-1 item (W1.5, hook relocation) — the cheapest item in the wave and, unlike W1.1, one with
+   a real before/after number. It also widened W2.2: 3 of hops' 4 hooks exist only as inline
+   `command` strings in `.claude/settings.json`.
+
+**Method note.** The general lesson is the one already in `tasks/lessons.md` about metric
+semantics, applied one level deeper: a check's *status* needs reading as carefully as its score.
+`SKIP` and `FAIL` are not interchangeable — one means "not measured", the other "measured and
+absent" — and a plan that treats a skipped check as a closeable gap promises a delta that cannot
+appear.
+
+**Outputs.** `research/baseline/phase2-before-state.md`; Gate 0 and Wave 1 rewritten in
+`tasks/todo.md`. G0.3 open (SSO), G0.1/G0.2 pending send.
