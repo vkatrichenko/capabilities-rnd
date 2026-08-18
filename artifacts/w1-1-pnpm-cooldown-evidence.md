@@ -1,0 +1,94 @@
+# W1.1 — pnpm toolchain pin + dependency cooldown
+
+Evidence for the first Phase 2 change. Target `hops`, branch
+`HOP-0000/pnpm-toolchain-pin-and-cooldown` off `origin/main` @ `f640dee9f`, commit `ccfc77828`.
+**Not pushed** — awaiting confirmation.
+
+## What the roadmap assumed vs what was there
+
+W1.1 was written as "add `minimumReleaseAge: 1440` to `hop-ui`". Investigation showed that change
+would have been a **no-op in CI and inert in the Docker build**:
+
+| Site | Before | Consequence |
+|---|---|---|
+| `.github/workflows/hops-{mr-check,dev,main}.yml` | `npm install -g pnpm` — unpinned | Resolves to pnpm 11 today, which **already defaults `minimumReleaseAge` to 1440** |
+| `hop-ui/Dockerfile:4` | `npm install -g pnpm@9` | pnpm 9 predates the setting entirely |
+
+So CI had the cooldown by accident and the image build did not have it at all. The real defect was
+the floating toolchain across a major version that changed security defaults.
+
+Two further controls were found silently dead, both caused by pnpm 11 moving configuration:
+
+| Control | Where | Status |
+|---|---|---|
+| `save-prefix=''` — exact pinning, credited by audit R5 / SCS-03 | `hop-ui/.npmrc` | **Ignored.** Since pnpm 11, `.npmrc` is auth/registry only. All 103 manifest entries are still exact, so nothing has drifted — but the guard was off |
+| `pnpm.onlyBuiltDependencies` | `hop-ui/package.json` | **Removed in pnpm 11.** pnpm says so on every install: `[WARN] The "pnpm" field in package.json is no longer read by pnpm` |
+
+`pnpm-workspace.yaml` already carried `allowBuilds`, pnpm 11's replacement — the repo was
+half-migrated, with two generations of the same setting side by side.
+
+## The change
+
+- pnpm pinned to **11.22.0** at every install site (3 workflows, Dockerfile, README), plus
+  `packageManager: "pnpm@11.22.0"` so the version is declared once; `engines.pnpm` → `>=11.0.0`
+- `minimumReleaseAge: 1440` set **explicitly** rather than inherited, with `minimumReleaseAgeExclude`
+  as the documented escape hatch
+- `saveExact: true` migrated into `pnpm-workspace.yaml`; dead `.npmrc` deleted
+- stale `pnpm.onlyBuiltDependencies` removed
+- **`pnpm-workspace.yaml` added to the Dockerfile `dependencies` COPY** — see below
+
+## The near-miss
+
+The Dockerfile `dependencies` stage copied only `package.json`, `pnpm-lock.yaml` and
+`openapi-ts.config.ts` — **never `pnpm-workspace.yaml`**. That is why both build-allowlists
+existed: the image build was relying on `package.json`'s `onlyBuiltDependencies`.
+
+Removing that field without also copying the workspace file breaks the image build outright.
+Reproduced deliberately, with the fix as the control:
+
+```
+A: package.json + pnpm-lock.yaml only          (what the Dockerfile copied)
+   [ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: @swc/core@1.15.47, core-js@3.49.0
+
+B: + pnpm-workspace.yaml                        (the fix)
+   .../node_modules/@swc/core postinstall: Done
+   Done in 4.5s using pnpm v11.22.0
+```
+
+Worth recording as a finding in its own right: **a config file that is not copied into the build
+context is a control that does not exist there**, and nothing in either audit checks for it.
+
+## Verification
+
+All in clean containers on `node:24.13.0-alpine`, the image the Dockerfile uses.
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `pnpm install --frozen-lockfile` under 11.22.0 against the existing `lockfileVersion: 9.0` | Pass, no lockfile churn |
+| 2 | Same with build scripts enabled (pnpm 11 `strictDepBuilds: true`) | Pass — `@swc/core`, `core-js` postinstalls ran; `✓ Lockfile passes supply-chain policies (913 entries)` |
+| 3 | Stale-field warning gone after removing `pnpm.onlyBuiltDependencies` | Clean |
+| 4 | Settings resolved from `pnpm-workspace.yaml` | `minimumReleaseAge = 1440`, `saveExact = true` |
+| 5 | **Cooldown fires**: `pnpm add @aws-sdk/client-s3@3.1112.0` (published 20h earlier) | `ERR_PNPM_NO_MATURE_MATCHING_VERSION … within the minimumReleaseAge cutoff` |
+| 6 | **Control**: same package with `minimumReleaseAge: 0` | Installs — so #5 is the setting, not a broken package |
+| 7 | Range resolution under cooldown (`^3.1100.0`) | Falls back to mature `3.1111.0` — why `minimumReleaseAgeStrict` stays default |
+| 8 | Docker `dependencies` stage (`pnpm install`, `api:generate`) | Builds |
+| 9 | Docker `builder` stage (`pnpm build` = `tsc && vite build`, `pnpm prune --prod`) | Builds |
+| 10 | `pnpm lint` | 0 errors, 21 pre-existing warnings unrelated to this change |
+| 11 | pnpm 9.15.4 against the new `engines` | Rejected: `ERR_PNPM_UNSUPPORTED_ENGINE` |
+| 12 | pnpm 10.20.0 against `packageManager` | Auto-switches to 11.22.0 — verified: `pnpm --version` reports 11.22.0 inside the project, 10.20.0 outside |
+| 13 | `hops` `scripts/pre-commit` secret scan | `✓ No secrets detected` |
+
+**⚠️ Not verified locally:** `pnpm run test:coverage`. The suite exceeded a 10-minute budget under
+amd64 emulation on Apple silicon; a native re-run was still going when this was written. It runs
+in CI on every PR and is unaffected in principle by the toolchain pin — but it is untested here,
+and that is the one gap between this evidence and a green CI run.
+
+## Audit position
+
+**This does not close SCS-04, and no re-run will show it.** SCS-04 is `SKIP` / `applies: false`:
+quarantine age needs live registry calls, so the static detector skips it by design. The evidence
+above — a real install refused — is the substitute, and it is stronger than a score.
+
+The AWOS-calibrated window is 7 days (`10080`); this sets pnpm's own default of 1440. Deliberate:
+1440 blocks the same-day compromise window that the recent npm attacks used, without delaying
+every Dependabot PR by a week. Revisit if the article wants to argue the stricter number.

@@ -346,3 +346,47 @@ not a change. No credential was tested for validity — that means using it — 
 live?" is stated as an owner-side check.
 
 **Outputs.** `research/findings/barley-rotation-runbook.md`; G0.1 now ships with it attached.
+
+---
+
+## 2026-08-18 — Wave 1 item W1.1: pnpm cooldown
+
+**Trigger.** First actual change of Phase 2. Chosen over "port the gitleaks gate", which is a
+`barley` change and therefore out of our approved scope.
+
+**What investigation changed.** The approved item was one line: `minimumReleaseAge: 1440` in
+`hop-ui`. Checking the toolchain before writing it showed the line would do nothing — CI installs
+pnpm unpinned, which today resolves to pnpm 11, and pnpm 11 already defaults that setting to 1440,
+while the Dockerfile pinned `pnpm@9`, which predates it. CI had the control by accident and the
+image build did not have it at all. The defect was the float, not the missing line.
+
+Two more controls turned out to be silently dead, both from pnpm 11 relocating configuration:
+`.npmrc`'s `save-prefix` (the exact-pinning control the audit credits under R5/SCS-03) and
+`package.json`'s `pnpm.onlyBuiltDependencies`. pnpm announces the second on every install; nobody
+was reading the output. The repo was half-migrated — `pnpm-workspace.yaml` already carried the
+replacement `allowBuilds` while `package.json` kept the removed field.
+
+**Generalizable: a version-floating toolchain silently relocates your controls.** A major bump
+does not announce that a setting stopped being read — the file keeps existing, the setting keeps
+looking set, and the guarantee is gone. Neither audit checks whether a configured control is
+still *read* by the tool that is supposed to enforce it. That is a third variant of the pattern
+this capability keeps hitting: exists / enforced / **still wired up**.
+
+**The near-miss.** The Dockerfile `dependencies` stage copied `package.json` and `pnpm-lock.yaml`
+but never `pnpm-workspace.yaml`, so the image build had been depending on the very field being
+removed. Reproduced the failure deliberately (`ERR_PNPM_IGNORED_BUILDS` for `@swc/core` and
+`core-js`) with the fix as a control, rather than reasoning about it. Second generalizable form:
+**a config file not copied into the build context is a control that does not exist there.**
+
+**Verification.** 13 checks in clean containers on the image the Dockerfile actually uses,
+including both Docker stages end to end. The cooldown was proven, not asserted: a package version
+published 20 hours earlier was refused, with a `minimumReleaseAge: 0` run installing the same
+version as the control — the control is what makes it evidence rather than a coincidence. Gap
+reported rather than glossed: `test:coverage` exceeded the time budget under amd64 emulation.
+
+**Audit position stated up front.** This does not close SCS-04 and no re-run will show it —
+SKIP-by-design. The refused install is the substitute, and is better evidence than a score would
+have been.
+
+**Outputs.** `hops` commit `ccfc77828` on `HOP-0000/pnpm-toolchain-pin-and-cooldown`, unpushed;
+`artifacts/w1-1-pnpm-cooldown-evidence.md`.

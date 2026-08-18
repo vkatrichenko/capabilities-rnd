@@ -212,23 +212,21 @@ the baseline is unrecoverable.
       `f640dee9f`, not the local clone's `0a5303371` — the local clone was 5 days behind.
 
 ### Wave 1 — config quick wins (hops, one PR each)
-- [ ] **W1.1** pnpm cooldown: `minimumReleaseAge` (+ `minimumReleaseAgeExclude`, and decide on
-      `minimumReleaseAgeStrict`) in `hop-ui/pnpm-workspace.yaml`.
-      **Correction — it does not "close SCS-04".** SCS-04 is `SKIP`/`applies:false` in the
-      2026-08-03 run: the detector cannot evaluate quarantine age offline and skips it by design,
-      so a re-run will skip it again. Evidence must be a **local reproduction** (install of a
-      <cooldown-age package fails), not a score delta.
-      **Window is a decision, not a default:** AWOS calibrates SCS-04 at 7 days (`10080`), pnpm's
-      default is 1 day (`1440`). Pick one deliberately — the article has to defend the number.
-      **Config location settled** (2026-08-18, pnpm docs): these are `pnpm-workspace.yaml`
-      settings, not `.npmrc`; `hop-ui/.npmrc` holds only `save-prefix=''`.
-      **Added scope — pin the pnpm toolchain first.** `.github/workflows/hops-mr-check.yml:63`
-      runs `npm install -g pnpm` (floating), and `hop-ui/package.json` has no `packageManager`
-      field, only `engines.pnpm: ">=9.15.2"`. `minimumReleaseAge` is silently ignored by pnpm
-      versions that predate it, so a cooldown on a floating toolchain proves nothing. Decide:
-      `packageManager` + corepack, or `pnpm/action-setup` with an explicit version. Confirm the
-      exact pnpm version that introduced the setting before pinning.
-      Verify: adding a <24h-old package fails locally, and the CI job resolves the pinned pnpm.
+- [x] **W1.1** pnpm toolchain pin + dependency cooldown (2026-08-18) — committed `ccfc77828` on
+      `HOP-0000/pnpm-toolchain-pin-and-cooldown`, **not pushed**. Evidence:
+      `artifacts/w1-1-pnpm-cooldown-evidence.md`.
+      **The item was mis-scoped and grew.** "Add `minimumReleaseAge: 1440`" would have been a
+      no-op: CI ran `npm install -g pnpm` unpinned → pnpm 11, which already defaults it to 1440,
+      while `hop-ui/Dockerfile` pinned `pnpm@9`, which predates the setting. The real defect was
+      the floating toolchain. Two controls were also silently dead — `.npmrc save-prefix` (audit
+      R5/SCS-03 exact pinning; `.npmrc` is auth/registry-only since pnpm 11) and
+      `pnpm.onlyBuiltDependencies` (removed in pnpm 11).
+      **Near-miss worth remembering:** the Dockerfile never copied `pnpm-workspace.yaml`, so the
+      image build depended on the `package.json` field being removed here — dropping it without
+      adding the COPY fails the build with `ERR_PNPM_IGNORED_BUILDS`. Caught and reproduced.
+      ⚠️ `pnpm run test:coverage` not verified locally (exceeded the time budget under emulation);
+      CI covers it.
+      Window is 1440, not AWOS's 10080 — see the evidence file for why.
 - [ ] **W1.2** Un-gate dependency audit: drop the `frontend`-label condition on the osv job in
       `.github/workflows/hops-mr-check.yml`; extend to `hop-agent/`, `e2e/` (npm) and
       `hop-backend` (gradle); verify: osv runs on an unlabeled PR.
