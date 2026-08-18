@@ -308,3 +308,41 @@ admin, so it is a recommendation to the HOPS tech lead, not a Phase 2 PR — log
 (origin `f640dee9f` — the local clone was 5 days stale, which the note now says); W1.2 gained a
 number (65 open advisories against a label-gated audit) and W1.4 gained the 17 unpinned
 third-party actions.
+
+---
+
+## 2026-08-18 — barley rotation triage
+
+**Trigger.** "Where are these tokens, what has to happen, does it need a PR, do I notify first?"
+The Phase 1a scan said *what* leaked; none of it said what to *do*, and the counts turned out to
+be the wrong unit.
+
+**Method.** Re-verified against barley `2682dcb13` rather than the 2026-08-14 scan output. All
+three in-HEAD files still present. Then the step the original scan skipped: **fingerprinting**.
+Hashing each match (`sha256`, first 12 hex) turns a list of occurrences into a list of
+*credentials* — the unit rotation actually operates on. Result: the "22 real-format credentials,
+3 in HEAD" headline is 7 distinct credentials, 2 in HEAD, plus 3 low-entropy placeholders that
+need nothing. Fingerprints also let owners match a token they hold without either side pasting a
+value.
+
+Then `git log -p` with add/remove tracking per fingerprint, for exposure windows — the input to
+"do we need to read audit logs, and over what period". That corrected a date: the production
+Slack tokens ran 2025-03-07 → **2026-07-22**, not 2025-07; they were removed last month by a
+commit whose message announces the removal while the tokens stayed live.
+
+**Operational catch.** `terraform/us-west-2/*/lambdas.tf` reads the Slack secret through a
+`data` source and injects it as a **Lambda environment variable**, resolved at apply time. So
+updating Secrets Manager does not rotate anything in a running Lambda — it takes a
+`terraform apply` in dev and prod. Rotation is a coordinated deploy, not a console click, which
+is most of why step 0 is "notify".
+
+**Sequencing finding.** Rotate before cleanup, not after. A PR that removes a leaked credential
+publishes a pointer to a still-valid one; `5c571dcf1` already did this once. And do not rewrite
+history: ~8,000 commits and unknown forks, and once a credential is dead its presence in history
+is an artifact. Rewriting without rotating fixes nothing while looking like it did.
+
+**Scope discipline.** barley is read-only here, so the deliverable is a runbook for its owners,
+not a change. No credential was tested for validity — that means using it — so every "is it
+live?" is stated as an owner-side check.
+
+**Outputs.** `research/findings/barley-rotation-runbook.md`; G0.1 now ships with it attached.

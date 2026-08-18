@@ -159,7 +159,12 @@ Gate 0 exists so the before/after evidence is captured **before** the first PR �
 the baseline is unrecoverable.
 
 - [ ] **G0.1 — rotation ask to barley owners** (via Ruslan / Rodion). Human action,
-      time-sensitive. Ready to send:
+      time-sensitive. **Triage completed 2026-08-18** — send the message below and attach
+      `research/findings/barley-rotation-runbook.md`, which carries the per-credential inventory
+      (fingerprints, exact file + line, exposure windows), the rotation steps per system, and the
+      three prevention fixes. Corrections to the numbers below are in that file: **7** real-format
+      credentials, not 22 — the earlier count was occurrences across commits, not distinct values;
+      3 further matches are placeholders. Ready to send:
       > Hi! While researching AI-SDLC security across the BarHopping org (read-only, no changes)
       > I ran gitleaks 8.24.3 over the git history of all four repos. barley has credential
       > material that needs an **owner-side rotation check** — I did not test any of it for
@@ -287,8 +292,9 @@ the baseline is unrecoverable.
       `non_fast_forward`, `pull_request`). The gitleaks gate, SonarQube and osv are all advisory at
       merge time. Repo-settings change, needs an admin — ours is not one. Raise with the HOPS tech
       lead alongside the W1 heads-up. Detail: `artifacts/scorecard-baseline-hops.md` finding 1.
-- [ ] Hand barley owners the gitleaks-port recipe + fail-closed scrubbing pattern (write-up in
-      `research/findings/`, share in channel)
+- [x] Hand barley owners the gitleaks-port recipe + fail-closed scrubbing pattern (2026-08-18) →
+      `research/findings/barley-rotation-runbook.md` — full triage + rotation runbook, folded
+      together with G0.1 since they go to the same people. Still to send.
 - [ ] Check GitHub push-protection availability on the org plan (question, not a change)
 
 ## Phase 3 — Generalize
