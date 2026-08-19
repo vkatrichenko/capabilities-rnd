@@ -80,3 +80,16 @@ be attributable to a named entry, and delete entries that match nothing. Pair it
 with a planted-input control: put a synthetic positive inside each suppressed
 context and confirm it is still detected. A suppression rule you have not proven
 narrow is indistinguishable from a disabled check.
+
+## 2026-08-19 — A correction that only landed in the file that owned it
+
+The rotation runbook corrected barley's leak count from 22 to 7 distinct credentials on
+2026-08-18 (22 counted occurrences across commits, not values). That correction never left the
+runbook. The published report — the artifact managers actually read — kept 22 in its headline
+KPI, its manager summary, its thesis callout, its bar chart and two roadmap rows for a further
+day, alongside a stale "24 real-format leaks" and "3 still in HEAD".
+
+**Rule:** when a number is corrected, grep every derived artifact for the old value in the same
+change — reports, slides, summaries, README tables — and fix them together or record explicitly
+which ones still carry it. A correction filed only where the number was born leaves the wrong
+figure in the place with the widest audience.

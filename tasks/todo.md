@@ -110,6 +110,10 @@ rather than just asserting it.
       Methodology. Published (private, share via the page's share menu):
       https://claude.ai/code/artifact/22daff05-9a26-4289-a3c3-81e2cee4cf11
       Redeploy = republish the same file path.
+      **Updated 2026-08-19** — added the Phase 2 delivery block (PRs #515/#1636/#518 + the
+      allowlist-scope finding) and corrected the headline leak counts repo-wide: 22 → **7
+      distinct** for barley (22 counted occurrences, not values), 3 → **1 still in HEAD**, and
+      "24 real-format leaks" → 9. Two methodology items added.
 - [ ] **Client-safe variant** before any external presentation: strip repo names, leak details,
       and the rotation callout from Gaps; keep the blueprint + anonymized evidence ("measured a
       10× leak-rate difference between gated and ungated projects").
@@ -212,8 +216,9 @@ the baseline is unrecoverable.
       `f640dee9f`, not the local clone's `0a5303371` — the local clone was 5 days behind.
 
 ### Wave 1 — config quick wins (hops, one PR each)
-- [x] **W1.1** pnpm toolchain pin + dependency cooldown (2026-08-18) — committed `ccfc77828` on
-      `HOP-0000/pnpm-toolchain-pin-and-cooldown`, **not pushed**. Evidence:
+- [x] **W1.1** pnpm toolchain pin + dependency cooldown — ✅ **MERGED to hops `main`
+      2026-08-19T13:10Z as PR #515**. Commit `ccfc77828` on
+      `HOP-0000/pnpm-toolchain-pin-and-cooldown`. Evidence:
       `artifacts/w1-1-pnpm-cooldown-evidence.md`.
       **The item was mis-scoped and grew.** "Add `minimumReleaseAge: 1440`" would have been a
       no-op: CI ran `npm install -g pnpm` unpinned → pnpm 11, which already defaults it to 1440,
@@ -265,7 +270,7 @@ the baseline is unrecoverable.
       `hop-sync/Hubspot_data_sync.ipynb` was reported **0 times**. Changed to `"match"`:
       caught. Worktree output unchanged (0 findings before and after). Branch
       `HOP-0000/gitleaks-allowlist-scope` off `origin/main` @ `48caab6dd`, commit `b8d70b4ba`,
-      **not pushed**. Body in `scratchpad/pr-body-hops.md`. Second, separate defect recorded:
+      ✅ **pushed and open as hops PR #518**, all checks green. Body in `scratchpad/pr-body-hops.md`. Second, separate defect recorded:
       `"line"` drops findings even when the regex matches nothing (3 real `gitlab-rrt` hits on
       barley, 4 on hops). Full writeup: `artifacts/gitleaks-allowlist-scope-finding.md`.
 
@@ -334,7 +339,10 @@ the baseline is unrecoverable.
       pre-commit stanza. Verified: CI command exits 0 on the PR's own commits and 1 on a
       planted synthetic key; pre-commit hook fires; three synthetic credentials planted inside
       allowlisted contexts all still detected. PR body drafted in `scratchpad/pr-body-barley.md`.
-      **Still needs owner approval before pushing — barley is not our change target.**
+      ✅ **Pushed and open as barley PR #1636** (base `develop`, 4 files, 1 commit). The
+      first attempt, #1634, targeted `main` and dragged in 12 unrelated develop commits — closed
+      and reopened against the right base. CI green including `secret-scan` and `CI Gate`;
+      `deepeval-smoke` fails but fails on every branch including `main` (3+ days), pre-existing.
       Drive-by in the same diff: `web-ci` was in `ci-gate`'s `needs` and its failure echo but
       missing from the `RESULTS` array that decides, so web-ci failures could not fail the gate.
 - [ ] Check GitHub push-protection availability on the org plan (question, not a change)

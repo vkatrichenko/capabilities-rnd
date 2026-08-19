@@ -531,3 +531,28 @@ Sequence and what came back:
 Method note worth keeping: the sequence that found the defect was *triage before
 config*, not *config then triage*. Writing the allowlist first and checking the
 count afterwards would have shown 6 findings suppressed to 3 and read as success.
+
+## 2026-08-19 — Phase 2 delivery status, and a correction that had not propagated
+
+PR #515 (pnpm toolchain pin + dependency cooldown) merged to hops `main`. The barley gate and the
+hops allowlist-scope fix are open as #1636 and #518, both green.
+
+Two process notes worth keeping:
+
+**The barley PR was opened against the wrong base first.** #1634 targeted `main` while the branch
+was cut from `develop`, so it showed 13 commits and 25 files instead of 1 and 4. Closed and
+reopened as #1636 against `develop`. The underlying cause is that the two repos have opposite
+conventions — barley merges features to `develop` (22 of the last 25 PRs) with both branches
+auto-deploying to separate AWS environments, while hops merges straight to `main` and its
+`develop` branch is a month stale with a failing deploy pipeline still pointed at it. Nothing in
+either repo states which model it follows; it is only visible in merge history.
+
+**Updating the report surfaced a correction that had never propagated.** The 2026-08-18 rotation
+runbook established that barley's "22 credentials" was a count of occurrences across commits, not
+distinct values — the real figure is 7. That correction lived only in the runbook. The report,
+which is the artifact managers actually read, still carried 22 in its headline KPI, its manager
+summary, its thesis callout, its bar chart and two roadmap rows. Fixed in all six places.
+
+The rule this earns: a correction is not landed when the file that owns it is fixed. Grep every
+derived artifact for the old number at the moment the correction is made. Added to
+`tasks/lessons.md`.
