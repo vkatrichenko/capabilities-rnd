@@ -471,3 +471,63 @@ run nobody reads. Rule taken: **on any pipeline run, read what skipped, not just
 **Outputs.** PR #515 body fixed and all checks green; findings appended to
 `artifacts/w1-1-pnpm-cooldown-evidence.md`; W1.2 scope widened in `tasks/todo.md`; CodeRabbit
 seat limit added as an owner question.
+
+## 2026-08-19 — PR #515 re-checked after labelling
+
+Re-read the PR's check rollup rather than trusting the earlier snapshot. A reviewer had added the
+`frontend` and `dependencies` labels, so the three label-gated jobs (`unit-tests-hops-fe`,
+`sonarqube-check-mr`, `Security audit – hop-ui`) plus `check-hop-fe-docker` ran, all green — run
+`32236885046`. Read the job list of that specific run, not the aggregated rollup, because the
+rollup carries both the SKIPPED entries from the pre-label runs and the SUCCESS entries from the
+post-label one under the same job names; the aggregate view is unreadable for this question.
+
+Two consequences recorded in `artifacts/w1-1-pnpm-cooldown-evidence.md`: the Dockerfile fix is now
+CI-proven, and the 4 local `test:coverage` failures are local-environment artefacts, since CI runs
+the identical command green. The W1.2 finding stands — the gates ran because a human labelled the
+PR, which is the failure mode, not the refutation.
+
+## 2026-08-19 — Porting the gitleaks gate to barley; a gate that hid secrets
+
+Goal: turn the "port the hops gitleaks gate" recommendation from a pointer into
+an applyable change. Method was measure-first: the number that decides whether a
+team adopts a secret-scan gate is its day-one finding count, so that was
+established before any config was written.
+
+Sequence and what came back:
+
+1. Fetched gitleaks 8.24.3 (the version the hops CI job pins) and verified the
+   darwin binary against the release checksums file — which also confirmed the
+   linux sha256 that the hops workflow hardcodes.
+2. Full working-tree scan of barley, default ruleset: **110 findings**. Triaged
+   every one by rule and file, then classified the ambiguous ones without
+   printing values (length, character class, sha256 fingerprint, whether the
+   value is placeholder-shaped). 6 real, 104 false positives.
+3. **Caught the clone being 229 commits stale** only when branching from
+   `origin/develop` for the PR. Re-ran the entire triage against develop:
+   **89 findings**, and the 3 `gitlab-rrt` cassette tokens were gone — the
+   cassettes had been regenerated and scrubbed in the intervening commits. The
+   rotation ask is unchanged (they remain in history), but the HEAD claim in the
+   earlier findings file was out of date. Second time a stale clone has produced
+   a wrong number; see `tasks/lessons.md`.
+4. Writing the config surfaced the real finding. The first draft used
+   `regexTarget = "line"` (copied from hops) and the tuned scan came back with
+   the real `gitlab-rrt` tokens **missing**. Bisecting the config showed the
+   suppression was not caused by any regex — a regex matching nothing suppressed
+   them too. Isolated to the `regexTarget` setting itself, reproduced on both
+   repos, and then shown to hide a deliberately planted credential in hops.
+   Written up in `artifacts/gitleaks-allowlist-scope-finding.md`.
+5. Attribution pass: every one of the 86 suppressed findings mapped to a named
+   config entry. Two entries matched nothing on develop and were deleted rather
+   than shipped — a security config full of unverifiable entries is how the next
+   person loses confidence in it.
+6. Negative control: synthetic credentials planted inside three allowlisted
+   contexts, all still detected. One early plant was NOT detected and looked like
+   over-suppression; it was low entropy, and a higher-entropy synthetic was caught.
+   Recording that because it is exactly how a control gets wrongly marked broken.
+7. Positive control on the real CI command: throwaway commit with a synthetic AWS
+   key, `gitleaks detect --log-opts merge-base..HEAD` exits 1. Pre-commit hook
+   fired on the same value and passed on an ordinary change.
+
+Method note worth keeping: the sequence that found the defect was *triage before
+config*, not *config then triage*. Writing the allowlist first and checking the
+count afterwards would have shown 6 findings suppressed to 3 and read as success.

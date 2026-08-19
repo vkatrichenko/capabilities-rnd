@@ -228,12 +228,20 @@ the baseline is unrecoverable.
       unmodified `origin/main`**. An earlier 60-failure run was machine load (all 5000ms timeouts,
       2.8× slower); the control run settled it. Pre-existing: main does not pass its own suite.
       Window is 1440, not AWOS's 10080 — see the evidence file for why.
+      **PR #515 update (2026-08-19):** a reviewer added the `frontend` + `dependencies`
+      labels; the re-run executed all six gates green — including `check-hop-fe-docker`
+      (the Dockerfile COPY fix proven in CI, not only locally) and `unit-tests-hops-fe`
+      running the identical `pnpm run test:coverage`. That reclassifies the 4 local test
+      failures as **local-machine only**, not a `main` defect. Awaiting review approval;
+      merge is still blocked on `REVIEW_REQUIRED`, not on any check.
 - [ ] **W1.2** Un-gate dependency audit: drop the `frontend`-label condition on the osv job in
       `.github/workflows/hops-mr-check.yml`; extend to `hop-agent/`, `e2e/` (npm) and
       `hop-backend` (gradle); verify: osv runs on an unlabeled PR.
       **Now has a number (2026-08-18):** Scorecard's OSV pass reports **65 open advisories** on the
       repo while the audit is label-gated to `hop-ui`. Triage them with `osv-scanner` directly —
       Scorecard gives IDs only, no severity or reachability, so "65" is not "65 exploitable".
+      **Still the finding after the labels went on (2026-08-19):** the gates ran only because a
+      human noticed and labelled the PR — the default for a hop-ui change is still "none of them".
       **Scope grew (2026-08-19, observed on PR #515):** the `frontend` label also gates
       **`unit-tests-hops-fe`** (`:53`) and **`sonarqube-check-mr`** (`:331`). A PR rewriting
       hop-ui's package manager ran no frontend tests, no SAST and no dependency audit — only
@@ -250,6 +258,16 @@ the baseline is unrecoverable.
       `hops-demo.yml`, `hops-preview.yml`) — the CI-side twin of the `.mcp.json` finding, same
       control, and this one moves Scorecard's Pinned-Dependencies. Pin both surfaces in one item;
       leave the 100 GitHub-owned actions alone (low risk, high churn).
+
+- [x] **W1.6 — NEW (2026-08-19), landed as a hops PR: gitleaks allowlist scope.**
+      `hops/.gitleaks.toml` used `regexTarget = "line"`, which allowlists the whole line —
+      a synthetic HubSpot credential planted on an allowlisted correlation-id line in
+      `hop-sync/Hubspot_data_sync.ipynb` was reported **0 times**. Changed to `"match"`:
+      caught. Worktree output unchanged (0 findings before and after). Branch
+      `HOP-0000/gitleaks-allowlist-scope` off `origin/main` @ `48caab6dd`, commit `b8d70b4ba`,
+      **not pushed**. Body in `scratchpad/pr-body-hops.md`. Second, separate defect recorded:
+      `"line"` drops findings even when the regex matches nothing (3 real `gitlab-rrt` hits on
+      barley, 4 on hops). Full writeup: `artifacts/gitleaks-allowlist-scope-finding.md`.
 
 - [ ] **W1.5 — NEW (2026-08-18, found at Gate 0)** Relocate the agent hook to `.claude/hooks/`
       (move or symlink `scripts/claude-hooks/block-secrets.sh`; keep `.claude/settings.json`
@@ -288,7 +306,10 @@ the baseline is unrecoverable.
 - [ ] **W3.3** Reinstate `/security-review` as a hops skill + the finding→instruction-file loop
       rule
 - [ ] **W3.4** File AWOS detector bugs upstream (AS-13 root-only `.env.example`, AIS-03
-      `.claude/hooks/` path, barley SEC-04 tests-exclusion) → issues on `provectus/awos`
+      `.claude/hooks/` path, barley SEC-04 tests-exclusion) → issues on `provectus/awos`.
+      **Add (2026-08-19):** the gitleaks `regexTarget = "line"` defect →
+      `gitleaks/gitleaks`. Blocked on a shareable reproducer — it reproduces only on the two
+      private repos, not on synthetic fixtures. Do not file without one.
 
 - [ ] **NEW (2026-08-19) — CodeRabbit is degraded to summary-only.** On PR #515 it produced a
       walkthrough but **no line-by-line review**: "your organization has reached its limit of
@@ -306,6 +327,16 @@ the baseline is unrecoverable.
 - [x] Hand barley owners the gitleaks-port recipe + fail-closed scrubbing pattern (2026-08-18) →
       `research/findings/barley-rotation-runbook.md` — full triage + rotation runbook, folded
       together with G0.1 since they go to the same people. Still to send.
+- [x] **Ported the gate as an applyable PR (2026-08-19)** — branch
+      `chore/gitleaks-secret-scan-gate` on barley, base `develop` @ `230d4fa68`, committed
+      `2df43382e`, **not pushed**. Four files: `.gitleaks.toml` (tuned, 89 findings → 3),
+      reusable `secret-scan.yml`, `ci.yml` wiring incl. the `RESULTS` array, and the
+      pre-commit stanza. Verified: CI command exits 0 on the PR's own commits and 1 on a
+      planted synthetic key; pre-commit hook fires; three synthetic credentials planted inside
+      allowlisted contexts all still detected. PR body drafted in `scratchpad/pr-body-barley.md`.
+      **Still needs owner approval before pushing — barley is not our change target.**
+      Drive-by in the same diff: `web-ci` was in `ci-gate`'s `needs` and its failure echo but
+      missing from the `RESULTS` array that decides, so web-ci failures could not fail the gate.
 - [ ] Check GitHub push-protection availability on the org plan (question, not a change)
 
 ## Phase 3 — Generalize

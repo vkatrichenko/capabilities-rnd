@@ -159,3 +159,27 @@ still licensed.** A control can lapse for commercial reasons and leave no trace 
 
 `Spec link – PR template` failed because the template's `**Spec:**` field was empty. Filled with
 an explicit `n/a — <reason>` per the template's own rule; check re-ran green. All checks now pass.
+
+### The label-gated gates ran after all (2026-08-19, later the same day)
+
+A reviewer added the `frontend` and `dependencies` labels to PR #515. The re-run
+(`Merge Request Checks` run `32236885046`) executed every previously-skipped gate, all green:
+
+| Job | Result | What it proves here |
+|---|---|---|
+| `unit-tests-hops-fe` | success | `pnpm install --frozen-lockfile` + `pnpm api:generate` + `pnpm run test:coverage` under pnpm 11.22.0, coverage threshold met |
+| `check-hop-fe-docker` | success | the `hop-ui/Dockerfile` change builds in CI — the `pnpm-workspace.yaml` COPY fix is exercised, not just locally reproduced |
+| `Security audit – hop-ui` | success | osv audit on the new resolution |
+| `sonarqube-check-mr` | success | SAST on the diff |
+| `Secret scan – gitleaks` | success | unconditional gate, green throughout |
+| `check-hop-agent-docker` | success | unaffected sibling image still builds |
+
+**This corrects one claim in this file.** The 4 local `test:coverage` failures were called
+"pre-existing on `origin/main`" — true, but the stronger reading is that they are **local-machine
+only**: CI runs the identical command and reports success. `main` does pass its own suite where it
+matters. The local failures stay unexplained (not investigated — they reproduce identically on an
+unmodified `origin/main` checkout, so they are not caused by this change).
+
+**It does not change the W1.2 finding.** The gates ran because a human noticed and applied a
+label, not because the diff touched `hop-ui`. A PR rewriting the frontend package manager still
+defaults to running none of them. Manual labelling is exactly the failure mode W1.2 removes.

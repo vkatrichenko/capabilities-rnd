@@ -52,3 +52,31 @@ manager ran none of them. Phase 1 had recorded only the osv job as label-gated.
 **Rule:** when reviewing a CI run, enumerate the skipped jobs and check each one's condition
 against the diff. A gate that does not run is indistinguishable from a gate that passed in every
 summary view, and "skipping" is the state nobody reads.
+
+## 2026-08-19 — Branched from a clone that was 229 commits stale
+
+The whole barley triage — 110 findings, every false positive classified — was
+run against a local `main` that was 229 commits behind `origin/main`. It only
+surfaced when creating the PR branch from `origin/develop`. On the real base the
+count was 89, and 3 findings reported as "still in HEAD" had already been
+scrubbed. Second occurrence: the hops Gate 0 baseline was pinned to a commit 5
+days stale for the same reason.
+
+**Rule:** `git fetch` and resolve the actual base ref **before** any measurement,
+not before the commit. State the measured ref by SHA in the output
+(`develop @ 230d4fa68`), so a stale number is visible instead of plausible.
+
+## 2026-08-19 — Wrote the allowlist before triaging what it suppresses
+
+The first `.gitleaks.toml` draft for barley copied hops' `regexTarget = "line"`.
+The tuned scan returned 3 findings and looked like a clean result — but 3 real
+`gitlab-rrt` tokens had been silently dropped by the allowlist, not by any rule
+in it. Had the triage been done after writing the config instead of before, "6
+real findings became 3" would have read as success.
+
+**Rule:** for any suppression config — scanner allowlists, lint ignores, waiver
+files — measure the untuned baseline first, then require every suppressed item to
+be attributable to a named entry, and delete entries that match nothing. Pair it
+with a planted-input control: put a synthetic positive inside each suppressed
+context and confirm it is still detected. A suppression rule you have not proven
+narrow is indistinguishable from a disabled check.
