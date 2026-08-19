@@ -78,10 +78,24 @@ All in clean containers on `node:24.13.0-alpine`, the image the Dockerfile uses.
 | 12 | pnpm 10.20.0 against `packageManager` | Auto-switches to 11.22.0 — verified: `pnpm --version` reports 11.22.0 inside the project, 10.20.0 outside |
 | 13 | `hops` `scripts/pre-commit` secret scan | `✓ No secrets detected` |
 
-**⚠️ Not verified locally:** `pnpm run test:coverage`. The suite exceeded a 10-minute budget under
-amd64 emulation on Apple silicon; a native re-run was still going when this was written. It runs
-in CI on every PR and is unaffected in principle by the toolchain pin — but it is untested here,
-and that is the one gap between this evidence and a green CI run.
+### `pnpm run test:coverage` — run, not yet conclusive
+
+Ran natively (aarch64) under pnpm 11.22.0 on the branch tree:
+
+```
+Test Files  20 failed | 404 passed (424)
+     Tests  60 failed | 4359 passed (4419)
+  Duration  1093.25s
+```
+
+**Not yet attributable.** Every failure visible in the captured output is
+`Error: Test timed out in 5000ms`, and there are **zero module-resolution, import or pnpm errors**
+— the signature of a slow container against a 5s per-test timeout, not of a toolchain break. But
+"looks environmental" is not evidence, so the same suite is being run against **unmodified
+`origin/main` under identical conditions** (same image, same pnpm 11.22.0 — which is what CI
+resolves today). Only the delta between the two runs says whether this change caused anything.
+
+Result of that control goes here before the PR is opened.
 
 ## Audit position
 
