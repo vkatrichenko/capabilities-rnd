@@ -33,6 +33,7 @@ MIN_AGE_DAYS = 90          # a name added to our manifest younger than this need
 YOUNG_SINGLE_VERSION = 365 # one published version this recently is the shape of a fresh squat
 NEIGHBOUR_MAX_DISTANCE = 2 # edit distance to an existing dependency
 NEIGHBOUR_MIN_LENGTH = 8   # below this, distance 2 is most of the name — pure noise
+RETRIES = 3                # registry lookups are retried before giving up
 
 # Specifiers that never resolve to the public registry. A `link:` local plugin is
 # not a hallucination, and treating it as one is the first false positive this
@@ -41,6 +42,10 @@ LOCAL_PREFIXES = ("link:", "file:", "workspace:", "portal:", "catalog:", "npm:")
 URL_PREFIXES = ("git+", "git:", "http:", "https:", "github:", "gitlab:", "bitbucket:")
 
 DEP_FIELDS = ("dependencies", "devDependencies", "optionalDependencies", "peerDependencies")
+
+
+class Unreachable(Exception):
+    """The registry could not be reached — distinct from "package not found"."""
 
 
 class Finding:
@@ -91,16 +96,26 @@ class NpmRegistry:
         self.timeout = timeout
 
     def metadata(self, name: str) -> dict | None:
-        """Package document, or None when the name does not exist."""
+        """Package document, None when the name does not exist.
+
+        Raises Unreachable when the registry cannot answer. A 404 is an answer;
+        a timeout is not, and the two must not be conflated — treating an outage
+        as "package does not exist" would block every PR that adds a dependency.
+        """
         url = f"{REGISTRY}/{urllib.parse.quote(name, safe='@')}"
         req = urllib.request.Request(url, headers={"User-Agent": UA})
-        try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                return json.load(resp)
-        except urllib.error.HTTPError as exc:
-            if exc.code == 404:
-                return None
-            raise RuntimeError(f"registry returned HTTP {exc.code} for {name}") from exc
+        last: Exception | None = None
+        for _ in range(RETRIES):
+            try:
+                with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                    return json.load(resp)
+            except urllib.error.HTTPError as exc:
+                if exc.code == 404:
+                    return None
+                last = exc
+            except Exception as exc:  # timeout, DNS, TLS, malformed body
+                last = exc
+        raise Unreachable(f"{type(last).__name__}: {last}")
 
 
 def evaluate(name: str, meta: dict | None, existing: set[str], now: dt.datetime) -> list[Finding]:
@@ -181,10 +196,15 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     if args.base_ref and args.manifest:
-        before, after = git_show(args.base_ref, args.manifest), json.load(open(args.manifest))
+        with open(args.manifest) as fh:
+            after = json.load(fh)
+        before = git_show(args.base_ref, args.manifest)
         label = args.manifest
     elif args.before and args.after:
-        before, after = json.load(open(args.before)), json.load(open(args.after))
+        with open(args.before) as fh:
+            before = json.load(fh)
+        with open(args.after) as fh:
+            after = json.load(fh)
         label = args.after
     else:
         ap.error("give either --base-ref with --manifest, or --before with --after")
@@ -209,14 +229,30 @@ def main(argv: list[str] | None = None) -> int:
     now = dt.datetime.now(dt.timezone.utc)
     existing = set(old)
     findings: list[Finding] = []
+    unreachable: list[tuple[str, str]] = []
     for name in sorted(checkable):
         if name in allowed:
             print(f"  allowlisted: {name} — {allowed[name]}")
             continue
-        findings.extend(evaluate(name, registry.metadata(name), existing, now))
+        try:
+            meta = registry.metadata(name)
+        except Unreachable as exc:
+            unreachable.append((name, str(exc)))
+            continue
+        findings.extend(evaluate(name, meta, existing, now))
+
+    if unreachable:
+        # Fail open, loudly. An unreachable registry says nothing about the
+        # package, and a check that breaks the build during an npm outage is a
+        # check that gets deleted. The gap is printed so it is not invisible.
+        print()
+        print("  NOT CHECKED — the npm registry could not be reached:")
+        for name, why in unreachable:
+            print(f"    {name}  ({why})")
+        print("  These packages were not verified. Re-run the job once the registry responds.")
 
     if not findings:
-        print(f"  checked {len(checkable)}: all clear.")
+        print(f"  checked {len(checkable) - len(unreachable)}: all clear.")
         return 0
 
     print()

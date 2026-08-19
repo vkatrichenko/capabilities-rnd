@@ -156,5 +156,39 @@ class EndToEnd(unittest.TestCase):
                 c.NpmRegistry.metadata = original
 
 
+
+
+class RegistryOutage(unittest.TestCase):
+    """An unreachable registry must not be confused with a missing package."""
+
+    def _run_with(self, raiser):
+        with tempfile.TemporaryDirectory() as d:
+            b, a = Path(d) / "b.json", Path(d) / "a.json"
+            b.write_text(json.dumps({"dependencies": {}}))
+            a.write_text(json.dumps({"dependencies": {"some-new-lib": "^1"}}))
+            original = c.NpmRegistry.metadata
+            c.NpmRegistry.metadata = raiser
+            try:
+                return c.main(["--before", str(b), "--after", str(a)])
+            finally:
+                c.NpmRegistry.metadata = original
+
+    def test_outage_fails_open_instead_of_crashing(self):
+        def unreachable(self, name):
+            raise c.Unreachable("simulated outage")
+        self.assertEqual(self._run_with(unreachable), 0)
+
+    def test_outage_is_not_reported_as_a_missing_package(self):
+        # the failure mode that would block every dependency-adding PR
+        def unreachable(self, name):
+            raise c.Unreachable("simulated outage")
+        self.assertNotEqual(self._run_with(unreachable), 1)
+
+    def test_real_404_still_blocks_during_partial_availability(self):
+        def missing(self, name):
+            return None
+        self.assertEqual(self._run_with(missing), 1)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
