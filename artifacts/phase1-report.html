@@ -143,9 +143,10 @@
   <p class="standfirst">How we secure AI-assisted development and CI/CD: industry best practices,
   what our projects already implement, what the AWOS audit measures, and the roadmap for the
   gaps. Phase 1 research — every claim traces to a verified file path, a scan, or a cited
-  source.</p>
+  source. <b>Phase 2 is underway</b>: the first three roadmap items are shipped or in review,
+  tracked in the roadmap table below.</p>
   <div class="meta">
-    <span><b>Date</b> 2026-08-14</span>
+    <span><b>Date</b> 2026-08-14 · <b>updated</b> 2026-08-19</span>
     <span><b>Researcher</b> Vladyslav Katrychenko</span>
     <span><b>Scope</b> code &amp; repo security in AI-assisted development</span>
     <span><span class="chip c-warn">INTERNAL EDITION</span> — names repos and findings; produce the client variant before external use</span>
@@ -169,13 +170,13 @@
   <p><b>For managers:</b> we researched how to secure software development where AI writes most
   of the code, measured our own four internal repos against industry best practice, and proved —
   with our own data — that the controls work: the one project with a secret-scanning gate has a
-  verifiably clean history since the gate; the comparable project without one accumulated 22
-  leaked credentials. The result is a blueprint we can apply to every future project and present
+  verifiably clean history since the gate; the comparable project without one accumulated 7
+  leaked credentials, one of which is still readable in the current tree. The result is a blueprint we can apply to every future project and present
   to clients as our AI-coding &amp; CI/CD security capability.</p>
 
   <div class="kpis">
     <div class="kpi"><div class="n">14,729</div><div class="l">commits scanned, full history, four repos (gitleaks 8.24.3)</div></div>
-    <div class="kpi"><div class="n">22 <small>vs</small> 2</div><div class="l">credentials ever leaked: ungated project vs gated project</div></div>
+    <div class="kpi"><div class="n">7 <small>vs</small> 2</div><div class="l">distinct credentials ever leaked: ungated project vs gated project</div></div>
     <div class="kpi"><div class="n">45%</div><div class="l">of AI-generated code is vulnerable (Veracode) — flat across model generations</div></div>
     <div class="kpi"><div class="n">19.7%</div><div class="l">of LLM-recommended packages don't exist (USENIX 2025) — slopsquatting</div></div>
     <div class="kpi"><div class="n">13 <small>days</small></div><div class="l">audit-fail → gate live → re-audit pass: our remediation loop, measured</div></div>
@@ -197,7 +198,7 @@
     At ~80% AI-authored code the industry answer (Anthropic) is not more human review — it is
     deterministic gates, narrow-scope review agents with mandatory evidence, and logged
     accountability. Our own repos prove both sides: with the first layer installed, leaks stop;
-    without it, they accumulate — 3 are sitting in HEAD right now. The gap is the capability
+    without it, they accumulate — one is sitting in HEAD right now, and six more remain readable in history. The gap is the capability
     story.
   </div>
 
@@ -453,22 +454,28 @@
   <h2>What is missing — and the plan</h2>
 
   <h3>The gap is measurable: gated vs ungated</h3>
-  <p>Full-history secret scan, same tool, same ruleset, all four repos. Unique real-format
+  <p>Full-history secret scan, same tool, same ruleset, all four repos. Distinct real-format
   credentials (Slack tokens, GitLab runner tokens, private keys, AWS keys — formats that cannot
   match by accident):</p>
-  <div class="bars" role="img" aria-label="Real-format credentials ever committed: barley 22 of which 3 still in HEAD, hops 2 both pre-gate, hops-mcp 0, sowinsights 0">
-    <div class="barrow"><span class="label">barley</span><div class="track"><div class="fill" style="width:100%"></div></div><span class="barval"><b>22</b> · <span style="color:var(--fail);font-weight:700">3 still in HEAD</span></span></div>
-    <div class="barrow"><span class="label">hops</span><div class="track"><div class="fill" style="width:9.1%"></div></div><span class="barval"><b>2</b> · pre-gate, removed</span></div>
+  <div class="bars" role="img" aria-label="Distinct real-format credentials ever committed: barley 7 of which 1 still in HEAD, hops 2 both pre-gate, hops-mcp 0, sowinsights 0">
+    <div class="barrow"><span class="label">barley</span><div class="track"><div class="fill" style="width:100%"></div></div><span class="barval"><b>7</b> · <span style="color:var(--fail);font-weight:700">1 still in HEAD</span></span></div>
+    <div class="barrow"><span class="label">hops</span><div class="track"><div class="fill" style="width:28.6%"></div></div><span class="barval"><b>2</b> · pre-gate, removed</span></div>
     <div class="barrow"><span class="label">hops-mcp</span><div class="track"><div class="fill zero"></div></div><span class="barval">0</span></div>
     <div class="barrow"><span class="label">sowinsights</span><div class="track"><div class="fill zero"></div></div><span class="barval">0</span></div>
   </div>
-  <p class="viz-cap">Unique (file, secret) pairs, high-confidence-format rules only, full git
-  history. No credential was tested for validity — rotation decisions belong to the owners.</p>
+  <p class="viz-cap"><b>Distinct credential values</b>, high-confidence-format rules only, full
+  git history, identified by <code>sha256</code> fingerprint. Corrected 2026-08-18: an earlier
+  count of 22 for barley counted <i>occurrences across commits</i>, not distinct values — the
+  ratio holds, the magnitude was overstated. barley's second in-HEAD credential left HEAD on
+  2026-08-19 when the cassettes were re-recorded; it remains in history. No credential was tested
+  for validity — rotation decisions belong to the owners.</p>
 
   <div class="call red">
     <b>Action needed now (barley owners): rotation check</b>
-    Still in HEAD: 2× GitLab runner-registration tokens in committed VCR cassettes
-    (<span class="mono">GR1348…</span>) and 1× Slack bot token in <code>reports/smoke.html</code>.
+    Still in HEAD: a Slack bot token in <code>reports/smoke.html</code>, exposed ~11 months.
+    A GitLab runner-registration token (<span class="mono">GR13…</span>, 3 locations across two
+    cassettes) left HEAD on 2026-08-19 when the cassettes were re-recorded — <b>but removal is
+    not revocation</b>, and it stays readable in history.
     In history (removal ≠ revocation): 13 Slack tokens in Terraform across dev <i>and</i> prod
     (2024-12 → 2025-07), one full service-account private key. barley's own June audit
     additionally found a <b>production RDS password</b>, a LangSmith key and an OAuth secret in
@@ -485,7 +492,7 @@
     <li><b>Agent permission allow-patterns as a secrets store.</b> Live credentials inside Claude
     settings allow-lists — an AI-native vector no code scanner sees.</li>
   </ul>
-  <p>None of the 24 real-format leaks was in application source code. Defense-in-depth turns
+  <p>None of the 9 real-format leaks was in application source code. Defense-in-depth turns
   "the scrubber has a hole" into a non-event — hops has the backstop, barley does not.</p>
 
   <h3>The AI toolchain is unpinned</h3>
@@ -497,22 +504,64 @@
     <tr><td>barley</td><td>prompt-kit</td><td class="mono">npx -y shadcn@canary mcp</td><td><span class="chip c-fail">@CANARY, AUTO-YES</span></td></tr>
   </table></div>
 
+  <h3>Phase 2 delivery — what has shipped</h3>
+  <div class="tblwrap"><table>
+    <tr><th>Change</th><th>Repo</th><th>State</th><th>Evidence</th></tr>
+    <tr><td><b>Dependency cooldown + pnpm toolchain pin</b><br><span class="note">roadmap item 3</span></td>
+        <td>hops <span class="mono">hop-ui</span></td>
+        <td><span class="chip c-pass">MERGED</span> <span class="note">PR #515, 2026-08-19</span></td>
+        <td>Grew on contact: CI installed pnpm unpinned while the Dockerfile pinned pnpm 9, so the
+        cooldown would have been a no-op. Two controls were already silently dead —
+        <code>.npmrc save-prefix</code> and <code>onlyBuiltDependencies</code>, both removed by
+        pnpm 11. All six gates green.</td></tr>
+    <tr><td><b>Port the gitleaks gate</b><br><span class="note">roadmap item 2</span></td>
+        <td>barley</td>
+        <td><span class="chip c-info">IN REVIEW</span> <span class="note">PR #1636</span></td>
+        <td>An untuned gate reports <b>89 findings day one</b> — 86 verified false positives, 3
+        real. <code>tests/</code> is deliberately not path-allowlisted: barley's own audit passed
+        SEC-04 with a grep that skipped <code>tests/</code>, which is exactly where the real
+        credentials were. Gate green in their CI.</td></tr>
+    <tr><td><b>Gitleaks allowlist scope</b><br><span class="note">new — found while porting</span></td>
+        <td>hops</td>
+        <td><span class="chip c-info">IN REVIEW</span> <span class="note">PR #518</span></td>
+        <td>See below — the gate had been suppressing real findings.</td></tr>
+  </table></div>
+
+  <div class="call red">
+    <b>The finding that came out of shipping item 2: the hops gate was hiding secrets</b>
+    <code>.gitleaks.toml</code> used <code>regexTarget = "line"</code>, which allowlists the
+    <i>entire line</i> — so any real credential sharing a line with an allowlisted value was
+    dropped. A synthetic HubSpot key planted on an allowlisted correlation-id line in
+    <code>hop-sync/Hubspot_data_sync.ipynb</code> was reported <b>0 times</b> under the shipped
+    config and <b>1 time</b> after the fix. The same setting was separately observed dropping
+    findings when the allowlist regex matches <i>nothing at all</i>, costing 3 genuine GitLab
+    runner-token detections on barley. Root cause unconfirmed upstream; not reproducible on
+    synthetic fixtures.
+    <br><br>
+    This is the fourth variant of the pattern this capability keeps finding: a control can exist,
+    be enforced, be wired up, be licensed — and still be <b>scoped away by its own
+    configuration</b>, with no signal anywhere that detection was lost. The generalizable defence
+    is procedural: diff every suppression config against a no-allowlist baseline, require each
+    suppressed finding to be attributable to a named entry, and plant synthetic positives inside
+    the suppressed contexts to prove the rule is narrow.
+  </div>
+
   <h3>The roadmap — ordered by impact ÷ effort</h3>
   <p class="note">Scope: changes land in hops (dev only) per the approved scope — items for other
-  repos are recommendations to their owners.</p>
+  repos are recommendations to their owners. Status chips reflect 2026-08-19.</p>
 </div>
 <div class="wide">
   <div class="tblwrap"><table>
     <tr><th></th><th>Practice</th><th>Effort</th><th>Where</th><th>Why it matters</th><th>How it fixes it</th></tr>
     <tr><td class="num-cell">1</td><td><b>Rotation triage with verification</b></td>
         <td><span class="chip c-pass">HOURS</span></td><td>barley (owners)</td>
-        <td>24 leaked real-format credentials have unknown liveness — any live one is an open door, and checking by hand means handling secrets</td>
+        <td>9 leaked real-format credentials have unknown liveness — any live one is an open door, and checking by hand means handling secrets</td>
         <td>Run TruffleHog verifiers (safe, read-only API probes) over the findings: live credentials get rotated first, dead ones are closed out with evidence</td></tr>
-    <tr><td class="num-cell">2</td><td><b>Port the hops gitleaks gate</b></td>
+    <tr><td class="num-cell">2</td><td><b>Port the hops gitleaks gate</b> <span class="chip c-info">IN REVIEW · barley</span></td>
         <td><span class="chip c-pass">LOW</span></td><td>barley, hops-mcp, sowinsights (rec.)</td>
-        <td>The measured gap: 22 leaks in the ungated repo vs 2 in the gated one — every unscanned commit is fresh exposure</td>
+        <td>The measured gap: 7 distinct leaks in the ungated repo vs 2 in the gated one — every unscanned commit is fresh exposure</td>
         <td>Copy the hops CI job + tuned <code>.gitleaks.toml</code>; in barley, add the gitleaks hook to the pre-commit framework that already exists</td></tr>
-    <tr><td class="num-cell">3</td><td><b>Dependency cooldown</b></td>
+    <tr><td class="num-cell">3</td><td><b>Dependency cooldown</b> <span class="chip c-pass">MERGED</span></td>
         <td><span class="chip c-pass">ONE LINE</span></td><td>hops (hop-ui)</td>
         <td>Compromised package versions are usually detected and pulled within ~24h — installing day-zero releases inherits exactly that window (audit check SCS-04, currently unmet)</td>
         <td>Set pnpm <code>minimumReleaseAge: 1440</code> in hop-ui; trusted internal packages go on the exclude list</td></tr>
@@ -577,6 +626,15 @@
     <li><b>Root-cause the control, not the leak.</b> The cassette tokens were traced to the
     specific scrubber design (fail-open denylist), producing a transferable pattern, not a
     one-off fix.</li>
+    <li><b>Prove a suppression is narrow before trusting it.</b> Added in Phase 2, after a
+    tuned scanner config was found suppressing real credentials. Any allowlist is diffed against
+    a no-allowlist baseline, every suppressed finding must be attributable to a named entry,
+    entries that match nothing are deleted rather than shipped, and synthetic positives are
+    planted inside each suppressed context to confirm they are still detected. An untested
+    suppression rule is indistinguishable from a disabled check.</li>
+    <li><b>Resolve the real base ref before measuring.</b> Also added in Phase 2, twice earned:
+    two measurements were taken against local clones 5 and 229 commits stale. Every number now
+    states the ref it was measured at, by SHA.</li>
     <li><b>Everything logged as it happens.</b> Method log, findings, corrections (two of our own
     claims were caught and fixed by later evidence), and lessons — in the research repo, each
     number backed by a committed file.</li>
@@ -589,7 +647,8 @@
 
 <div class="col">
 <footer>
-  DevOps Capabilities Research — Phase 1 · 2026-08-14 · Vladyslav Katrychenko · advisors
+  DevOps Capabilities Research — Phase 1 complete, Phase 2 in progress · 2026-08-14, updated
+  2026-08-19 · Vladyslav Katrychenko · advisors
   R. Sadretdinov, R. Ugarov · internal edition, redacted: secret values never appear in this
   document or the underlying research files.
 </footer>
