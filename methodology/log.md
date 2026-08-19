@@ -390,3 +390,37 @@ have been.
 
 **Outputs.** `hops` commit `ccfc77828` on `HOP-0000/pnpm-toolchain-pin-and-cooldown`, unpushed;
 `artifacts/w1-1-pnpm-cooldown-evidence.md`.
+
+---
+
+## 2026-08-19 — W1.1 test verification: a red run that was not a finding
+
+**What happened.** The `hop-ui` suite failed 60 of 4419 tests on the W1.1 branch. Taken at face
+value that is a regression and the change does not ship.
+
+**What settled it.** Running the *unmodified* `origin/main` tree through the identical container,
+image and pnpm version — the control that turns a number into evidence. Baseline: 4 failed. Then
+the branch again on an idle machine: **4 failed / 4415 passed, identical to baseline.** The
+60-failure run was contention — every failure a `Test timed out in 5000ms`, no module-resolution
+or pnpm error anywhere in it, and 1093s against 395s for the same work.
+
+**Method note.** Two process failures on the way, both worth recording because both cost a full
+run. First, filtering test output through `grep` *before* stripping ANSI escapes, which silently
+matched nothing and produced an empty log after ~15 minutes of compute. Second, capturing only
+`tail -25` of the first run, which lost the failure list exactly when it was needed for
+comparison. Rule taken: **write the raw log to a file first, filter afterwards** — a filtered
+stream is not a record, and long runs are not cheap to repeat.
+
+**Rule taken on the result itself.** A single red run is not a finding. Before attributing any
+test failure to a change, run the unmodified tree under the same conditions — "looks
+environmental" and "is environmental" are separated by exactly one control run, and the difference
+here was between shipping and not shipping.
+
+**Side finding for the HOPS team.** `origin/main` does not pass its own suite: 4 tests in
+`create-hubspot-deal/.../create-deal-stage.test.tsx` fail on timeout in a container-speed
+environment, on both trees. That is consistent with the Gate 0 finding that `main` requires zero
+passing status checks — a suite nothing gates on is a suite that drifts red without anyone
+noticing.
+
+**Outcome.** W1.1 verification complete: 13 of 13 checks pass, no regression. `hops` commit
+`ccfc77828` still unpushed pending branch-name and push decisions.

@@ -78,24 +78,30 @@ All in clean containers on `node:24.13.0-alpine`, the image the Dockerfile uses.
 | 12 | pnpm 10.20.0 against `packageManager` | Auto-switches to 11.22.0 — verified: `pnpm --version` reports 11.22.0 inside the project, 10.20.0 outside |
 | 13 | `hops` `scripts/pre-commit` secret scan | `✓ No secrets detected` |
 
-### `pnpm run test:coverage` — run, not yet conclusive
+### `pnpm run test:coverage` — resolved: no regression
 
-Ran natively (aarch64) under pnpm 11.22.0 on the branch tree:
+Three runs, same container image and same pnpm 11.22.0 (what CI resolves today):
 
-```
-Test Files  20 failed | 404 passed (424)
-     Tests  60 failed | 4359 passed (4419)
-  Duration  1093.25s
-```
+| Run | Failed | Passed | Duration |
+|---|---:|---:|---:|
+| `origin/main`, unmodified — baseline | 4 | 4415 | 480s |
+| branch `ccfc77828`, first run, machine contended | 60 | 4359 | 1093s |
+| **branch `ccfc77828`, idle machine** | **4** | **4415** | **395s** |
 
-**Not yet attributable.** Every failure visible in the captured output is
-`Error: Test timed out in 5000ms`, and there are **zero module-resolution, import or pnpm errors**
-— the signature of a slow container against a 5s per-test timeout, not of a toolchain break. But
-"looks environmental" is not evidence, so the same suite is being run against **unmodified
-`origin/main` under identical conditions** (same image, same pnpm 11.22.0 — which is what CI
-resolves today). Only the delta between the two runs says whether this change caused anything.
+The 60-failure run was load, not the change. Every failure in it was `Test timed out in 5000ms`
+with no module-resolution, import or pnpm error, and the run took 2.8× the clean one — a fixed 5s
+per-test timeout against a contended container. Re-run idle, the branch reproduces the baseline
+exactly: **4 failed / 4415 passed, identical to unmodified `origin/main`.**
 
-Result of that control goes here before the PR is opened.
+Recorded rather than smoothed over: the first run *looked* like a regression, and the only thing
+that separated "environmental" from "broken" was running the unmodified tree under the same
+conditions. A single red run is not a finding.
+
+**Pre-existing, and not ours:** `origin/main` does not pass its own suite. 4 tests in
+`src/features/create-hubspot-deal/ui/__tests__/create-deal-stage.test.tsx` fail on timeout in a
+container-speed environment on both trees. Worth reporting to the HOPS team — and note it is
+exactly what a suite that no merge gate depends on looks like (see
+`artifacts/scorecard-baseline-hops.md` finding 1: `main` requires zero passing status checks).
 
 ## Audit position
 

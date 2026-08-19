@@ -224,8 +224,9 @@ the baseline is unrecoverable.
       **Near-miss worth remembering:** the Dockerfile never copied `pnpm-workspace.yaml`, so the
       image build depended on the `package.json` field being removed here — dropping it without
       adding the COPY fails the build with `ERR_PNPM_IGNORED_BUILDS`. Caught and reproduced.
-      ⚠️ `pnpm run test:coverage` not verified locally (exceeded the time budget under emulation);
-      CI covers it.
+      ✅ `pnpm run test:coverage` resolved: 4 failed / 4415 passed on the branch — **identical to
+      unmodified `origin/main`**. An earlier 60-failure run was machine load (all 5000ms timeouts,
+      2.8× slower); the control run settled it. Pre-existing: main does not pass its own suite.
       Window is 1440, not AWOS's 10080 — see the evidence file for why.
 - [ ] **W1.2** Un-gate dependency audit: drop the `frontend`-label condition on the osv job in
       `.github/workflows/hops-mr-check.yml`; extend to `hop-agent/`, `e2e/` (npm) and
