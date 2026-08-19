@@ -424,3 +424,50 @@ noticing.
 
 **Outcome.** W1.1 verification complete: 13 of 13 checks pass, no regression. `hops` commit
 `ccfc77828` still unpushed pending branch-name and push decisions.
+
+---
+
+## 2026-08-19 — W1.1 in CI: the pipeline around the change was the finding
+
+**Trigger.** PR #515 opened on hops; one check red, review comments to read.
+
+**The red check** was trivial — `Spec link – PR template` requires the template's `**Spec:**`
+field to hold either a `context/spec/...` path or `n/a — <reason>` of at least ten characters,
+and it was empty. Filled in with the reason, re-ran green. Worth noting the check exists at all:
+it is a small deterministic gate on PR *hygiene*, the same shape as the controls this research
+argues for, and it caught a real omission on the first try.
+
+**The review comments** were the second finding: there weren't any. CodeRabbit returned a
+walkthrough and a merge-risk estimate and stated it had produced no line-by-line review because
+the organization has reached its developer-seat limit. `.coderabbit.yaml` is credited in the
+Phase 1 report as an implemented AI-code-review control. On current licensing it is not
+performing one, and because a seat limit is not a code change, **nothing in the repo records
+that the control is inactive.**
+
+**The larger finding** came from reading the skipped jobs rather than the failed one. Three of
+the four quality and security gates did not run: `unit-tests-hops-fe` and `osv-audit-hop-ui`
+gate on a `frontend` label, `sonarqube-check-mr` on `frontend` or `backend`. This PR carried
+`dependencies`. So a change that rewrites hop-ui's package manager, its build image and three
+workflows ran **no frontend tests, no SAST and no dependency audit** — only gitleaks, the one
+unconditional job.
+
+Phase 1 recorded the osv job as label-gated and stopped there. Looking at what *skipped* rather
+than what failed showed the same condition on two more jobs.
+
+**How it composes.** Gate 0 established that `main` requires zero passing status checks. This
+establishes that most checks do not run unless someone labels the PR. Together: the gates are
+**skippable by omission** and **non-binding at merge**, and neither fact appears in any audit
+score, because `prevention-coverage` asks only whether a gate exists in CI.
+
+That is now four variants of one capability claim: a control can exist, and still not be
+**enforced** (Gate 0), not be **wired up** (W1.1's relocated pnpm settings), not be **triggered**
+(this), or not be **licensed** (CodeRabbit). Every one of them reads as PASS to an audit that
+checks for presence.
+
+**Method note.** The instinct on a red pipeline is to read the failure. The failure here was
+housekeeping; the finding was in the twenty jobs marked "skipping", which is the part of a CI
+run nobody reads. Rule taken: **on any pipeline run, read what skipped, not just what failed.**
+
+**Outputs.** PR #515 body fixed and all checks green; findings appended to
+`artifacts/w1-1-pnpm-cooldown-evidence.md`; W1.2 scope widened in `tasks/todo.md`; CodeRabbit
+seat limit added as an owner question.

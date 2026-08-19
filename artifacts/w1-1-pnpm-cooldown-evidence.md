@@ -112,3 +112,50 @@ above — a real install refused — is the substitute, and it is stronger than 
 The AWOS-calibrated window is 7 days (`10080`); this sets pnpm's own default of 1440. Deliberate:
 1440 blocks the same-day compromise window that the recent npm attacks used, without delaying
 every Dependabot PR by a week. Revisit if the article wants to argue the stricter number.
+
+## What the PR run exposed (2026-08-19, PR #515)
+
+The change itself passed. What the pipeline did *around* it is the finding.
+
+### The label gate is wider than Phase 1 recorded
+
+Phase 1 documented `osv-audit-hop-ui` as label-gated. It is not alone — **three of the four
+quality and security gates skipped on this PR** because it carries `dependencies` but not
+`frontend`:
+
+| Job | Condition | `.github/workflows/hops-mr-check.yml` |
+|---|---|---|
+| `unit-tests-hops-fe` | `contains(labels, 'frontend')` | :53 |
+| `sonarqube-check-mr` | `contains(labels, 'frontend') \|\| contains(labels, 'backend')` | :331 |
+| `osv-audit-hop-ui` | `contains(labels, 'frontend')` | :371 |
+| `secret-scan` (gitleaks) | **unconditional** | — |
+
+So a PR that rewrites `hop-ui`'s package manager, its build image and three workflows ran **no
+frontend tests, no SAST and no dependency audit**. Only the secret scan is unskippable, and the
+person who chooses the labels chooses the coverage.
+
+Stack this on the Gate 0 finding — `main` requires **zero** passing status checks
+(`artifacts/scorecard-baseline-hops.md` finding 1) — and the two compose into the real shape of
+the gap: the gates are **skippable by omission** *and* **non-binding at the merge boundary**. A
+PR can skip its tests and merge without them, and neither fact shows up in any audit score,
+because `prevention-coverage` only asks whether a gate exists in CI.
+
+**W1.2 grows accordingly:** un-gating the osv job alone fixes a third of this. The item is really
+"make the quality gates unconditional", covering unit tests and SonarQube as well.
+
+### The AI review control was inactive
+
+`.coderabbit.yaml` is credited as an implemented control (AI code review). On this PR CodeRabbit
+returned a walkthrough and merge-risk estimate but **no line-by-line review**, stating: *"Your
+organization has reached its limit of developer seats… CodeRabbit will generate a high-level
+summary and a walkthrough."* It also reported `.coderabbit.yaml` carries an unrecognized `version`
+key, silently ignored.
+
+A seat limit is not a code change, so nothing in the repo reflects that the control is degraded.
+Third variant of the pattern this capability keeps finding: **exists / enforced / still wired up /
+still licensed.** A control can lapse for commercial reasons and leave no trace in the codebase.
+
+### Verified fix
+
+`Spec link – PR template` failed because the template's `**Spec:**` field was empty. Filled with
+an explicit `n/a — <reason>` per the template's own rule; check re-ran green. All checks now pass.

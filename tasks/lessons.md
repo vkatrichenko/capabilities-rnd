@@ -41,3 +41,14 @@ re-reading the audit JSON at Gate 0, after the plan was approved.
 fields *and its evidence strings* from the JSON — not the summary. `SKIP` means "not measured"
 and `FAIL` means "measured and absent"; only the second is closeable. State up front which
 planned items produce a measurable delta and which need their own evidence.
+
+## 2026-08-19 — Read the skipped CI jobs, not just the failed one
+
+On PR #515 the red check was a PR-template field. Fixing it would have closed the task. The
+actual finding was in the jobs marked "skipping": frontend unit tests, SonarQube and the osv
+audit all gate on a `frontend` label the PR did not carry, so a change to hop-ui's package
+manager ran none of them. Phase 1 had recorded only the osv job as label-gated.
+
+**Rule:** when reviewing a CI run, enumerate the skipped jobs and check each one's condition
+against the diff. A gate that does not run is indistinguishable from a gate that passed in every
+summary view, and "skipping" is the state nobody reads.

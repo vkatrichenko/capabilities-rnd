@@ -234,6 +234,12 @@ the baseline is unrecoverable.
       **Now has a number (2026-08-18):** Scorecard's OSV pass reports **65 open advisories** on the
       repo while the audit is label-gated to `hop-ui`. Triage them with `osv-scanner` directly —
       Scorecard gives IDs only, no severity or reachability, so "65" is not "65 exploitable".
+      **Scope grew (2026-08-19, observed on PR #515):** the `frontend` label also gates
+      **`unit-tests-hops-fe`** (`:53`) and **`sonarqube-check-mr`** (`:331`). A PR rewriting
+      hop-ui's package manager ran no frontend tests, no SAST and no dependency audit — only
+      gitleaks is unconditional. The item is really "make the quality gates unconditional", not
+      just the osv job. Combined with `main` requiring zero status checks, gates are both
+      skippable by omission and non-binding at merge.
 - [ ] **W1.3** PRV-17: security-sensitive declaration for the agent-config surface in hops
       `CLAUDE.md` (+ module CLAUDE.mds if the audit reads them); review rule for `.claude/`,
       hooks, `.mcp.json` changes
@@ -283,6 +289,12 @@ the baseline is unrecoverable.
       rule
 - [ ] **W3.4** File AWOS detector bugs upstream (AS-13 root-only `.env.example`, AIS-03
       `.claude/hooks/` path, barley SEC-04 tests-exclusion) → issues on `provectus/awos`
+
+- [ ] **NEW (2026-08-19) — CodeRabbit is degraded to summary-only.** On PR #515 it produced a
+      walkthrough but **no line-by-line review**: "your organization has reached its limit of
+      developer seats". `.coderabbit.yaml` also carries an unrecognized `version` key, silently
+      ignored. The report credits AI code review as an implemented control; on current licensing
+      it is not performing one. Raise as a question about seats, not a code change.
 
 ### Recommendations to owners (not our changes)
 - [ ] **NEW, highest value (2026-08-18) — require `secret-scan` as a status check on `hops` `main`.**
