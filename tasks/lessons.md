@@ -93,3 +93,24 @@ day, alongside a stale "24 real-format leaks" and "3 still in HEAD".
 change — reports, slides, summaries, README tables — and fix them together or record explicitly
 which ones still carry it. A correction filed only where the number was born leaves the wrong
 figure in the place with the widest audience.
+
+## 2026-08-19 — Measured a false-positive rate against the wrong clock
+
+The first replay of the hallucinated-package check over 40 historical commits returned 0 false
+positives — but it judged each package's age against *today*, so every historical addition looked
+mature by construction. The measurement could not have produced any other answer. Redone against
+each commit's own date, the result happened to hold, but the first run was not evidence.
+
+**Rule:** when replaying a time-sensitive check over history, pin every time-dependent input to the
+point in history being replayed. If a measurement cannot produce a bad result, it is not a
+measurement — say what would have had to be true for it to fail, and check that it could have been.
+
+## 2026-08-19 — zsh ate a git ref and returned nothing
+
+`git show "$cm:hop-ui/package.json"` produced empty output for every commit in a loop. zsh applied
+its `:h` history modifier to the unbraced parameter. No error, no warning — just empty files and a
+replay that reported "no commits added dependencies", which looked like a plausible finding.
+
+**Rule:** brace parameters whenever a `:` follows them in zsh (`${cm}:path`). More generally, when
+a loop over real data returns *nothing*, treat that as a bug until proven otherwise — a silent
+empty result is the failure mode most likely to be mistaken for a finding.

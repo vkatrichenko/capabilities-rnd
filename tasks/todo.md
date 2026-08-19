@@ -305,8 +305,25 @@ the baseline is unrecoverable.
 - [ ] `methodology/log.md` entry for the wave
 
 ### Wave 3 — medium items
-- [ ] **W3.1** Hallucinated-package CI check — design note in `research/findings/` first, then
-      `tooling/ci/`, then hops (flagship novel check)
+- [~] **W3.1** Hallucinated-package CI check — **design + tool + self-tests done 2026-08-19**;
+      the hops PR is the remaining step and needs its own go.
+      Design: `research/findings/hallucinated-package-check-design.md`.
+      Tool: `tooling/ci/slopsquat/check_new_deps.py` + 17 offline self-tests + `hops-job.yml`.
+      **Measured, not asserted:** 0 false positives across 28 packages added by 20 real
+      `hop-ui/package.json` commits — replayed twice, the second time judging each package's age
+      as of its own commit date rather than today, because the first pass flattered the result.
+      Live positive control blocks both a plausible hallucinated name and a typo of a real
+      dependency. Two thresholds are measurement-derived: 90-day age floor (hops' youngest direct
+      dep is 298 days) and the 8-character floor on the near-neighbour rule (without it, `clsx`↔
+      `tsx` and `vite`↔`vitest` self-report as FPs).
+      **Does not overlap W1.1's cooldown** — that covers new *versions* of trusted packages;
+      this covers *names* entering the manifest for the first time. Say so explicitly, or someone
+      will close this as already-done.
+      Side measurement: 273 single-edit variants of hops' 8 most-used deps → only `ercharts`
+      exists (legit 2017 package). The squat surface is empty today, so the near-neighbour rule's
+      value is prospective, not a backlog.
+      Scope limits stated in the design note: npm only, no downloads signal (the API rate-limits
+      under CI concurrency), no tarball analysis, direct dependencies only.
 - [ ] **W3.2** Threat-model doc for hops (closes AS-11); doubles as publication material
 - [ ] **W3.3** Reinstate `/security-review` as a hops skill + the finding→instruction-file loop
       rule

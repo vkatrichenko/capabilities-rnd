@@ -556,3 +556,39 @@ summary, its thesis callout, its bar chart and two roadmap rows. Fixed in all si
 The rule this earns: a correction is not landed when the file that owns it is fixed. Grep every
 derived artifact for the old number at the moment the correction is made. Added to
 `tasks/lessons.md`.
+
+## 2026-08-19 — W3.1 hallucinated-package check: design, tool, and two honest measurements
+
+Built the slopsquatting check while the three PRs sat in review. Sequence per the approved plan:
+design → `tooling/ci/` with self-tests → hops PR (not yet taken).
+
+The method that mattered was measuring the false-positive rate before fixing the thresholds, on
+real data, twice.
+
+**First measurement, discarded as flattering.** Replaying the check over 40 historical
+`hop-ui/package.json` commits judged each added package's age against *today*. A package that was
+30 days old when it was added looks 500 days old now, so the replay could only ever produce a low
+false-positive rate. Redone evaluating each package as of its own commit date. The answer held —
+0 of 28 — but the first number was not evidence and the second one is.
+
+**The thresholds are derived from the repo, not chosen.** The 90-day age floor sits far below
+hops' real distribution (youngest direct dependency 298 days, p10 1238). The 8-character floor on
+the near-neighbour rule exists because without it hops' own manifest self-reports two false
+positives (`clsx`↔`tsx`, `vite`↔`vitest`) — short names make edit distance 2 meaningless. Writing
+the floor down as a measured constant, with the limitation it creates (`clsx`→`clsxx` is missed)
+stated in the design note, is the difference between a tuned rule and an arbitrary one.
+
+**The first false positive was found by running the tool on real data, not by reasoning.** hops
+depends on two `link:` local eslint plugins that do not exist on npm. A check that reads dependency
+names without reading their specifiers reports 2 hallucinated packages in a healthy manifest on
+its first run. That single case shaped the whole specifier-gate rule.
+
+**A side probe worth recording as a negative result.** 273 single-edit variants of hops' 8
+most-used dependencies were checked against npm; exactly one is registered, and it is a legitimate
+2017 package. The typosquat surface around hops' top dependencies is empty today. Reporting that
+plainly matters — it would have been easy to present the near-neighbour rule as if it had found
+something.
+
+**Tooling note.** A replay loop silently produced zero results for several iterations because zsh
+applied its `:h` history modifier to `$cm:hop-ui/package.json`. Braces (`${cm}:...`) fix it. Logged
+in `tasks/lessons.md`; the failure mode is silent and looks like "no data" rather than an error.
