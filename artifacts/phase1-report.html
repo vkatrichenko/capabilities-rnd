@@ -6,6 +6,7 @@
   /* Palette and type taken from provectus.com's own design tokens
      (--color-* / --font-* in the site stylesheet), not approximated. */
   :root{
+    color-scheme:light;
     --cream:#FDF8F4; --ink-900:#1C1F2E; --sage-50:#EEF3F0; --sage-100:#DCE8E2;
     --sage-200:#B8CEC4; --sage-600:#3B5249; --sage-700:#33473F; --sage-800:#263831;
     --sienna-500:#D97F4A; --sienna-600:#B33A22; --sienna-surface:#FBF1EE;
@@ -23,30 +24,9 @@
     --info:#3C4A66; --info-bg:#E9ECF3;
     --bar:var(--sage-600);
   }
-  /* No dark theme ships on provectus.com; this one is derived from ink-900 as
-     ground with the sage family lifted for contrast, so it stays in-brand. */
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){
-      --bg:#151824; --surface:#1E2233; --ink:#F0EDE8;
-      --muted:#A7AFB8; --faint:#7C8592; --line:#2C3145;
-      --accent:var(--sage-200); --accent-ink:#CFE0D7; --accent-soft:#22302B;
-      --fail:#E8917A; --fail-bg:#38221D;
-      --warn:#D9AA6A; --warn-bg:#332818;
-      --pass:var(--sage-200); --pass-bg:#22302B;
-      --info:#9BAAD0; --info-bg:#1F2437;
-      --bar:var(--sage-200);
-    }
-  }
-  :root[data-theme="dark"]{
-    --bg:#151824; --surface:#1E2233; --ink:#F0EDE8;
-    --muted:#A7AFB8; --faint:#7C8592; --line:#2C3145;
-    --accent:var(--sage-200); --accent-ink:#CFE0D7; --accent-soft:#22302B;
-    --fail:#E8917A; --fail-bg:#38221D;
-    --warn:#D9AA6A; --warn-bg:#332818;
-    --pass:var(--sage-200); --pass-bg:#22302B;
-    --info:#9BAAD0; --info-bg:#1F2437;
-    --bar:var(--sage-200);
-  }
+  /* Single-theme by decision, not omission: provectus.com ships no dark mode,
+     so the report holds the brand's light identity for every viewer. color-scheme
+     keeps form controls and scrollbars light even inside a dark host. */
   *{ box-sizing:border-box; margin:0; }
   body{
     background:var(--bg); color:var(--ink);
