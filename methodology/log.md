@@ -639,3 +639,31 @@ is the classic way this kind of check silently stops working.
 scrubbing functions are pure text-to-text, so they were extracted and exercised directly — 13
 behavioural checks plus the cassette corpus. Stated as a limitation in the PR rather than papered
 over: CI running the suite is the real check.
+
+## 2026-08-20 (later) — Item 8 in review; the control turns out to be conditional
+
+barley PR #1652 open, base `develop`, **their full suite green** — which closes the caveat that
+barley's pytest could not be run locally. The scrubbing functions behaved in CI exactly as they did
+in the extracted harness.
+
+Two things worth keeping from this one.
+
+**Asked "why only barley?" and checked instead of reasoning.** The roadmap scoped item 8 to barley
+without saying why, and the honest answer was not in the roadmap. hops records no API traffic at
+all: no VCR, no cassettes, no `nock` recorder, and WireMock is "deliberately not on the classpath"
+per hops' own test comment — it stubs at the repository interface, so no response body is ever
+written to disk. Running barley's credential patterns over 2,537 hops test and fixture files
+returned zero. So the control attaches to a **testing practice**, not to a repository or a
+language. That reframes the blueprint entry: the question a new project must answer is not "what
+stack is this?" but "does it record real responses into committed files?" Copying the scrubber into
+hops would add maintained code that can never fire — a cost with no benefit, and the kind of thing
+a checklist-shaped blueprint produces if the conditionality is not written down.
+
+**Our own two controls collided, and the resolution is the pattern.** The fail-closed tests need
+credentials that are genuinely issuer-shaped, or they cannot prove the value patterns work — and
+the secret-scan gate merged four days earlier flagged them, correctly. It was resolved by weaving a
+`NOTAREALTOKEN` marker inside the span each rule captures and stopwording that one string:
+suppressed by value, never by path. Path-allowlisting the test directory would have been quicker
+and would have recreated precisely the blind spot that made barley's own audit report a false PASS
+on SEC-04. Worth recording because it is the first time a control this project added constrained
+another control this project added, and the cheap fix was the wrong one.

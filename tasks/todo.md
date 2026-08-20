@@ -307,7 +307,13 @@ the baseline is unrecoverable.
 ### Wave 3 — medium items
 - [x] **W3.5 — Fail-closed cassette scrubbing (2026-08-20)** — roadmap item 8. barley branch
       `chore/fail-closed-cassette-scrubbing` off `origin/develop` @ `d337c2eec`, commit
-      `b4ccc9b75`, **not pushed** (push blocked locally; hand-off command given).
+      ✅ **open as barley PR #1652** (base `develop`, commit `cbdcc799a`). **Their full suite
+      passes** — `test / pytest` green, which closes the "could not run barley's pytest" caveat.
+      **The two controls collided:** the fail-closed tests need genuinely issuer-shaped
+      credentials, and the secret-scan gate merged four days earlier flagged them. Resolved with a
+      `NOTAREALTOKEN` marker inside each captured span, stopworded **by value, not by path** — a
+      real token in that same test file still fires. Path-allowlisting `tests/` would have
+      recreated barley's own SEC-04 blind spot.
       Two generic passes added ahead of the existing denylist — redact by **key shape**
       (token/secret/password/api_key/credential/authorization/signature/private_key) and by
       **value shape** (Slack/GitLab/GitHub/AWS/Google prefixes, PEM blocks) anywhere in the body,
@@ -320,8 +326,12 @@ the baseline is unrecoverable.
       cassettes at all, and that its patterns still match a known shape).
       Verified: new passes change **0 of 73** cassettes (additive, no re-record needed); the scan
       finds 0 offenders today and does fail on a planted token in a copy.
-      ⚠️ **barley's pytest was not run** — local Poetry rejects the repo's config
-      (`include-groups`). Functions verified directly instead; CI is the real check.
+      **Scope finding (verified, not assumed):** this control is **conditional on a testing
+      practice**, not universal. hops records no API traffic at all — no VCR, no cassettes, no
+      `nock` recorder, WireMock "deliberately not on the classpath" per their own comment. Barley's
+      credential patterns over **2,537** hops test/fixture files return **0**. `sowinsights` and
+      `hops-mcp` record nothing either. Do not port this to hops; it would be maintained code that
+      can never fire. Written into the report as a conditional blueprint row.
 - [~] **W3.1** Hallucinated-package CI check — **open as hops PR #528, awaiting review**
       (2026-08-20: 18h old, no reviewer assigned). Ported to Node for hops because hops CI has no
       Python anywhere; the Python original stays in `tooling/ci/slopsquat/` as the reference for
