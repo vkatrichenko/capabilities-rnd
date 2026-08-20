@@ -157,10 +157,10 @@
   <p class="standfirst">How we secure AI-assisted development and CI/CD: industry best practices,
   what our projects already implement, what the AWOS audit measures, and the roadmap for the
   gaps. Phase 1 research — every claim traces to a verified file path, a scan, or a cited
-  source. <b>Phase 2 is underway</b>: three roadmap items are merged and one is in review —
+  source. <b>Phase 2 is underway</b>: three roadmap items are merged and two are in review —
   the roadmap table below is colour-coded by delivery state.</p>
   <div class="meta">
-    <span><b>Date</b> 2026-08-14 · <b>updated</b> 2026-08-20</span>
+    <span><b>Date</b> 2026-08-14 · <b>updated</b> 2026-08-20b</span>
     <span><b>Researcher</b> Vladyslav Katrychenko</span>
     <span><b>Scope</b> code &amp; repo security in AI-assisted development</span>
     <span><span class="chip c-warn">INTERNAL EDITION</span> — names repos and findings; produce the client variant before external use</span>
@@ -539,6 +539,15 @@
         <td>hops</td>
         <td><span class="chip c-pass">MERGED</span> <span class="note">PR #518, 2026-08-20</span></td>
         <td>See below — the gate had been suppressing real findings. Fixed.</td></tr>
+    <tr class="row-review"><td><b>Fail-closed cassette scrubbing</b><br><span class="note">roadmap item 8</span></td>
+        <td>barley</td>
+        <td><span class="chip c-info">IN REVIEW</span> <span class="note">PR #1652</span></td>
+        <td>The scrubber named each field it redacted, so it failed open on every new API field —
+        which is how a runner token reached a cassette. Two generic passes added: redact by
+        <b>key shape</b> and by <b>value shape</b>, the second catching credentials in HTML and
+        prose where no field name exists. The enforcement is a test that reads all <b>73</b>
+        cassettes as committed, so a future hole fails CI. Verified additive: 0 of 73 cassettes
+        change. Their suite passes.</td></tr>
     <tr class="row-review"><td><b>Hallucinated-package check</b><br><span class="note">roadmap item 6</span></td>
         <td>hops</td>
         <td><span class="chip c-info">IN REVIEW</span> <span class="note">PR #528</span></td>
@@ -608,8 +617,8 @@
         <td><span class="chip c-pass">LOW</span></td><td>hops</td>
         <td>Vulnerable dependencies land in unlabeled PRs and backend modules exactly as often — today the osv audit simply doesn't run there</td>
         <td>Remove the <code>frontend</code>-label condition and extend the job to all modules (npm and gradle)</td></tr>
-    <tr><td class="num-cell">8</td><td><b>Fail-closed cassette scrubbing</b></td>
-        <td><span class="chip c-warn">MEDIUM</span></td><td>barley (rec.), pattern → article</td>
+    <tr class="row-review"><td class="num-cell">8</td><td><b>Fail-closed cassette scrubbing</b> <span class="chip c-info">IN REVIEW</span></td>
+        <td><span class="chip c-warn">MEDIUM</span></td><td>barley only — see note below</td>
         <td>Denylist scrubbers miss every API field they haven't seen — that is exactly how a live runner token reached HEAD despite scrubbing being in place</td>
         <td>Invert the design: allowlist the fields a cassette may keep (or apply entropy/format-based redaction at record time), then re-record the affected cassettes</td></tr>
     <tr><td class="num-cell">9</td><td><b>Hook-content scan on the real path</b></td>
@@ -629,6 +638,37 @@
         <td>Without a threat model, controls stay ad hoc (open audit WARN AS-11); and the audit's detector bugs (AS-13, AIS-03, SEC-04) mislead every team that runs it</td>
         <td>Write a short threat-model doc for hops (doubles as publication material); file the three detector issues with the AWOS owners</td></tr>
   </table></div>
+  <div class="col">
+    <h3>Not every control is universal — item 8 is conditional on a practice</h3>
+    <p>Item 8 applies to <b>barley alone</b>, and the reason generalises further than the fix does.
+    Checked rather than assumed: <b>hops records no API traffic at all</b> — no VCR, no cassettes,
+    no <code>nock</code> recorder, and WireMock is, in their own test comment, <i>"deliberately not
+    on the classpath."</i> hops stubs at the repository interface, so no response body is ever
+    written to disk. Running barley's own credential patterns across <b>2,537</b> hops test and
+    fixture files returns <b>zero</b> credential-shaped values. <code>sowinsights</code> and
+    <code>hops-mcp</code> record nothing either.</p>
+    <p>So this control attaches to a <b>testing practice</b>, not to a repository. The two projects
+    made the same trade differently and neither is wrong:</p>
+    <ul>
+      <li><b>barley records real traffic</b> — fixtures stay faithful to the live API, and every
+      recorded byte is potential credential material. It leaked exactly once, through the one field
+      nobody had listed.</li>
+      <li><b>hops hand-stubs at an interface</b> — structurally immune to this leak, at the cost of
+      fixtures that can drift from the real API with no test noticing.</li>
+    </ul>
+    <p>The blueprint should therefore carry this as a <b>conditional</b> control: the question a new
+    project must answer is not "which language is this?" but "does this project record real
+    responses into committed files?" Copying barley's scrubber into hops would add maintained code
+    that can never fire.</p>
+
+    <h3>Two of our own controls collided — and the fix is the pattern</h3>
+    <p>The fail-closed tests need credentials that are genuinely issuer-shaped, or they cannot prove
+    the value patterns work. The secret-scan gate merged four days earlier flagged them, correctly.
+    Resolved by weaving a <code>NOTAREALTOKEN</code> marker <i>inside</i> the span each rule captures
+    and stopwording that one string — suppressed <b>by value, never by path</b>, so a real token in
+    that same test file still fires. Path-allowlisting the test directory would have been faster and
+    would have re-created the exact blind spot that made barley's own audit report a false PASS.</p>
+  </div>
 </div>
 </section>
 
