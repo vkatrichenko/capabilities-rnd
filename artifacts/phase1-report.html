@@ -102,6 +102,20 @@
   tr:last-child td{ border-bottom:none; }
   td.center, th.center{ text-align:center; }
   .num-cell{ font-variant-numeric:tabular-nums; }
+  /* Delivery state, applied to the whole row rather than a chip in one cell. */
+  tr.row-done > td{ background:var(--pass-bg); }
+  tr.row-done > td:first-child{ box-shadow:inset 3px 0 0 var(--pass); }
+  tr.row-review > td{ background:var(--info-bg); }
+  tr.row-review > td:first-child{ box-shadow:inset 3px 0 0 var(--info); }
+  /* A chip on a same-tinted row loses its edge — put it back on the page ground. */
+  tr.row-done .chip.c-pass, tr.row-review .chip.c-info{ background:var(--bg); }
+  .legend{ display:flex; flex-wrap:wrap; gap:1rem; align-items:center; margin:.75rem 0 0;
+           font-size:.78rem; color:var(--muted); }
+  .legend i{ display:inline-block; width:1.6rem; height:.7rem; border-radius:2px;
+             vertical-align:middle; margin-right:.35rem; }
+  .legend .k-done{ background:var(--pass-bg); box-shadow:inset 3px 0 0 var(--pass); }
+  .legend .k-review{ background:var(--info-bg); box-shadow:inset 3px 0 0 var(--info); }
+  .legend .k-open{ background:transparent; box-shadow:inset 0 0 0 1px var(--line); }
   .grouprow td{ background:var(--surface); font-family:var(--font-mono); font-size:.68rem;
                 letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:700; }
 
@@ -143,10 +157,10 @@
   <p class="standfirst">How we secure AI-assisted development and CI/CD: industry best practices,
   what our projects already implement, what the AWOS audit measures, and the roadmap for the
   gaps. Phase 1 research — every claim traces to a verified file path, a scan, or a cited
-  source. <b>Phase 2 is underway</b>: the first three roadmap items are shipped or in review,
-  tracked in the roadmap table below.</p>
+  source. <b>Phase 2 is underway</b>: three roadmap items are merged and one is in review —
+  the roadmap table below is colour-coded by delivery state.</p>
   <div class="meta">
-    <span><b>Date</b> 2026-08-14 · <b>updated</b> 2026-08-19</span>
+    <span><b>Date</b> 2026-08-14 · <b>updated</b> 2026-08-20</span>
     <span><b>Researcher</b> Vladyslav Katrychenko</span>
     <span><b>Scope</b> code &amp; repo security in AI-assisted development</span>
     <span><span class="chip c-warn">INTERNAL EDITION</span> — names repos and findings; produce the client variant before external use</span>
@@ -507,28 +521,36 @@
   <h3>Phase 2 delivery — what has shipped</h3>
   <div class="tblwrap"><table>
     <tr><th>Change</th><th>Repo</th><th>State</th><th>Evidence</th></tr>
-    <tr><td><b>Dependency cooldown + pnpm toolchain pin</b><br><span class="note">roadmap item 3</span></td>
+    <tr class="row-done"><td><b>Dependency cooldown + pnpm toolchain pin</b><br><span class="note">roadmap item 3</span></td>
         <td>hops <span class="mono">hop-ui</span></td>
         <td><span class="chip c-pass">MERGED</span> <span class="note">PR #515, 2026-08-19</span></td>
         <td>Grew on contact: CI installed pnpm unpinned while the Dockerfile pinned pnpm 9, so the
         cooldown would have been a no-op. Two controls were already silently dead —
         <code>.npmrc save-prefix</code> and <code>onlyBuiltDependencies</code>, both removed by
         pnpm 11. All six gates green.</td></tr>
-    <tr><td><b>Port the gitleaks gate</b><br><span class="note">roadmap item 2</span></td>
+    <tr class="row-done"><td><b>Port the gitleaks gate</b><br><span class="note">roadmap item 2</span></td>
         <td>barley</td>
-        <td><span class="chip c-info">IN REVIEW</span> <span class="note">PR #1636</span></td>
+        <td><span class="chip c-pass">MERGED</span> <span class="note">PR #1636, 2026-08-20</span></td>
         <td>An untuned gate reports <b>89 findings day one</b> — 86 verified false positives, 3
         real. <code>tests/</code> is deliberately not path-allowlisted: barley's own audit passed
         SEC-04 with a grep that skipped <code>tests/</code>, which is exactly where the real
         credentials were. Gate green in their CI.</td></tr>
-    <tr><td><b>Gitleaks allowlist scope</b><br><span class="note">new — found while porting</span></td>
+    <tr class="row-done"><td><b>Gitleaks allowlist scope</b><br><span class="note">new — found while porting</span></td>
         <td>hops</td>
-        <td><span class="chip c-info">IN REVIEW</span> <span class="note">PR #518</span></td>
-        <td>See below — the gate had been suppressing real findings.</td></tr>
+        <td><span class="chip c-pass">MERGED</span> <span class="note">PR #518, 2026-08-20</span></td>
+        <td>See below — the gate had been suppressing real findings. Fixed.</td></tr>
+    <tr class="row-review"><td><b>Hallucinated-package check</b><br><span class="note">roadmap item 6</span></td>
+        <td>hops</td>
+        <td><span class="chip c-info">IN REVIEW</span> <span class="note">PR #528</span></td>
+        <td>Blocks a PR that adds a package name npm has never heard of. <b>0 false positives</b>
+        across 21 packages added by 13 real <code>hop-ui</code> commits, each judged as of its own
+        commit date. Two thresholds derived from the manifest itself; 20 self-tests run inside the
+        job. Not label-gated.</td></tr>
   </table></div>
 
   <div class="call red">
     <b>The finding that came out of shipping item 2: the hops gate was hiding secrets</b>
+    <span class="chip c-pass">FIXED — PR #518 MERGED 2026-08-20</span><br>
     <code>.gitleaks.toml</code> used <code>regexTarget = "line"</code>, which allowlists the
     <i>entire line</i> — so any real credential sharing a line with an allowlisted value was
     dropped. A synthetic HubSpot key planted on an allowlisted correlation-id line in
@@ -548,7 +570,12 @@
 
   <h3>The roadmap — ordered by impact ÷ effort</h3>
   <p class="note">Scope: changes land in hops (dev only) per the approved scope — items for other
-  repos are recommendations to their owners. Status chips reflect 2026-08-19.</p>
+  repos are recommendations to their owners. Row colour is delivery state as of 2026-08-20.</p>
+  <div class="legend">
+    <span><i class="k-done"></i>merged</span>
+    <span><i class="k-review"></i>in review</span>
+    <span><i class="k-open"></i>not started</span>
+  </div>
 </div>
 <div class="wide">
   <div class="tblwrap"><table>
@@ -557,11 +584,11 @@
         <td><span class="chip c-pass">HOURS</span></td><td>barley (owners)</td>
         <td>9 leaked real-format credentials have unknown liveness — any live one is an open door, and checking by hand means handling secrets</td>
         <td>Run TruffleHog verifiers (safe, read-only API probes) over the findings: live credentials get rotated first, dead ones are closed out with evidence</td></tr>
-    <tr><td class="num-cell">2</td><td><b>Port the hops gitleaks gate</b> <span class="chip c-info">IN REVIEW · barley</span></td>
-        <td><span class="chip c-pass">LOW</span></td><td>barley, hops-mcp, sowinsights (rec.)</td>
+    <tr class="row-done"><td class="num-cell">2</td><td><b>Port the hops gitleaks gate</b> <span class="chip c-pass">MERGED · barley</span></td>
+        <td><span class="chip c-pass">LOW</span></td><td>barley <b>done</b>; hops-mcp, sowinsights still recommendations</td>
         <td>The measured gap: 7 distinct leaks in the ungated repo vs 2 in the gated one — every unscanned commit is fresh exposure</td>
         <td>Copy the hops CI job + tuned <code>.gitleaks.toml</code>; in barley, add the gitleaks hook to the pre-commit framework that already exists</td></tr>
-    <tr><td class="num-cell">3</td><td><b>Dependency cooldown</b> <span class="chip c-pass">MERGED</span></td>
+    <tr class="row-done"><td class="num-cell">3</td><td><b>Dependency cooldown</b> <span class="chip c-pass">MERGED</span></td>
         <td><span class="chip c-pass">ONE LINE</span></td><td>hops (hop-ui)</td>
         <td>Compromised package versions are usually detected and pulled within ~24h — installing day-zero releases inherits exactly that window (audit check SCS-04, currently unmet)</td>
         <td>Set pnpm <code>minimumReleaseAge: 1440</code> in hop-ui; trusted internal packages go on the exclude list</td></tr>
@@ -573,7 +600,7 @@
         <td><span class="chip c-pass">A PARAGRAPH</span></td><td>hops</td>
         <td>CLAUDE.md, hooks, skills and MCP config steer everything agents do — tampering there hijacks every future session, and today no rule marks it sensitive (open audit WARN)</td>
         <td>Add the rule to agent instruction files: the agent-config surface is security-sensitive, and changes to <code>.claude/</code>, hooks, or <code>.mcp.json</code> require human review</td></tr>
-    <tr><td class="num-cell">6</td><td><b>Hallucinated-package CI check</b></td>
+    <tr class="row-review"><td class="num-cell">6</td><td><b>Hallucinated-package CI check</b> <span class="chip c-info">IN REVIEW</span></td>
         <td><span class="chip c-warn">MEDIUM</span></td><td>hops → generalize</td>
         <td>19.7% of LLM-recommended packages don't exist (USENIX 2025); attackers pre-register the names and agents install their own suggestions — typosquatting defenses don't cover it</td>
         <td>CI job on every dependency diff: each newly added package must exist on the registry, pre-date the PR, and show real usage/downloads — else the PR blocks</td></tr>
