@@ -610,3 +610,32 @@ barley, hops-mcp, sowinsights (rec.)". Only barley shipped. The row is marked do
 actionable part is complete, and the "Where" cell now says so explicitly rather than letting green
 imply all three repos are covered. Marking a row green when a third of its scope landed would be
 exactly the kind of overstatement this research keeps finding in other people's dashboards.
+
+## 2026-08-20 — Fail-closed cassette scrubbing (roadmap item 8)
+
+The pattern, not the patch, is the deliverable here — so the method was to establish what a
+generic rule would break *before* writing one.
+
+**Measured the over-redaction risk first.** Candidate rules were run over all 73 committed
+cassettes as a probe, with no code written into barley. A key-shape rule matched exactly two
+things: `SecretId` (an identifier, not a secret) and, correctly skipped, two pagination cursors.
+A value-shape rule matched nothing at all. That result decided the design: both passes could be
+added with zero change to existing fixtures, and the two exclusions — cursors and identifiers —
+are the ones the data said were needed, not the ones that seemed plausible.
+
+**Confirmed additivity rather than assuming it.** The finished passes were applied to all 73
+cassettes and diffed: 0 files change. That is what makes this safe to merge without re-recording,
+and it is a claim worth proving rather than asserting, since re-recording needs live credentials
+and would have made this an owner task instead of ours.
+
+**The enforcement test is the actual capability.** Two generic passes are still a denylist with a
+wider net; what makes the design fail closed is a test that reads the cassettes *as committed*
+rather than trusting the scrubber. Verified both directions: 0 offenders on the real repository,
+and a planted Slack token in a copied tree does fail it — reporting file, line and pattern, never
+the value. It also asserts it found cassettes at all, because a clean scan of an empty directory
+is the classic way this kind of check silently stops working.
+
+**Could not run barley's pytest.** Local Poetry rejects the repo's `include-groups` config. The
+scrubbing functions are pure text-to-text, so they were extracted and exercised directly — 13
+behavioural checks plus the cassette corpus. Stated as a limitation in the PR rather than papered
+over: CI running the suite is the real check.

@@ -305,6 +305,23 @@ the baseline is unrecoverable.
 - [ ] `methodology/log.md` entry for the wave
 
 ### Wave 3 — medium items
+- [x] **W3.5 — Fail-closed cassette scrubbing (2026-08-20)** — roadmap item 8. barley branch
+      `chore/fail-closed-cassette-scrubbing` off `origin/develop` @ `d337c2eec`, commit
+      `b4ccc9b75`, **not pushed** (push blocked locally; hand-off command given).
+      Two generic passes added ahead of the existing denylist — redact by **key shape**
+      (token/secret/password/api_key/credential/authorization/signature/private_key) and by
+      **value shape** (Slack/GitLab/GitHub/AWS/Google prefixes, PEM blocks) anywhere in the body,
+      including HTML and prose. Cursors (`nextPageToken`, `nextSyncToken`) and identifiers
+      (`SecretId`) deliberately excluded — measured, they were the only two things a naive rule
+      would have over-redacted.
+      **The enforcement is the deliverable:** `TestCommittedCassettesAreClean` scans all 73
+      cassettes as committed, so a future hole fails CI. Without it the passes are just a bigger
+      denylist. Reports pattern + line, never the value; carries two self-guards (that it found
+      cassettes at all, and that its patterns still match a known shape).
+      Verified: new passes change **0 of 73** cassettes (additive, no re-record needed); the scan
+      finds 0 offenders today and does fail on a planted token in a copy.
+      ⚠️ **barley's pytest was not run** — local Poetry rejects the repo's config
+      (`include-groups`). Functions verified directly instead; CI is the real check.
 - [~] **W3.1** Hallucinated-package CI check — **open as hops PR #528, awaiting review**
       (2026-08-20: 18h old, no reviewer assigned). Ported to Node for hops because hops CI has no
       Python anywhere; the Python original stays in `tooling/ci/slopsquat/` as the reference for
