@@ -592,3 +592,21 @@ something.
 **Tooling note.** A replay loop silently produced zero results for several iterations because zsh
 applied its `:h` history modifier to `$cm:hop-ui/package.json`. Braces (`${cm}:...`) fix it. Logged
 in `tasks/lessons.md`; the failure mode is silent and looks like "no data" rather than an error.
+
+## 2026-08-20 — Three of four PRs merged; report re-cut by delivery state
+
+barley #1636 (secret-scan gate) and hops #518 (gitleaks allowlist scope) both merged this morning,
+joining hops #515. hops #528 (hallucinated-package check) is still open with no reviewer assigned
+after 18 hours.
+
+Report change requested and made: the roadmap table now colours the **whole row** by delivery
+state rather than appending a status chip to one cell — merged rows sage-tinted with a left rail,
+in-review rows slate, untouched rows unchanged, with a legend. The distinction matters for the
+audience: a chip is read as an annotation on a plan, a coloured row is read as a plan that is
+being executed.
+
+One precision call worth recording. Roadmap item 2 reads "Port the hops gitleaks gate —
+barley, hops-mcp, sowinsights (rec.)". Only barley shipped. The row is marked done because the
+actionable part is complete, and the "Where" cell now says so explicitly rather than letting green
+imply all three repos are covered. Marking a row green when a third of its scope landed would be
+exactly the kind of overstatement this research keeps finding in other people's dashboards.

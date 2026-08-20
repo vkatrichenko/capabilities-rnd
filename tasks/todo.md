@@ -270,7 +270,7 @@ the baseline is unrecoverable.
       `hop-sync/Hubspot_data_sync.ipynb` was reported **0 times**. Changed to `"match"`:
       caught. Worktree output unchanged (0 findings before and after). Branch
       `HOP-0000/gitleaks-allowlist-scope` off `origin/main` @ `48caab6dd`, commit `b8d70b4ba`,
-      ✅ **pushed and open as hops PR #518**, all checks green. Body in `scratchpad/pr-body-hops.md`. Second, separate defect recorded:
+      ✅ **MERGED 2026-08-20 as hops PR #518**, all checks green. Body in `scratchpad/pr-body-hops.md`. Second, separate defect recorded:
       `"line"` drops findings even when the regex matches nothing (3 real `gitlab-rrt` hits on
       barley, 4 on hops). Full writeup: `artifacts/gitleaks-allowlist-scope-finding.md`.
 
@@ -305,8 +305,11 @@ the baseline is unrecoverable.
 - [ ] `methodology/log.md` entry for the wave
 
 ### Wave 3 — medium items
-- [~] **W3.1** Hallucinated-package CI check — **design + tool + self-tests done 2026-08-19**;
-      the hops PR is the remaining step and needs its own go.
+- [~] **W3.1** Hallucinated-package CI check — **open as hops PR #528, awaiting review**
+      (2026-08-20: 18h old, no reviewer assigned). Ported to Node for hops because hops CI has no
+      Python anywhere; the Python original stays in `tooling/ci/slopsquat/` as the reference for
+      Python repos. Both agree on identical live inputs. The new job ran green on its own PR with
+      no labels — which is the point of not label-gating it.
       Design: `research/findings/hallucinated-package-check-design.md`.
       Tool: `tooling/ci/slopsquat/check_new_deps.py` + 17 offline self-tests + `hops-job.yml`.
       **Measured, not asserted:** 0 false positives across 28 packages added by 20 real
@@ -356,7 +359,7 @@ the baseline is unrecoverable.
       pre-commit stanza. Verified: CI command exits 0 on the PR's own commits and 1 on a
       planted synthetic key; pre-commit hook fires; three synthetic credentials planted inside
       allowlisted contexts all still detected. PR body drafted in `scratchpad/pr-body-barley.md`.
-      ✅ **Pushed and open as barley PR #1636** (base `develop`, 4 files, 1 commit). The
+      ✅ **MERGED 2026-08-20 as barley PR #1636** (base `develop`, 4 files, 1 commit). The
       first attempt, #1634, targeted `main` and dragged in 12 unrelated develop commits — closed
       and reopened against the right base. CI green including `secret-scan` and `CI Gate`;
       `deepeval-smoke` fails but fails on every branch including `main` (3+ days), pre-existing.
