@@ -307,8 +307,9 @@ the baseline is unrecoverable.
 ### Wave 3 — medium items
 - [x] **W3.5 — Fail-closed cassette scrubbing (2026-08-20)** — roadmap item 8. barley branch
       `chore/fail-closed-cassette-scrubbing` off `origin/develop` @ `d337c2eec`, commit
-      ✅ **open as barley PR #1652** (base `develop`, commit `cbdcc799a`). **Their full suite
-      passes** — `test / pytest` green, which closes the "could not run barley's pytest" caveat.
+      ✅ **MERGED 2026-08-21 as barley PR #1652** (base `develop`, merge `2d359e81d`). Their
+      full suite passed — `test / pytest` green, which closed the "could not run barley's pytest"
+      caveat.
       **The two controls collided:** the fail-closed tests need genuinely issuer-shaped
       credentials, and the secret-scan gate merged four days earlier flagged them. Resolved with a
       `NOTAREALTOKEN` marker inside each captured span, stopworded **by value, not by path** — a
@@ -332,8 +333,8 @@ the baseline is unrecoverable.
       credential patterns over **2,537** hops test/fixture files return **0**. `sowinsights` and
       `hops-mcp` record nothing either. Do not port this to hops; it would be maintained code that
       can never fire. Written into the report as a conditional blueprint row.
-- [~] **W3.1** Hallucinated-package CI check — **open as hops PR #528, awaiting review**
-      (2026-08-20: 18h old, no reviewer assigned). Ported to Node for hops because hops CI has no
+- [x] **W3.1** Hallucinated-package CI check — ✅ **MERGED 2026-08-21 as hops PR #528**
+      (merge `813efc48b`). The gate is now live on every hops PR. Ported to Node for hops because hops CI has no
       Python anywhere; the Python original stays in `tooling/ci/slopsquat/` as the reference for
       Python repos. Both agree on identical live inputs. The new job ran green on its own PR with
       no labels — which is the point of not label-gating it.

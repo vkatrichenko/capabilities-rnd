@@ -667,3 +667,24 @@ suppressed by value, never by path. Path-allowlisting the test directory would h
 and would have recreated precisely the blind spot that made barley's own audit report a false PASS
 on SEC-04. Worth recording because it is the first time a control this project added constrained
 another control this project added, and the cheap fix was the wrong one.
+
+## 2026-08-21 — All five Phase 2 pull requests merged
+
+hops #528 (hallucinated-package check) and barley #1652 (fail-closed cassette scrubbing) merged
+today, closing the review queue. Five PRs across two repositories in three days: roadmap items 2,
+3, 6 and 8, plus the gitleaks allowlist-scope fix that was on no roadmap.
+
+Worth stating plainly for the phase write-up: **the unplanned item is the most interesting one.**
+Items 2, 3, 6 and 8 were all predicted by Phase 1 research — they were on the list before any code
+was written. The allowlist-scope fix was not. It surfaced only because porting a control to a
+second repository forced a line-by-line reading of a config that had been treated as settled, and
+what it found was that the one security gate hops actually had was suppressing real findings.
+
+The generalizable claim is about method, not about gitleaks: **porting a control is a stronger
+audit of that control than reviewing it in place.** Reading `.gitleaks.toml` in hops produced
+nothing for two phases; re-implementing its intent somewhere else exposed the defect within hours.
+That belongs in the methodology section of the article as a technique, not as an anecdote.
+
+Report republished with every delivery row green. Next: the measurement checkpoint (re-run the
+AWOS audit) — but note that of the merged items only W1.5, still unshipped, produces a large audit
+delta. The checkpoint will under-report the phase unless that is said explicitly.
