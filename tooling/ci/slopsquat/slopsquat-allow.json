@@ -1,0 +1,9 @@
+{
+  "_comment": [
+    "Packages whose review findings are accepted. An entry is a decision on the",
+    "record, not a mute: state why the package is trusted and who confirmed it.",
+    "Entries for the `does-not-exist` rule are almost always wrong — if a package",
+    "is not on the registry, fix the specifier instead of allowlisting the name."
+  ],
+  "allow": []
+}

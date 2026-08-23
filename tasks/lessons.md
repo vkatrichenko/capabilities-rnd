@@ -29,3 +29,88 @@ into two files before the audit's SCS-01 evidence contradicted it.
 ecosystem (npm/pnpm/yarn/bun; poetry/uv/pipenv; gradle catalog/lockfile/verification-metadata) —
 or better, assert from what IS there (the package manager in use) rather than from absence in a
 hand-rolled pattern.
+
+## 2026-08-18 — Treated a SKIPped audit check as a closeable gap
+
+The approved Phase 2 plan said W1.1 "closes SCS-04". SCS-04 is `SKIP`/`applies:false` — the
+detector cannot evaluate quarantine age offline and skips it by design, so no change to the repo
+can flip it. The plan promised a before/after number that could never appear. Found only by
+re-reading the audit JSON at Gate 0, after the plan was approved.
+
+**Rule:** before planning work against an audit check, read that check's `status` and `applies`
+fields *and its evidence strings* from the JSON — not the summary. `SKIP` means "not measured"
+and `FAIL` means "measured and absent"; only the second is closeable. State up front which
+planned items produce a measurable delta and which need their own evidence.
+
+## 2026-08-19 — Read the skipped CI jobs, not just the failed one
+
+On PR #515 the red check was a PR-template field. Fixing it would have closed the task. The
+actual finding was in the jobs marked "skipping": frontend unit tests, SonarQube and the osv
+audit all gate on a `frontend` label the PR did not carry, so a change to hop-ui's package
+manager ran none of them. Phase 1 had recorded only the osv job as label-gated.
+
+**Rule:** when reviewing a CI run, enumerate the skipped jobs and check each one's condition
+against the diff. A gate that does not run is indistinguishable from a gate that passed in every
+summary view, and "skipping" is the state nobody reads.
+
+## 2026-08-19 — Branched from a clone that was 229 commits stale
+
+The whole barley triage — 110 findings, every false positive classified — was
+run against a local `main` that was 229 commits behind `origin/main`. It only
+surfaced when creating the PR branch from `origin/develop`. On the real base the
+count was 89, and 3 findings reported as "still in HEAD" had already been
+scrubbed. Second occurrence: the hops Gate 0 baseline was pinned to a commit 5
+days stale for the same reason.
+
+**Rule:** `git fetch` and resolve the actual base ref **before** any measurement,
+not before the commit. State the measured ref by SHA in the output
+(`develop @ 230d4fa68`), so a stale number is visible instead of plausible.
+
+## 2026-08-19 — Wrote the allowlist before triaging what it suppresses
+
+The first `.gitleaks.toml` draft for barley copied hops' `regexTarget = "line"`.
+The tuned scan returned 3 findings and looked like a clean result — but 3 real
+`gitlab-rrt` tokens had been silently dropped by the allowlist, not by any rule
+in it. Had the triage been done after writing the config instead of before, "6
+real findings became 3" would have read as success.
+
+**Rule:** for any suppression config — scanner allowlists, lint ignores, waiver
+files — measure the untuned baseline first, then require every suppressed item to
+be attributable to a named entry, and delete entries that match nothing. Pair it
+with a planted-input control: put a synthetic positive inside each suppressed
+context and confirm it is still detected. A suppression rule you have not proven
+narrow is indistinguishable from a disabled check.
+
+## 2026-08-19 — A correction that only landed in the file that owned it
+
+The rotation runbook corrected barley's leak count from 22 to 7 distinct credentials on
+2026-08-18 (22 counted occurrences across commits, not values). That correction never left the
+runbook. The published report — the artifact managers actually read — kept 22 in its headline
+KPI, its manager summary, its thesis callout, its bar chart and two roadmap rows for a further
+day, alongside a stale "24 real-format leaks" and "3 still in HEAD".
+
+**Rule:** when a number is corrected, grep every derived artifact for the old value in the same
+change — reports, slides, summaries, README tables — and fix them together or record explicitly
+which ones still carry it. A correction filed only where the number was born leaves the wrong
+figure in the place with the widest audience.
+
+## 2026-08-19 — Measured a false-positive rate against the wrong clock
+
+The first replay of the hallucinated-package check over 40 historical commits returned 0 false
+positives — but it judged each package's age against *today*, so every historical addition looked
+mature by construction. The measurement could not have produced any other answer. Redone against
+each commit's own date, the result happened to hold, but the first run was not evidence.
+
+**Rule:** when replaying a time-sensitive check over history, pin every time-dependent input to the
+point in history being replayed. If a measurement cannot produce a bad result, it is not a
+measurement — say what would have had to be true for it to fail, and check that it could have been.
+
+## 2026-08-19 — zsh ate a git ref and returned nothing
+
+`git show "$cm:hop-ui/package.json"` produced empty output for every commit in a loop. zsh applied
+its `:h` history modifier to the unbraced parameter. No error, no warning — just empty files and a
+replay that reported "no commits added dependencies", which looked like a plausible finding.
+
+**Rule:** brace parameters whenever a `:` follows them in zsh (`${cm}:path`). More generally, when
+a loop over real data returns *nothing*, treat that as a bug until proven otherwise — a silent
+empty result is the failure mode most likely to be mistaken for a finding.

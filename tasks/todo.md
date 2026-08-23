@@ -78,11 +78,8 @@ rather than just asserting it.
       optional follow-ups (Zero Trust for Agents; CISO's guide to agentic AI).
 - [x] **Audit material location confirmed** (Vladyslav, 2026-08-14): everything audit-related is
       in `context/audits/` — nothing lives outside the repos. No ask to Dasha needed for this.
-- [ ] **Confirm with Dasha Goranina** — remaining question only, ready-to-send draft:
-      > Hi Dasha! The charter names HOPS as the test project; for the research (read-only, no
-      > changes) I also compared it against the sibling repos in the BarHopping org — barley,
-      > hops-mcp, sowinsights. Can you confirm read-only analysis of those is fine under the
-      > existing approval? Changes still go to hops dev only.
+- [ ] **Confirm with Dasha Goranina** — remaining question only; draft moved to Phase 2 **G0.2**,
+      which is where it is now tracked.
 - [x] **`methodology/log.md`** — open and current since 1a (entries for 1a, 1b, 1c, 1d).
 - [x] **Broader source sweep** (2026-08-14, user-requested) →
       `research/sources/sdlc-security-landscape.md`: secret-scanning layering consensus
@@ -113,6 +110,10 @@ rather than just asserting it.
       Methodology. Published (private, share via the page's share menu):
       https://claude.ai/code/artifact/22daff05-9a26-4289-a3c3-81e2cee4cf11
       Redeploy = republish the same file path.
+      **Updated 2026-08-19** — added the Phase 2 delivery block (PRs #515/#1636/#518 + the
+      allowlist-scope finding) and corrected the headline leak counts repo-wide: 22 → **7
+      distinct** for barley (22 counted occurrences, not values), 3 → **1 still in HEAD**, and
+      "24 real-format leaks" → 9. Two methodology items added.
 - [ ] **Client-safe variant** before any external presentation: strip repo names, leak details,
       and the rotation callout from Gaps; keep the blueprint + anonymized evidence ("measured a
       10× leak-rate difference between gated and ungated projects").
@@ -157,50 +158,241 @@ first PR. **Dev env only. Never push without explicit confirmation.** Items exec
 time, each on an explicit go.
 
 ### Gate 0 — before any hops change
-- [ ] Send rotation ask to barley owners (report red callout) — human action, time-sensitive
-- [ ] Send Dasha the sibling-repo scope confirmation (drafted in 1d) — human action
-- [ ] Capture OpenSSF Scorecard baseline for hops (read-only) → `artifacts/`, redacted
-- [ ] Record the "before" reference: 2026-08-03 audit scores + clean gitleaks worktree state
-      (already in `research/baseline/` — link them into a single before-state note)
+
+Gate 0 exists so the before/after evidence is captured **before** the first PR — once W1.1 merges,
+the baseline is unrecoverable.
+
+- [ ] **G0.1 — rotation ask to barley owners** (via Ruslan / Rodion). Human action,
+      time-sensitive. **Triage completed 2026-08-18** — send the message below and attach
+      `research/findings/barley-rotation-runbook.md`, which carries the per-credential inventory
+      (fingerprints, exact file + line, exposure windows), the rotation steps per system, and the
+      three prevention fixes. Corrections to the numbers below are in that file: **7** real-format
+      credentials, not 22 — the earlier count was occurrences across commits, not distinct values;
+      3 further matches are placeholders. Ready to send:
+      > Hi! While researching AI-SDLC security across the BarHopping org (read-only, no changes)
+      > I ran gitleaks 8.24.3 over the git history of all four repos. barley has credential
+      > material that needs an **owner-side rotation check** — I did not test any of it for
+      > validity, so "is it still live?" is your call, not mine.
+      >
+      > Still in HEAD (3):
+      > • GitLab runner token, ×2 VCR cassettes under `tests/integration/fixtures/vcr_cassettes/`
+      >   (committed 2026-03-27)
+      > • Slack bot token embedded in `reports/smoke.html` (committed 2025-09-24)
+      >
+      > History-only, removed from HEAD but present in every existing clone: 13 Slack tokens
+      > (bot / app / user) hardcoded in `terraform/**` across **dev and production**, 2024-12 →
+      > 2025-07; one service-account private key in `tests/credentials.json`; two STS temporary
+      > AWS keys (self-expiring). **Removal from HEAD is not revocation** — these are still
+      > readable in history.
+      >
+      > Separately, your own 2026-06-03 audit (`context/audits/2026-06-03/security.md`) flagged a
+      > live production RDS password, a LangSmith API key and an AgentCore OAuth client secret
+      > sitting in plaintext allow-patterns in `.claude/settings.local.json` (gitignored, on
+      > disk). It recommended rotation at the time; I can't tell from the repo whether that
+      > happened — worth confirming in the same pass.
+      >
+      > Full redacted detail (rule + file + date + masked prefix, no values):
+      > `capabilities-rnd/research/findings/secret-scan-2026-08-14.md`.
+      >
+      > A follow-up with the concrete fixes — porting the hops gitleaks gate into your existing
+      > `.pre-commit-config.yaml`, and the fail-closed cassette-scrubbing pattern that would have
+      > stopped the runner token being recorded — is coming separately; this message is only the
+      > rotation ask, because that part is time-sensitive.
+- [ ] **G0.2 — Dasha Goranina, sibling-repo scope confirmation.** Human action. Ready to send:
+      > Hi Dasha! The charter names HOPS as the test project; for the research (read-only, no
+      > changes) I also compared it against the sibling repos in the BarHopping org — barley,
+      > hops-mcp, sowinsights. Can you confirm read-only analysis of those is fine under the
+      > existing approval? Changes still go to hops dev only.
+- [x] **G0.3 — OpenSSF Scorecard baseline** (2026-08-18) →
+      `artifacts/scorecard-baseline-hops.md`. Full remote mode, Scorecard v5.1.1-45-g40bbc9c9,
+      image pinned by digest, target `origin/main` @ `f640dee9f`. **Aggregate 5.4/10.**
+      SSO unblocked by re-running `gh auth login --web` (the standalone authorization_request URL
+      did not bind to the CLI token; the device-code flow did).
+      Only inconclusive check: Signed-Releases (−1, no releases exist).
+- [x] **G0.4 — the "before" reference** → `research/baseline/phase2-before-state.md` (2026-08-18).
+      Link-only note: 2026-08-03 audit coverage, tuned-gitleaks worktree state, control matrix,
+      the pinned hops commit, and the two pre-existing toolchain facts found while scoping W1.1.
+      Scorecard row filled in from G0.3. **Corrected:** the pinned commit is origin/main
+      `f640dee9f`, not the local clone's `0a5303371` — the local clone was 5 days behind.
 
 ### Wave 1 — config quick wins (hops, one PR each)
-- [ ] **W1.1** pnpm cooldown: `minimumReleaseAge: 1440` + exclude list in `hop-ui` (closes
-      SCS-04); verify: adding a <24h-old package fails locally. Confirm whether hop-ui config
-      lives in `pnpm-workspace.yaml` or `.npmrc` first.
+- [x] **W1.1** pnpm toolchain pin + dependency cooldown — ✅ **MERGED to hops `main`
+      2026-08-19T13:10Z as PR #515**. Commit `ccfc77828` on
+      `HOP-0000/pnpm-toolchain-pin-and-cooldown`. Evidence:
+      `artifacts/w1-1-pnpm-cooldown-evidence.md`.
+      **The item was mis-scoped and grew.** "Add `minimumReleaseAge: 1440`" would have been a
+      no-op: CI ran `npm install -g pnpm` unpinned → pnpm 11, which already defaults it to 1440,
+      while `hop-ui/Dockerfile` pinned `pnpm@9`, which predates the setting. The real defect was
+      the floating toolchain. Two controls were also silently dead — `.npmrc save-prefix` (audit
+      R5/SCS-03 exact pinning; `.npmrc` is auth/registry-only since pnpm 11) and
+      `pnpm.onlyBuiltDependencies` (removed in pnpm 11).
+      **Near-miss worth remembering:** the Dockerfile never copied `pnpm-workspace.yaml`, so the
+      image build depended on the `package.json` field being removed here — dropping it without
+      adding the COPY fails the build with `ERR_PNPM_IGNORED_BUILDS`. Caught and reproduced.
+      ✅ `pnpm run test:coverage` resolved: 4 failed / 4415 passed on the branch — **identical to
+      unmodified `origin/main`**. An earlier 60-failure run was machine load (all 5000ms timeouts,
+      2.8× slower); the control run settled it. Pre-existing: main does not pass its own suite.
+      Window is 1440, not AWOS's 10080 — see the evidence file for why.
+      **PR #515 update (2026-08-19):** a reviewer added the `frontend` + `dependencies`
+      labels; the re-run executed all six gates green — including `check-hop-fe-docker`
+      (the Dockerfile COPY fix proven in CI, not only locally) and `unit-tests-hops-fe`
+      running the identical `pnpm run test:coverage`. That reclassifies the 4 local test
+      failures as **local-machine only**, not a `main` defect. Awaiting review approval;
+      merge is still blocked on `REVIEW_REQUIRED`, not on any check.
 - [ ] **W1.2** Un-gate dependency audit: drop the `frontend`-label condition on the osv job in
       `.github/workflows/hops-mr-check.yml`; extend to `hop-agent/`, `e2e/` (npm) and
-      `hop-backend` (gradle); verify: osv runs on an unlabeled PR
+      `hop-backend` (gradle); verify: osv runs on an unlabeled PR.
+      **Now has a number (2026-08-18):** Scorecard's OSV pass reports **65 open advisories** on the
+      repo while the audit is label-gated to `hop-ui`. Triage them with `osv-scanner` directly —
+      Scorecard gives IDs only, no severity or reachability, so "65" is not "65 exploitable".
+      **Still the finding after the labels went on (2026-08-19):** the gates ran only because a
+      human noticed and labelled the PR — the default for a hop-ui change is still "none of them".
+      **Scope grew (2026-08-19, observed on PR #515):** the `frontend` label also gates
+      **`unit-tests-hops-fe`** (`:53`) and **`sonarqube-check-mr`** (`:331`). A PR rewriting
+      hop-ui's package manager ran no frontend tests, no SAST and no dependency audit — only
+      gitleaks is unconditional. The item is really "make the quality gates unconditional", not
+      just the osv job. Combined with `main` requiring zero status checks, gates are both
+      skippable by omission and non-binding at merge.
 - [ ] **W1.3** PRV-17: security-sensitive declaration for the agent-config surface in hops
       `CLAUDE.md` (+ module CLAUDE.mds if the audit reads them); review rule for `.claude/`,
       hooks, `.mcp.json` changes
-- [ ] **W1.4** Pin the github MCP image to a digest in hops `.mcp.json` (kills `:latest`)
+- [ ] **W1.4** Pin the github MCP image to a digest in hops `.mcp.json` (kills `:latest`).
+      No audit delta — AIS-04 already PASSes the unpinned config; evidence is the diff plus
+      W2.1's checker output. **Widen it (2026-08-18):** Scorecard found **17 unpinned third-party
+      GitHub Actions** (`hops-dev.yml` ×5, `hops-main.yml` ×5, `hops-mr-check.yml` ×5,
+      `hops-demo.yml`, `hops-preview.yml`) — the CI-side twin of the `.mcp.json` finding, same
+      control, and this one moves Scorecard's Pinned-Dependencies. Pin both surfaces in one item;
+      leave the 100 GitHub-owned actions alone (low risk, high churn).
+
+- [x] **W1.6 — NEW (2026-08-19), landed as a hops PR: gitleaks allowlist scope.**
+      `hops/.gitleaks.toml` used `regexTarget = "line"`, which allowlists the whole line —
+      a synthetic HubSpot credential planted on an allowlisted correlation-id line in
+      `hop-sync/Hubspot_data_sync.ipynb` was reported **0 times**. Changed to `"match"`:
+      caught. Worktree output unchanged (0 findings before and after). Branch
+      `HOP-0000/gitleaks-allowlist-scope` off `origin/main` @ `48caab6dd`, commit `b8d70b4ba`,
+      ✅ **MERGED 2026-08-20 as hops PR #518**, all checks green. Body in `scratchpad/pr-body-hops.md`. Second, separate defect recorded:
+      `"line"` drops findings even when the regex matches nothing (3 real `gitlab-rrt` hits on
+      barley, 4 on hops). Full writeup: `artifacts/gitleaks-allowlist-scope-finding.md`.
+
+- [ ] **W1.5 — NEW (2026-08-18, found at Gate 0)** Relocate the agent hook to `.claude/hooks/`
+      (move or symlink `scripts/claude-hooks/block-secrets.sh`; keep `.claude/settings.json`
+      working). The detector's `.claude/hooks/` path assumption costs hops **twice**: `AIS-03`
+      SKIPs (so the malicious-hook-content check never runs — ai-security's 100% is overstated)
+      and **`ADP-04` FAILs 0/5** for hooks that demonstrably exist. This is the cheapest item in
+      Wave 1 with a *real* audit delta: ADP-04 FAIL→PASS (+5, ai-sdlc-adoption 86.6%→95.2%) and
+      AIS-03 starts executing. Sequence with **W3.4**: relocating works around the bug, filing it
+      upstream fixes it for every repo — do both, workaround first, and use it as evidence in the
+      bug report. Detail: `research/baseline/phase2-before-state.md`.
 
 ### Wave 2 — portable tools (build in `tooling/`, self-test, then port to hops)
 - [ ] **W2.1** MCP pinning check — flags `:latest`/`@canary`/ref-less git URLs in `.mcp.json`;
       fixture self-tests first; then hops CI job; read-only run across all four repos for the
       article table
 - [ ] **W2.2** Hook-content scan: `scripts/claude-hooks/` + any path referenced from
-      `.claude/settings.json` (covers the AIS-03 phantom skip); self-test, then hops CI
+      `.claude/settings.json` (covers the AIS-03 phantom skip); self-test, then hops CI.
+      **Scope is wider than written:** 3 of hops' 4 registered hooks exist only as *inline*
+      `command` strings inside `.claude/settings.json` — the scanner must read those too, not
+      just files under a hooks directory.
 - [ ] **W2.3** OpenSSF Scorecard action in hops CI; delta vs the Gate 0 baseline
 
 ### Measurement checkpoint (after Waves 1–2)
-- [ ] Re-run `/awos:ai-readiness-audit` on hops — capture the score delta (SCS-04, PRV-17,
-      ai-security coverage); acceptance: no dimension regresses
+- [ ] Re-run `/awos:ai-readiness-audit` on hops — acceptance: **no dimension regresses**.
+      Only three of the wave's items produce an audit delta at all: **PRV-17** (WARN 1/2 → PASS),
+      **ADP-04** (FAIL 0/5 → PASS) and **AIS-03** (SKIP → actually executes). SCS-04 will skip
+      again regardless of W1.1 — do not report it as a win. Baseline to compare against:
+      `research/baseline/phase2-before-state.md`.
 - [ ] Re-run gitleaks (tuned) + osv; evidence per item → `artifacts/` (before / PR link / after)
 - [ ] `methodology/log.md` entry for the wave
 
 ### Wave 3 — medium items
-- [ ] **W3.1** Hallucinated-package CI check — design note in `research/findings/` first, then
-      `tooling/ci/`, then hops (flagship novel check)
+- [x] **W3.5 — Fail-closed cassette scrubbing (2026-08-20)** — roadmap item 8. barley branch
+      `chore/fail-closed-cassette-scrubbing` off `origin/develop` @ `d337c2eec`, commit
+      ✅ **MERGED 2026-08-21 as barley PR #1652** (base `develop`, merge `2d359e81d`). Their
+      full suite passed — `test / pytest` green, which closed the "could not run barley's pytest"
+      caveat.
+      **The two controls collided:** the fail-closed tests need genuinely issuer-shaped
+      credentials, and the secret-scan gate merged four days earlier flagged them. Resolved with a
+      `NOTAREALTOKEN` marker inside each captured span, stopworded **by value, not by path** — a
+      real token in that same test file still fires. Path-allowlisting `tests/` would have
+      recreated barley's own SEC-04 blind spot.
+      Two generic passes added ahead of the existing denylist — redact by **key shape**
+      (token/secret/password/api_key/credential/authorization/signature/private_key) and by
+      **value shape** (Slack/GitLab/GitHub/AWS/Google prefixes, PEM blocks) anywhere in the body,
+      including HTML and prose. Cursors (`nextPageToken`, `nextSyncToken`) and identifiers
+      (`SecretId`) deliberately excluded — measured, they were the only two things a naive rule
+      would have over-redacted.
+      **The enforcement is the deliverable:** `TestCommittedCassettesAreClean` scans all 73
+      cassettes as committed, so a future hole fails CI. Without it the passes are just a bigger
+      denylist. Reports pattern + line, never the value; carries two self-guards (that it found
+      cassettes at all, and that its patterns still match a known shape).
+      Verified: new passes change **0 of 73** cassettes (additive, no re-record needed); the scan
+      finds 0 offenders today and does fail on a planted token in a copy.
+      **Scope finding (verified, not assumed):** this control is **conditional on a testing
+      practice**, not universal. hops records no API traffic at all — no VCR, no cassettes, no
+      `nock` recorder, WireMock "deliberately not on the classpath" per their own comment. Barley's
+      credential patterns over **2,537** hops test/fixture files return **0**. `sowinsights` and
+      `hops-mcp` record nothing either. Do not port this to hops; it would be maintained code that
+      can never fire. Written into the report as a conditional blueprint row.
+- [x] **W3.1** Hallucinated-package CI check — ✅ **MERGED 2026-08-21 as hops PR #528**
+      (merge `813efc48b`). The gate is now live on every hops PR. Ported to Node for hops because hops CI has no
+      Python anywhere; the Python original stays in `tooling/ci/slopsquat/` as the reference for
+      Python repos. Both agree on identical live inputs. The new job ran green on its own PR with
+      no labels — which is the point of not label-gating it.
+      Design: `research/findings/hallucinated-package-check-design.md`.
+      Tool: `tooling/ci/slopsquat/check_new_deps.py` + 17 offline self-tests + `hops-job.yml`.
+      **Measured, not asserted:** 0 false positives across 28 packages added by 20 real
+      `hop-ui/package.json` commits — replayed twice, the second time judging each package's age
+      as of its own commit date rather than today, because the first pass flattered the result.
+      Live positive control blocks both a plausible hallucinated name and a typo of a real
+      dependency. Two thresholds are measurement-derived: 90-day age floor (hops' youngest direct
+      dep is 298 days) and the 8-character floor on the near-neighbour rule (without it, `clsx`↔
+      `tsx` and `vite`↔`vitest` self-report as FPs).
+      **Does not overlap W1.1's cooldown** — that covers new *versions* of trusted packages;
+      this covers *names* entering the manifest for the first time. Say so explicitly, or someone
+      will close this as already-done.
+      Side measurement: 273 single-edit variants of hops' 8 most-used deps → only `ercharts`
+      exists (legit 2017 package). The squat surface is empty today, so the near-neighbour rule's
+      value is prospective, not a backlog.
+      Scope limits stated in the design note: npm only, no downloads signal (the API rate-limits
+      under CI concurrency), no tarball analysis, direct dependencies only.
 - [ ] **W3.2** Threat-model doc for hops (closes AS-11); doubles as publication material
 - [ ] **W3.3** Reinstate `/security-review` as a hops skill + the finding→instruction-file loop
       rule
 - [ ] **W3.4** File AWOS detector bugs upstream (AS-13 root-only `.env.example`, AIS-03
-      `.claude/hooks/` path, barley SEC-04 tests-exclusion) → issues on `provectus/awos`
+      `.claude/hooks/` path, barley SEC-04 tests-exclusion) → issues on `provectus/awos`.
+      **Add (2026-08-19):** the gitleaks `regexTarget = "line"` defect →
+      `gitleaks/gitleaks`. Blocked on a shareable reproducer — it reproduces only on the two
+      private repos, not on synthetic fixtures. Do not file without one.
+
+- [ ] **NEW (2026-08-19) — CodeRabbit is degraded to summary-only.** On PR #515 it produced a
+      walkthrough but **no line-by-line review**: "your organization has reached its limit of
+      developer seats". `.coderabbit.yaml` also carries an unrecognized `version` key, silently
+      ignored. The report credits AI code review as an implemented control; on current licensing
+      it is not performing one. Raise as a question about seats, not a code change.
 
 ### Recommendations to owners (not our changes)
-- [ ] Hand barley owners the gitleaks-port recipe + fail-closed scrubbing pattern (write-up in
-      `research/findings/`, share in channel)
+- [ ] **NEW, highest value (2026-08-18) — require `secret-scan` as a status check on `hops` `main`.**
+      Verified from two GitHub endpoints: `main` requires a PR + 1 approval and **zero passing
+      checks** (`enforcement_level: "off"`, enterprise ruleset carries only `deletion`,
+      `non_fast_forward`, `pull_request`). The gitleaks gate, SonarQube and osv are all advisory at
+      merge time. Repo-settings change, needs an admin — ours is not one. Raise with the HOPS tech
+      lead alongside the W1 heads-up. Detail: `artifacts/scorecard-baseline-hops.md` finding 1.
+- [x] Hand barley owners the gitleaks-port recipe + fail-closed scrubbing pattern (2026-08-18) →
+      `research/findings/barley-rotation-runbook.md` — full triage + rotation runbook, folded
+      together with G0.1 since they go to the same people. Still to send.
+- [x] **Ported the gate as an applyable PR (2026-08-19)** — branch
+      `chore/gitleaks-secret-scan-gate` on barley, base `develop` @ `230d4fa68`, committed
+      `2df43382e`, **not pushed**. Four files: `.gitleaks.toml` (tuned, 89 findings → 3),
+      reusable `secret-scan.yml`, `ci.yml` wiring incl. the `RESULTS` array, and the
+      pre-commit stanza. Verified: CI command exits 0 on the PR's own commits and 1 on a
+      planted synthetic key; pre-commit hook fires; three synthetic credentials planted inside
+      allowlisted contexts all still detected. PR body drafted in `scratchpad/pr-body-barley.md`.
+      ✅ **MERGED 2026-08-20 as barley PR #1636** (base `develop`, 4 files, 1 commit). The
+      first attempt, #1634, targeted `main` and dragged in 12 unrelated develop commits — closed
+      and reopened against the right base. CI green including `secret-scan` and `CI Gate`;
+      `deepeval-smoke` fails but fails on every branch including `main` (3+ days), pre-existing.
+      Drive-by in the same diff: `web-ci` was in `ci-gate`'s `needs` and its failure echo but
+      missing from the `RESULTS` array that decides, so web-ci failures could not fail the gate.
 - [ ] Check GitHub push-protection availability on the org plan (question, not a change)
 
 ## Phase 3 — Generalize

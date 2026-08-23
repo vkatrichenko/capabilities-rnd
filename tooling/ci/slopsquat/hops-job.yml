@@ -1,0 +1,40 @@
+# Job template for hops `.github/workflows/hops-mr-check.yml`.
+#
+# Deliberately NOT label-gated: a hallucinated package can be added in any PR,
+# and W1.2 exists because label gates mean a control silently does not run. The
+# job is cheap when no manifest changed — it exits after the git diff.
+#
+# Copy `tooling/ci/slopsquat/check_new_deps.py` to `scripts/check-new-deps.py`
+# in hops, and `slopsquat-allow.json` to the repo root, before adding this job.
+
+  hallucinated-package-check:
+    name: New dependency check
+    runs-on: codebuild-hops-regular-${{ github.run_id }}-${{ github.run_attempt }}
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Check dependencies added by this PR
+        run: |
+          # The merge-base is the true fork point; base.sha is frozen at PR
+          # creation and would drag in everything merged to the base since.
+          BASE=$(git merge-base "origin/${{ github.base_ref }}" HEAD)
+          status=0
+          for manifest in hop-ui/package.json hop-agent/package.json e2e/package.json; do
+            if git diff --quiet "${BASE}" HEAD -- "${manifest}"; then
+              continue
+            fi
+            python3 scripts/check-new-deps.py \
+              --base-ref "${BASE}" \
+              --manifest "${manifest}" \
+              --allowlist slopsquat-allow.json || status=1
+          done
+          exit $status
