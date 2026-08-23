@@ -325,6 +325,43 @@ the baseline is unrecoverable.
       **New finding:** the action is SHA-pinned but its `action.yaml` runs
       `docker://ghcr.io/ossf/scorecard-action:v2.4.4` — a mutable tag. Pinning the action does not
       pin the code that executes. Feeds W1.4 and the article.
+- [x] **W2.3c — Scorecard ported to the three sibling repos (2026-08-23)**, all **committed and
+      unpushed**, each needing its owners' go-ahead like the gitleaks port did (#1636):
+      `barley` `chore/openssf-scorecard-posture-check` `0333af457` off `origin/develop`
+      (`ubuntu-latest`, Python twin); `hops-mcp` `069a379` off `origin/main`
+      (`codebuild-hops-mcp-…`, Node twin); `sowinsights` `9958596` off `origin/main`
+      (`codebuild-hops-sowinsights-…`, Python twin).
+      **One policy, two implementations, chosen by what each repo's lint pipeline claims** — Node
+      where the repo is Node (`hops`, `hops-mcp`), a stdlib Python twin where it is Python
+      (`barley`, `sowinsights`), the same reasoning W3.1 used porting Python → Node for hops.
+      `tooling/ci/scorecard/agreement-check.sh` holds the two to byte-identical stdout and exit
+      codes: **15/15 comparisons agree** across 5 real results × 3 baseline cases.
+      Verified per repo against **their own** gates, not ours: `ruff format --check` + `ruff check`
+      under barley's `pyproject.toml` (caught an unformatted first pass), `make check` in hops-mcp
+      after `npm ci` (caught prettier claiming the workflow YAML), `yamllint` everywhere.
+      Deliberate: `Code-Review` and `CI-Tests` are rolling-window metrics gated at today's value, so
+      barley (Code-Review 2) and sowinsights (0) will fail the weekly run if review discipline
+      slips. Stated in each PR body.
+- [x] **W2.3d — org-wide Scorecard sweep, all 27 repos (2026-08-23)** →
+      `artifacts/scorecard-org-sweep.md`. Read-only, nothing changed, no scope expansion — the four
+      charter repos stay the unit of analysis.
+      **Baseline finding 1 generalizes:** 25 of 26 default branches require **zero** passing status
+      checks, and the enterprise ruleset `provectus-global` carries no `required_status_checks` rule
+      type anywhere. `barley` is the only repo in the org that blocks a merge on a check. That makes
+      the top recommendation a single org-level settings change, not 26 repo-level ones.
+      **Second score inversion in one day:** `barley`, the only enforced repo, scores
+      Branch-Protection **4** — below the 25 that enforce nothing. With the Token-Permissions
+      inversion (barley declares permissions in 27/28 workflows and still scores 0, hops declares
+      none anywhere and also scores 0), that is two independent cases of a per-check score ranking
+      the wrong way round. **A per-check score is not monotone in the control it names** — the
+      article claim, and the same lesson as AWOS `score` vs `coverage`.
+      **Dependabot exists in 1 of 26 repos** (`hops`). 15 of 26 repos are dormant and 14 have no
+      workflows at all, so low aggregates there are absence, not misconfiguration — do not report
+      them as findings. Outside the charter's four, `wort` is the one worth a look: actively
+      maintained, 46 open advisories, 0 of its recent changesets reviewed, and simultaneously the
+      best-pinned repo in the org.
+      Accidental validation: `dme-core` is empty, Scorecard returns `"checks": null`, and both
+      twins exit 2 rather than reading zero checks as zero regressions.
 - [x] **W2.3b — four-repo Scorecard posture table (2026-08-23)**, read-only, in the same evidence
       file. Aggregates `hops` 5.4 · `hops-mcp` 4.7 · `barley` 4.1 · `sowinsights` 3.4 (ordering
       only — ~2.2 of each is open-source-norm checks that do not apply). Independent confirmation
@@ -412,7 +449,15 @@ the baseline is unrecoverable.
       it is not performing one. Raise as a question about seats, not a code change.
 
 ### Recommendations to owners (not our changes)
-- [ ] **NEW, highest value (2026-08-18) — require `secret-scan` as a status check on `hops` `main`.**
+- [ ] **NEW, highest value (2026-08-18, widened 2026-08-23) — require passing status checks at the
+      org level.** Verified across **26 repos**, from two independent endpoints: 25 default branches
+      require **zero** passing checks, and the enterprise ruleset `provectus-global` carries only
+      `deletion`, `non_fast_forward`, `pull_request` — there is no `required_status_checks` rule type
+      in the org at all. `barley` is the sole exception (`CI Gate`, `non_admins`). So this is one
+      settings change at the `provectus-global` ruleset, not a per-repo ask, and it is what makes
+      every gate this project shipped actually binding. Detail: `artifacts/scorecard-org-sweep.md`.
+      Original hops-only framing below.
+- [ ] **(2026-08-18) — require `secret-scan` as a status check on `hops` `main`.**
       Verified from two GitHub endpoints: `main` requires a PR + 1 approval and **zero passing
       checks** (`enforcement_level: "off"`, enterprise ruleset carries only `deletion`,
       `non_fast_forward`, `pull_request`). The gitleaks gate, SonarQube and osv are all advisory at

@@ -285,3 +285,64 @@ What the table actually says:
   means it can no longer be quietly forgotten.
 - **W1.2 and W1.4 both now have a scoreboard.** Pinned-Dependencies 0 and the 58 open advisories are
   in the committed baseline, so those items land as measured improvements.
+
+## 6. Ported to the three sibling repos (2026-08-23)
+
+All three branches are **committed and unpushed**; each needs its owners' go-ahead, as the gitleaks
+port to `barley` did (#1636).
+
+| Repo | Branch / commit | Base | Runner | Twin | Baseline |
+|---|---|---|---|---|---|
+| `barley` | `chore/openssf-scorecard-posture-check` `0333af457` | `origin/develop` `48aa81535` | `ubuntu-latest` | Python | agg 4.1 @ `c3aec73c6` |
+| `hops-mcp` | `chore/openssf-scorecard-posture-check` `069a379` | `origin/main` | `codebuild-hops-mcp-…` | Node | agg 4.7 @ `781336983` |
+| `sowinsights` | `chore/openssf-scorecard-posture-check` `9958596` | `origin/main` | `codebuild-hops-sowinsights-…` | Python | agg 3.4 @ `fe3ec3410` |
+
+**One policy, two implementations, chosen by what each repo's own lint pipeline claims.** `hops` and
+`hops-mcp` get the Node checker (`hops` already runs `node --test` on `check-new-deps.mjs`;
+`hops-mcp` is TypeScript/npm and its `.prettierignore` and eslint `ignores` already exclude
+`scripts/`). `barley` and `sowinsights` get a standard-library Python twin, because a Node script in
+a Python repo is the same mistake in the other direction as the one W3.1 avoided when it ported
+Python → Node for `hops`.
+
+Two implementations of one policy drift unless something stops them:
+
+- `tooling/ci/scorecard/agreement-check.sh` runs both against every real Scorecard result under
+  three baselines each — the result's own (clean), one with a gated check raised (regression), one
+  with a gated check removed (fail-closed). **15 of 15 comparisons agree**, byte-for-byte on stdout
+  and identically on exit code.
+- A self-test in the Python twin asserts its `GATED` and `REPORTED` lists appear in the Node source,
+  and skips where the Node file is not present.
+
+**Verification per repo:**
+
+| Repo | Evidence |
+|---|---|
+| `barley` | 23 self-tests pass (1 skipped — no Node twin there); real-data run exits 0; **`ruff format --check` and `ruff check` clean under barley's own `pyproject.toml`**, which its `lint.yml` runs on changed Python files (the first pass was not formatted — running their linter caught it) |
+| `hops-mcp` | 22 self-tests pass; real-data run exits 0; **`make check` passes** — their documented pre-commit gate, run after `npm ci`. Prettier claimed the new workflow YAML on the first attempt; `prettier --write` fixed it and the gate is green |
+| `sowinsights` | 23 self-tests pass (1 skipped); real-data run exits 0; `yamllint` clean. No lint pipeline exists in that repo to satisfy |
+
+**Two rolling-window checks are gated at today's value, deliberately.** `Code-Review` and `CI-Tests`
+score over recent changesets, so they move with team behaviour rather than with configuration.
+`barley` is baselined at Code-Review 2 (2 of 9 approved) and `sowinsights` at 0 — a further decline
+fails the weekly run. That is a signal their owners should see, and it fails a scheduled job, never
+a pull request. Called out in each PR body so the choice is theirs to reverse.
+
+## 7. Org-wide sweep — `artifacts/scorecard-org-sweep.md`
+
+All 27 repos in `provectus-barhopping`, same tool, same day, read-only. Three results that change
+how earlier findings should be stated:
+
+- **Baseline finding 1 generalizes.** 25 of 26 default branches require **zero** passing status
+  checks; the enterprise ruleset `provectus-global` carries no `required_status_checks` rule type at
+  all. `barley` is the only repo in the org that blocks a merge on a check. One org-level settings
+  change, not 26 repo-level ones.
+- **A second score inversion.** `barley` — the only enforced repo — scores Branch-Protection **4**,
+  below the 25 that enforce nothing. Together with the Token-Permissions inversion in §4, that is
+  two independent cases in one day of a per-check score ranking the wrong way round.
+- **Dependabot exists in 1 of 26 repos** (`hops`). The Phase 1 headline about secret scanning has
+  the same shape one layer out: security tooling here is a property of one repository, not of the
+  organisation.
+
+And one accidental validation: `dme-core` is empty, so Scorecard returns `"checks": null`. Both
+twins exit **2** on it rather than reading zero checks as zero regressions — the fail-closed path,
+exercised in the wild on its first org-wide run.

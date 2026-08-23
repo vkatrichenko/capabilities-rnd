@@ -730,3 +730,46 @@ Independent confirmations worth recording: Scorecard flagged `sowinsights`' comm
 and its mutable `python:3.11-bullseye` base image without being told to look, both Phase 1c
 findings; and `barley`'s Code-Review 2 (2 of 9 changesets approved) is a third instrument agreeing
 with the gitleaks history scan and barley's own audit about how that repo merges.
+
+## 2026-08-23 (later) — the question that widened the measurement
+
+Asked whether Scorecard should not cover every related repo rather than just `hops`. It should, and
+the answer split cleanly in two: **measurement** is read-only and costs one command per repo, so it
+went org-wide immediately; **the CI job** is a change, and changes need the owning team's approval,
+which is why three sibling branches now sit committed and unpushed rather than merged.
+
+**The scope question was the finding.** The charter names four repos. The org has 27. Sweeping all
+of them turned an argued-from-`hops` claim into a verified org-level one: 25 of 26 default branches
+require zero passing status checks, and the enterprise ruleset carries no `required_status_checks`
+rule type at all. The top recommendation stopped being "ask the HOPS tech lead" and became "one
+change to the `provectus-global` ruleset". Four repos was a scoping decision inherited from the
+charter and never re-examined; re-examining it cost 25 minutes of wall-clock.
+
+**Two score inversions in one day, both found the same way.** `barley` declares top-level workflow
+permissions in 27 of 28 workflows and scores Token-Permissions 0; `hops` declares none anywhere and
+also scores 0. `barley` is the only repo in the org that blocks a merge on a passing check and
+scores Branch-Protection 4, below the 25 repos that block nothing. Both were caught by reading the
+`details` field rather than the score, and both would have been asserted backwards from the score
+table alone. **A per-check score is not monotone in the control it names** — the same lesson as the
+Phase 1 AWOS `score`-vs-`coverage` correction, from a different tool, which is what makes it a
+methodology claim rather than a quirk.
+
+**Porting rule, stated because it was nearly got wrong: one policy, two implementations, chosen by
+what each repo's own lint pipeline claims.** The instinct was to ship the Node checker everywhere.
+But W3.1 ported Python → Node for `hops` precisely because hops CI has no Python; shipping Node into
+`barley` and `sowinsights` is that mistake mirrored. So there is a stdlib Python twin, and an
+agreement check that runs both implementations over every real Scorecard result under three baseline
+mutations each — 15/15 byte-identical. Two implementations of one policy drift unless something
+stops them.
+
+**Running each repo's own gate found things reading its config did not.** `ruff format --check`
+under barley's `pyproject.toml` rejected the first pass. `make check` in `hops-mcp`, after a full
+`npm ci`, showed prettier claiming the new workflow YAML — while confirming that `scripts/` really
+is outside eslint, prettier and tsconfig, which was the reason the Node twin was safe to put there.
+Neither would have been caught by inspection. Cheap rule: before committing to someone else's repo,
+run their gate, not your reading of it.
+
+**And an unplanted test of our own fail-closed rule.** `dme-core` is an empty repo; Scorecard
+returns `"checks": null` with aggregate -1. Both twins exit 2 on it rather than treating zero checks
+as zero regressions. The degenerate input the tool was designed against turned up on the first
+org-wide run without being constructed.
