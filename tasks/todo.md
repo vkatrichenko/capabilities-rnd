@@ -262,7 +262,10 @@ the baseline is unrecoverable.
       GitHub Actions** (`hops-dev.yml` ×5, `hops-main.yml` ×5, `hops-mr-check.yml` ×5,
       `hops-demo.yml`, `hops-preview.yml`) — the CI-side twin of the `.mcp.json` finding, same
       control, and this one moves Scorecard's Pinned-Dependencies. Pin both surfaces in one item;
-      leave the 100 GitHub-owned actions alone (low risk, high churn).
+      leave the GitHub-owned actions alone (low risk, high churn — now 102 after #528).
+      **Scoreboard exists as of W2.3 (2026-08-23):** Pinned-Dependencies 0 with 0/17 third-party
+      actions pinned is in the committed CI baseline, so this item lands as a measured improvement
+      rather than as a diff. Still 0/17 today — nothing has moved it.
 
 - [x] **W1.6 — NEW (2026-08-19), landed as a hops PR: gitleaks allowlist scope.**
       `hops/.gitleaks.toml` used `regexTarget = "line"`, which allowlists the whole line —
@@ -293,7 +296,45 @@ the baseline is unrecoverable.
       **Scope is wider than written:** 3 of hops' 4 registered hooks exist only as *inline*
       `command` strings inside `.claude/settings.json` — the scanner must read those too, not
       just files under a hooks directory.
-- [ ] **W2.3** OpenSSF Scorecard action in hops CI; delta vs the Gate 0 baseline
+- [x] **W2.3 — OpenSSF Scorecard in hops CI + the Gate 0 delta (2026-08-23)** → evidence:
+      `artifacts/scorecard-w2-3-evidence.md`; tooling: `tooling/ci/scorecard/`. hops branch
+      `HOP-0000/openssf-scorecard-posture-check` off `origin/main` @ `628b57db2`, commit
+      `c0a93c356`, 4 files, **not pushed**.
+      **The delta is zero, and that is the finding.** Not one check moved between the G0.3 baseline
+      and current `main` across #515, #518 and #528 — Scorecard has no secret-scanning check, no
+      cooldown concept and no opinion on package names, so all three are invisible to it by
+      construction. Only real movement: open advisories 65 → 58, which is upstream churn, not our
+      work, and does not change the score (Vulnerabilities saturates at 0).
+      Design: weekly cron + `workflow_dispatch` + `push` to main filtered to `.github/workflows/**`
+      (not `pull_request` — repo-level state a PR does not change). Per-check ratchet against a
+      committed baseline, **not** an aggregate threshold: 6 gated, 6 reported, 6 ignored, every one
+      of the 18 classified and a self-test that fails if upstream adds a nineteenth. Fails closed on
+      a missing / inconclusive / unbaselined gated check.
+      Verified: 22 offline self-tests; exit 1 on both positive controls (hand-raised baseline;
+      gated check deleted from real results), exit 0 on the true baseline; local run with and
+      without the new workflow scores the four workflow-facing checks identically, so the workflow
+      does not move what it measures.
+      **Not verifiable before merge** (stated in the PR): whether a Docker container action runs on
+      the CodeBuild runners, and how `GITHUB_TOKEN` scope changes Branch-Protection against the
+      enterprise ruleset. The merge is itself a push to main touching `.github/workflows/**`, so it
+      fires the job.
+      Version handling: baseline was v5.1.1-45, CI runs v5.5.0. Re-read the Gate 0 commit at v5.5.0
+      to separate tool drift from repo change — identical, including the 65 advisories. Caveat
+      found: `--commit` runs only **9 of 18** checks and still prints an aggregate (4.9); it is not
+      comparable with 5.4.
+      **New finding:** the action is SHA-pinned but its `action.yaml` runs
+      `docker://ghcr.io/ossf/scorecard-action:v2.4.4` — a mutable tag. Pinning the action does not
+      pin the code that executes. Feeds W1.4 and the article.
+- [x] **W2.3b — four-repo Scorecard posture table (2026-08-23)**, read-only, in the same evidence
+      file. Aggregates `hops` 5.4 · `hops-mcp` 4.7 · `barley` 4.1 · `sowinsights` 3.4 (ordering
+      only — ~2.2 of each is open-source-norm checks that do not apply). Independent confirmation
+      of two Phase 1c findings without being told to look: `sowinsights`' committed `.pyc`
+      (Binary-Artifacts 8) and its mutable `python:3.11-bullseye` base image. `barley`: 50 unpinned
+      third-party actions, 108 unpinned container images, 286 open advisories, Code-Review 2 (2/9
+      changesets approved). **Correction to an obvious-looking claim:** all four score
+      Token-Permissions 0, but `barley` declares top-level permissions in 27 of 28 workflows and
+      loses on two `contents: write` grants — it is ahead of `hops` (which declares none anywhere)
+      at an identical score. Read the details, not the score.
 
 ### Measurement checkpoint (after Waves 1–2)
 - [ ] Re-run `/awos:ai-readiness-audit` on hops — acceptance: **no dimension regresses**.

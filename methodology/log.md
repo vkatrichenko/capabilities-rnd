@@ -688,3 +688,45 @@ That belongs in the methodology section of the article as a technique, not as an
 Report republished with every delivery row green. Next: the measurement checkpoint (re-run the
 AWOS audit) — but note that of the merged items only W1.5, still unshipped, produces a large audit
 delta. The checkpoint will under-report the phase unless that is said explicitly.
+
+## 2026-08-23 — W2.3: Scorecard in CI, and a delta of zero
+
+Two runs of Scorecard v5.5.0 against `hops` (current `main`, and the Gate 0 commit via `--commit`),
+three more against the sibling repos, a Node comparison tool with 22 offline self-tests, and a hops
+branch that is committed and unpushed. Full evidence: `artifacts/scorecard-w2-3-evidence.md`.
+
+**The result is a negative one, and it is the point.** Not one check moved between the 2026-08-18
+baseline and today, across three merged security PRs. Scorecard has no secret-scanning check, no
+concept of a dependency cooldown, and no opinion about whether a package name exists — so #515,
+#518 and #528 are invisible to it by construction. Reporting that plainly is more useful than
+finding something to claim: the pairing of AWOS (does the control exist?) with Scorecard (is it
+enforced?) only earns its keep if we also say what neither of them sees.
+
+**Method note — the version-matched re-baseline was worth the extra run, and not for its result.**
+The baseline was captured at v5.1.1-45 and CI will run v5.5.0, so a raw before/after would confuse
+tool drift with repository change. Re-reading the *same commit* at the new version returned
+identical scores, including an advisory count of 65 on both. That is a control that cost one command
+and now lets the delta be stated without a caveat. The by-product mattered more: `--commit` silently
+runs only **9 of 18** checks, and its aggregate (4.9) is computed over that subset. Comparing it
+with 5.4 would have manufactured a regression out of nothing. A tool that quietly narrows its own
+scope and still prints a headline number is exactly the failure mode this project keeps finding.
+
+**A finding one layer below where anyone looks.** The workflow pins `ossf/scorecard-action` to a
+commit SHA — and that action's own `action.yaml` runs `docker://ghcr.io/ossf/scorecard-action:v2.4.4`,
+a mutable tag. The pin fixes which manifest is read, not which code executes. Found inside the tool
+adopted to measure exactly this class of gap. Generalized for the article: **"pinned" is a claim
+about one layer** — a SHA-pinned action, a digest-pinned image built `FROM` a tag, a lockfile whose
+registry permits re-publication.
+
+**The cross-repo table corrected a claim I was about to make.** All four repos score
+Token-Permissions 0, and the obvious sentence — "none of them declares top-level workflow
+permissions" — is false. `barley` declares them in 27 of 28 workflows and scores 0 anyway, on two
+`contents: write` grants and one workflow with none. It is materially ahead of `hops` (which
+declares none, anywhere) at an identical score, because the check is effectively a minimum over
+workflows. The details field said so; the score did not. Caught only because the write-up was built
+from the raw JSON rather than from the score table — which is now the rule for these artifacts.
+
+Independent confirmations worth recording: Scorecard flagged `sowinsights`' committed `.pyc` files
+and its mutable `python:3.11-bullseye` base image without being told to look, both Phase 1c
+findings; and `barley`'s Code-Review 2 (2 of 9 changesets approved) is a third instrument agreeing
+with the gitleaks history scan and barley's own audit about how that repo merges.

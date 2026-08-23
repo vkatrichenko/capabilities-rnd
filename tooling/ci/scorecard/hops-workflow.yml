@@ -1,0 +1,87 @@
+# Lands in hops as `.github/workflows/hops-scorecard.yml`.
+#
+# Porting notes:
+#   - copy `check-scorecard.mjs` and `check-scorecard.test.mjs` to `scripts/`
+#     and `scorecard-baseline.json` to `scripts/` in hops, then add this file
+#   - the baseline was generated from a real run:
+#       scorecard --repo=github.com/provectus-barhopping/hops --format=json --show-details -o r.json
+#       node scripts/check-scorecard.mjs --results r.json --write-baseline scripts/scorecard-baseline.json
+#   - `ossf/scorecard-action` is pinned to the commit that `v2.4.4` dereferences
+#     to. Note the residual gap, deliberately: the action's own `action.yaml`
+#     runs `docker://ghcr.io/ossf/scorecard-action:v2.4.4`, a MUTABLE tag, so
+#     pinning the action does not pin the code that executes. Recorded in
+#     artifacts/scorecard-w2-3-evidence.md; not a reason to reject the action.
+
+name: OpenSSF Scorecard
+
+on:
+  # Weekly full posture read. Scorecard measures repository-level state —
+  # branch protection, workflow pinning, open advisories — most of which no
+  # single PR changes, so a per-PR run would pay minutes of GitHub API calls to
+  # re-measure the same answer.
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+  # The three gated checks that a merge realistically moves (Pinned-Dependencies,
+  # Token-Permissions, Dangerous-Workflow) all read `.github/workflows/**`, so a
+  # workflow change gets an immediate answer instead of waiting for Monday.
+  push:
+    branches: [main]
+    paths: ['.github/workflows/**']
+
+permissions:
+  contents: read
+
+jobs:
+  scorecard:
+    name: OpenSSF Scorecard
+    runs-on: codebuild-hops-regular-${{ github.run_id }}-${{ github.run_attempt }}
+    permissions:
+      contents: read
+      # Private-repo reads: without these the default GITHUB_TOKEN hits
+      # "Resource not accessible by integration" during GraphQL ListCommits and
+      # the SAST detection, and checks silently degrade rather than fail.
+      # No `id-token` / `security-events`: publishing self-disables on a private
+      # repo (scorecard-action options.go forces PublishResults && !private),
+      # and SARIF upload needs GitHub Advanced Security, which this repo has
+      # not got — hence JSON plus an artifact.
+      issues: read
+      pull-requests: read
+      checks: read
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Run OpenSSF Scorecard
+        uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc # v2.4.4
+        with:
+          results_file: scorecard-results.json
+          results_format: json
+          publish_results: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Self-test the comparison
+        run: node --test scripts/check-scorecard.test.mjs
+
+      - name: Compare against the committed baseline
+        run: |
+          node scripts/check-scorecard.mjs \
+            --results scorecard-results.json \
+            --baseline scripts/scorecard-baseline.json \
+            --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Scorecard results
+        # always(): the comparison hard-fails on a gated regression, which would
+        # otherwise skip this step and lose the evidence exactly when it matters.
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: scorecard-results
+          path: scorecard-results.json
+          retention-days: 30
+          if-no-files-found: warn
