@@ -362,6 +362,27 @@ the baseline is unrecoverable.
       best-pinned repo in the org.
       Accidental validation: `dme-core` is empty, Scorecard returns `"checks": null`, and both
       twins exit 2 rather than reading zero checks as zero regressions.
+- [x] **W2.3e — Scorecard ported to `wort` (2026-08-24)**, on explicit fresh approval — `wort` is
+      outside the charter's four, and W2.3d named it as the one repo outside scope where a standing
+      measurement pays. Branch `chore/openssf-scorecard` `c897304`, **committed and unpushed**.
+      Baseline agg 4.2 @ `c29cbc4e4`, measured fresh against current `main`.
+      **The rollout question is settled: not all 27.** Maintained-and-has-CI leaves seven repos —
+      the charter's four plus `hops-fin-service`, `barley-fe`, `wort`. Sixteen of twenty-six score
+      Maintained 0 and eleven have no workflows, so three of the six gated checks would read `-1`
+      there. For the dormant tail the artefact is a periodic org sweep from one repo, not twenty-odd
+      workflows.
+      **Third instance of the non-monotonicity:** three of `wort`'s four workflows declare top-level
+      `permissions`; `ci.yml` does not, and takes Token-Permissions to 0. A one-line
+      `permissions: contents: read` in `ci.yml` moves it 0 → 10 — the highest-value single line
+      available in the org. Named as a follow-up in the PR body, **not** included in the port.
+      **Sharpest declared-vs-enforced case found so far:** `main` requires a PR and one approval,
+      admins are exempt from that rule, and Code-Review reads 1 of 30 changesets approved. The
+      setting is on and still not binding — a stronger form of W2.3d's status-check finding.
+      `wort`'s lint (pyupgrade, bugbear, simplify, `E501` at 100, repo-wide pyright) forced a rework
+      of the shared Python twin. It is now **format-stable at both 99 and 100 columns**, so one
+      source satisfies `barley` and `wort`. ⚠️ The unpushed `barley` and `sowinsights` branches
+      still carry the pre-rework revision — proven byte-identical in output, but stale in source;
+      refreshing them needs their own approval.
 - [x] **W2.3b — four-repo Scorecard posture table (2026-08-23)**, read-only, in the same evidence
       file. Aggregates `hops` 5.4 · `hops-mcp` 4.7 · `barley` 4.1 · `sowinsights` 3.4 (ordering
       only — ~2.2 of each is open-source-norm checks that do not apply). Independent confirmation

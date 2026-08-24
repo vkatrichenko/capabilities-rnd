@@ -773,3 +773,57 @@ run their gate, not your reading of it.
 returns `"checks": null` with aggregate -1. Both twins exit 2 on it rather than treating zero checks
 as zero regressions. The degenerate input the tool was designed against turned up on the first
 org-wide run without being constructed.
+
+## 2026-08-24 — porting outward: `wort`, and what a stricter repo teaches
+
+**The question was "should this go to all 27 repos?" and the honest answer was no.** The instinct
+after building a control is to maximise its coverage. The org sweep already held the data to refuse
+that: filter to *actively maintained* **and** *has CI* and 27 collapses to seven. Sixteen of
+twenty-six repos score Maintained 0; eleven have no GitHub Actions workflows, so three of the six
+gated checks would read `-1` there and the weekly job would measure very little at real cost. **A
+control that cannot move is not a control** — for the dormant tail, the right artefact is a periodic
+sweep run from one place, which is what the sweep already is.
+
+There is a sequencing point underneath it, and it matters more than the coverage. 25 of 26 default
+branches require zero passing status checks. A gating workflow added to a repo where no check is
+required produces a red X that merges anyway. **Rolling out a gate before the org enforces gates is
+decoration.** One ruleset change dominates twenty-odd repository PRs.
+
+**Running someone else's linter is worth more the stricter they are.** `wort`'s `make lint` is
+pyupgrade + bugbear + flake8-simplify + `E501` at 100 columns, plus repo-wide pyright — materially
+stricter than `barley`'s `E,W,F,I` with `E501` ignored. It rejected the Python twin on four counts
+(`.format()` over f-strings, `raise` without `from`, an `if`-block where `.get` reads, two long
+strings). None of that is cosmetic in effect: the fix produced a file that is **format-stable at
+both 99 and 100 columns**, so one source now satisfies two repos with different line lengths instead
+of forking per repo. The generalizable form: *satisfy the strictest consumer and the others come
+free; satisfy the loosest and you own a fork per repo.*
+
+Held to it afterwards by re-running the agreement check — 15/15 byte-identical against the Node
+twin, on five real results including `wort`'s. A rewrite that passes its own tests but silently
+changes output is exactly what an agreement check exists to catch.
+
+**Fresh approval is per-repository, and the tooling enforced it.** The user approved `wort`
+explicitly. When the same rework was then copied toward `barley` and `sowinsights` — a strictly
+mechanical propagation, behaviourally proven identical — the write was refused, correctly: those
+repos were approved for their own port on a different day, not for edits today. So the two unpushed
+sibling branches now carry a stale-but-equivalent revision, and that is recorded as known drift
+rather than quietly fixed. **Proving two revisions equivalent is not the same as being allowed to
+replace one with the other.**
+
+**The sharpest declared-vs-enforced case in the org turned up here.** `wort`'s `main` requires a
+pull request and one approving review; Scorecard reads 1 of 30 changesets approved, and branch
+protection reports administrators exempt. Earlier instances of this finding were about a control
+being *absent* (no required status checks). This one is a control that is *present, switched on, and
+routed around* — a strictly stronger version of the same claim, and the better example for the
+article.
+
+**Third instance of the score non-monotonicity, and this time it names a one-line fix.** Three of
+`wort`'s four workflows declare top-level `permissions`; `ci.yml` does not, and Token-Permissions
+reads 0 for the repo. Adding `permissions: contents: read` to that one file moves the check 0 → 10.
+It was deliberately left out of the port: it is a change to a CI job this research does not own, and
+scope discipline is what keeps these ports acceptable to their owners. Named in the PR body instead.
+
+**A gate that constrains its own author is a good sign.** `Pinned-Dependencies` is gated at 8, and
+adding a workflow adds dependencies to the check being gated — so a tag-referenced action in the new
+workflow would have failed the job on its first run. Worth noticing as a design property: the
+controls worth shipping are the ones that apply to the change that ships them.

@@ -19,7 +19,8 @@ inconclusive (-1), or is absent from the baseline is a failure, not a pass.
 Standard library only, Python >= 3.9. Usage:
   python3 check_scorecard.py --results results.json --baseline baseline.json
   python3 check_scorecard.py --results results.json --write-baseline baseline.json
-  python3 check_scorecard.py --results results.json --baseline baseline.json --summary "$GITHUB_STEP_SUMMARY"
+  python3 check_scorecard.py --results results.json --baseline baseline.json \
+      --summary "$GITHUB_STEP_SUMMARY"
 
 Exit 0 no regression, 1 a gated check regressed, 2 usage or unreadable input.
 """
@@ -55,7 +56,10 @@ REPORTED = [
 
 # Not tracked at all, with the reason recorded so nobody "fixes" them later.
 IGNORED = {
-    "SAST": "false negative — Scorecard detects CodeQL and SonarCloud; a self-hosted SonarQube instance is invisible to it",
+    "SAST": (
+        "false negative — Scorecard detects CodeQL and SonarCloud; a self-hosted "
+        "SonarQube instance is invisible to it"
+    ),
     "License": "open-source norm, not applicable to a private product repo",
     "Security-Policy": "open-source norm, not applicable to a private product repo",
     "CII-Best-Practices": "open-source norm, not applicable to a private product repo",
@@ -74,12 +78,12 @@ def read_json(path):
     try:
         with open(path, encoding="utf-8") as handle:
             raw = handle.read()
-    except OSError as err:
-        raise InputError("cannot read {}: {}".format(path, err.strerror or err))
+    except OSError as exc:
+        raise InputError(f"cannot read {path}: {exc.strerror or exc}") from exc
     try:
         return json.loads(raw)
-    except ValueError as err:
-        raise InputError("cannot parse {}: {}".format(path, err))
+    except ValueError as exc:
+        raise InputError(f"cannot parse {path}: {exc}") from exc
 
 
 def scores_of(results):
@@ -94,9 +98,13 @@ def baseline_from(results):
     checks = scores_of(results)
     tracked = {name: checks[name]["score"] for name in TRACKED if name in checks}
     repo = results.get("repo") or {}
+    scorecard = results.get("scorecard") or {}
     return {
-        "_comment": "Ratchet for check_scorecard.py. Raising a score here is a reviewed commit, never automatic.",
-        "scorecard_version": (results.get("scorecard") or {}).get("version", "unknown"),
+        "_comment": (
+            "Ratchet for check_scorecard.py. Raising a score here is a reviewed "
+            "commit, never automatic."
+        ),
+        "scorecard_version": scorecard.get("version", "unknown"),
         "measured": {
             "date": results.get("date", "unknown"),
             "repo": repo.get("name", "unknown"),
@@ -123,17 +131,15 @@ def compare(results, baseline):
         # between Scorecard versions, so a delta across versions is not
         # evidence that the repository moved.
         notes.append(
-            "Scorecard version changed since the baseline ({} -> {}). "
+            f"Scorecard version changed since the baseline ({base_version} -> {now_version}). "
             "A score difference across versions may be tool drift, not a repository change. "
-            "Re-baseline deliberately rather than reading it as a win or a regression.".format(
-                base_version, now_version
-            )
+            "Re-baseline deliberately rather than reading it as a win or a regression."
         )
 
     for name in TRACKED:
         gated = name in GATED
         check = checks.get(name)
-        before = base[name] if name in base else None
+        before = base.get(name)
         after = check["score"] if check else None
         row = {
             "name": name,
@@ -187,6 +193,12 @@ def to_markdown(results, baseline, verdict):
     rows, regressions, notes = verdict
     repo = results.get("repo") or {}
     measured = baseline.get("measured") or {}
+    repo_name = repo.get("name", "?")
+    repo_commit = (repo.get("commit") or "")[:9]
+    version = (results.get("scorecard") or {}).get("version", "?")
+    base_commit = (measured.get("commit") or "")[:9]
+    base_date = measured.get("date", "?")
+    aggregate = results.get("score")
 
     def num(value):
         return "—" if value is None else str(value)
@@ -195,20 +207,13 @@ def to_markdown(results, baseline, verdict):
     out.append("## OpenSSF Scorecard")
     out.append("")
     out.append(
-        "`{}` @ `{}` · Scorecard {} · baseline `{}` ({})".format(
-            repo.get("name", "?"),
-            (repo.get("commit") or "")[:9],
-            (results.get("scorecard") or {}).get("version", "?"),
-            (measured.get("commit") or "")[:9],
-            measured.get("date", "?"),
-        )
+        f"`{repo_name}` @ `{repo_commit}` · Scorecard {version} · "
+        f"baseline `{base_commit}` ({base_date})"
     )
     out.append("")
     out.append(
-        "Aggregate **{}** — reported only. It is not a gate: four checks score a private repo "
-        "against open-source norms, and SAST is a known false negative here.".format(
-            results.get("score")
-        )
+        f"Aggregate **{aggregate}** — reported only. It is not a gate: four checks score a "
+        "private repo against open-source norms, and SAST is a known false negative here."
     )
     out.append("")
     out.append("| Check | Policy | Baseline | Now | Status |")
@@ -216,39 +221,32 @@ def to_markdown(results, baseline, verdict):
     for row in rows:
         policy = "ignored" if row["ignored"] else ("**gated**" if row["gated"] else "reported")
         status = "**REGRESSED**" if row["status"] == "REGRESSED" else row["status"]
-        out.append(
-            "| {} | {} | {} | {} | {} |".format(
-                row["name"], policy, num(row["before"]), num(row["after"]), status
-            )
-        )
+        before, after = num(row["before"]), num(row["after"])
+        out.append(f"| {row['name']} | {policy} | {before} | {after} | {status} |")
     out.append("")
     for note in notes:
-        out.append("> {}".format(note))
+        out.append(f"> {note}")
     if notes:
         out.append("")
     if regressions:
         out.append("### Gated regressions")
         out.append("")
         for row in regressions:
-            out.append(
-                "- **{}**: {} -> {} ({})".format(
-                    row["name"], num(row["before"]), num(row["after"]), row["status"]
-                )
-            )
+            before, after = num(row["before"]), num(row["after"])
+            out.append(f"- **{row['name']}**: {before} -> {after} ({row['status']})")
             if row["reason"]:
-                out.append("  - {}".format(row["reason"]))
+                out.append(f"  - {row['reason']}")
     else:
         out.append("No gated check regressed.")
     out.append("")
     return "\n".join(out)
 
 
-def main(argv, log=print, err=None):
-    if err is None:
+def _stderr(message):
+    print(message, file=sys.stderr)
 
-        def err(message):
-            print(message, file=sys.stderr)
 
+def main(argv, log=print, err=_stderr):
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--results")
     parser.add_argument("--baseline")
@@ -272,10 +270,9 @@ def main(argv, log=print, err=None):
         results = read_json(args.results)
         if args.write_baseline:
             with open(args.write_baseline, "w", encoding="utf-8") as handle:
-                handle.write(
-                    json.dumps(baseline_from(results), indent=2, ensure_ascii=False) + "\n"
-                )
-            log("wrote baseline: {}".format(args.write_baseline))
+                written = json.dumps(baseline_from(results), indent=2, ensure_ascii=False)
+                handle.write(written + "\n")
+            log(f"wrote baseline: {args.write_baseline}")
             return 0
         if not args.baseline:
             err(usage)
@@ -291,7 +288,7 @@ def main(argv, log=print, err=None):
             return 0
         return 0 if args.advisory else 1
     except InputError as exc:
-        err("check-scorecard: {}".format(exc))
+        err(f"check-scorecard: {exc}")
         return 2
 
 

@@ -18,6 +18,10 @@ import check_scorecard as sc
 ALL_CHECKS = sc.TRACKED + list(sc.IGNORED)
 
 
+def _check(name, scores):
+    return {"name": name, "score": scores.get(name, 10), "reason": f"reason for {name}"}
+
+
 def results(scores=None, version="v5.5.0", commit="abc123def456"):
     """A full Scorecard result with every check at 10, overridden by `scores`."""
     scores = scores or {}
@@ -26,10 +30,7 @@ def results(scores=None, version="v5.5.0", commit="abc123def456"):
         "repo": {"name": "github.com/x/y", "commit": commit},
         "scorecard": {"version": version},
         "score": 5.4,
-        "checks": [
-            {"name": n, "score": scores.get(n, 10), "reason": "reason for {}".format(n)}
-            for n in ALL_CHECKS
-        ],
+        "checks": [_check(n, scores) for n in ALL_CHECKS],
     }
 
 
@@ -85,9 +86,9 @@ class Policy(unittest.TestCase):
         gated_block = mjs.split("export const REPORTED")[0]
         reported_block = mjs.split("export const REPORTED")[1].split("export const IGNORED")[0]
         for name in sc.GATED:
-            self.assertIn("'{}'".format(name), gated_block)
+            self.assertIn(f"'{name}'", gated_block)
         for name in sc.REPORTED:
-            self.assertIn("'{}'".format(name), reported_block)
+            self.assertIn(f"'{name}'", reported_block)
 
 
 class Compare(unittest.TestCase):

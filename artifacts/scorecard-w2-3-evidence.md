@@ -346,3 +346,101 @@ how earlier findings should be stated:
 And one accidental validation: `dme-core` is empty, so Scorecard returns `"checks": null`. Both
 twins exit **2** on it rather than reading zero checks as zero regressions — the fail-closed path,
 exercised in the wild on its first org-wide run.
+
+## 8. Fourth port: `wort` (2026-08-24)
+
+`wort` is outside the charter's four. It was ported on **explicit fresh approval from Vladyslav
+Katrychenko on 2026-08-24**, after §7's sweep identified it as the one repository outside the
+research scope where a standing measurement pays: actively maintained (Maintained 10), 46 open
+advisories, and Code-Review 0.
+
+The rollout question it settles: **not all 27**. Filtering the org to "actively maintained **and**
+has CI" leaves seven repos — the charter's four plus `hops-fin-service`, `barley-fe` and `wort`.
+Sixteen of twenty-six score Maintained 0, and eleven have no GitHub Actions workflows at all, so
+three of the six gated checks would read `-1` there and the weekly job would measure almost nothing.
+For the dormant tail the right artefact is a periodic org sweep from one repo, not twenty-odd
+workflows.
+
+**Baseline** — Scorecard v5.5.0, `c29cbc4e4` (`origin/main`), 2026-08-24, aggregate **4.2**. Run
+fresh against current `main` rather than reused from the 23 Aug sweep; identical on all 18 checks.
+
+| Check | Policy | Score | What it is measuring |
+|---|---|---:|---|
+| `Pinned-Dependencies` | **gated** | 8 | 24 of 24 actions pinned by SHA — the best in the org — but 0 of 2 container images in the `Dockerfile` |
+| `Token-Permissions` | **gated** | 0 | `app-deploy`, `tf-apply`, `tf-plan` each declare top-level `contents: read`; `ci.yml` declares none |
+| `Dangerous-Workflow` | **gated** | 10 | |
+| `Binary-Artifacts` | **gated** | 10 | |
+| `Code-Review` | **gated** | 0 | 1 of 30 changesets approved |
+| `CI-Tests` | **gated** | 10 | 28 of 28 merged PRs checked |
+| `Vulnerabilities` | reported | 0 | 46 open advisories, all PYSEC |
+| `Branch-Protection` | reported | 5 | PR + 1 approval required; admins exempt; **no status checks required** |
+| `Maintained` | reported | 10 | |
+| `Dependency-Update-Tool` | reported | 0 | no Dependabot, no Renovate |
+| `Contributors` | reported | 3 | 1 contributing organisation |
+| `Packaging` | reported | 10 | |
+
+### 8.1 Two numbers that do not mean what they look like
+
+**Token-Permissions 0 is the third instance of the non-monotonicity in §4.** Three of `wort`'s four
+workflows declare a top-level `permissions` block; one that does not — `ci.yml` — takes the whole
+check to zero. `barley` showed the same shape at 27 of 28. The check does not measure "how much of
+this repo restricts its tokens"; it measures "does any workflow fail to". **A one-line addition of
+`permissions: contents: read` to `ci.yml` would move this check 0 → 10.** It is deliberately *not*
+included in the port — it is a change to a CI job this research does not own — but it is the single
+highest-value line available in the org, and it is named in the PR body as a follow-up.
+
+**Code-Review 0 against branch protection that requires an approving review.** `main` requires a
+pull request and one approval, yet only 1 of the last 30 changesets carries an approval. Branch
+protection also reports `'branch protection settings apply to administrators' is disabled`. The
+rule exists and the merges are going around it. This is the sharpest single instance in the org of
+the capability finding that a *declared* control and an *enforced* control are different measurements
+— and unlike §7's status-check finding, here the setting is switched on and still not binding.
+
+### 8.2 The gate is self-consistent about pinning
+
+`Pinned-Dependencies` is gated at 8, and adding a workflow adds dependencies to the very check being
+gated. Every action in the new workflow is therefore pinned by commit SHA
+(`actions/checkout@de0fac2e4`, `actions/setup-python@5fda3b95a`,
+`actions/upload-artifact@043fb46d1`, `ossf/scorecard-action@2d1146689`), reusing the exact pins the
+repo already uses where they exist. A tag-referenced action added here would have failed this job on
+its first run — the gate would have caught its own author.
+
+### 8.3 Verification actually run
+
+| Step | Result |
+|---|---|
+| `python3 -m unittest scripts.test_check_scorecard` | 23 tests, **OK (skipped=1)** — the skip is the Node-twin comparison, absent here |
+| Real-data run, true baseline | exit **0**, "No gated check regressed" |
+| Negative control, `Pinned-Dependencies` 8 → 9 in baseline | exit **1**, names `Pinned-Dependencies` and prints Scorecard's own reason |
+| `uv run ruff check .` (repo-wide, `E,F,I,N,UP,B,SIM,TCH` @ 100) | **All checks passed** |
+| `uv run ruff format --check` on both new files | **already formatted** |
+| `uv run pyright` (repo-wide, the `make lint` gate) | **0 errors, 0 warnings** |
+| `agreement-check.sh` over 5 real results × 3 baselines | **15 of 15 agree**, byte-identical stdout and exit code |
+
+`wort`'s lint is materially stricter than `barley`'s — pyupgrade, bugbear, flake8-simplify and
+`E501` enforced at 100 columns, plus pyright in basic mode over the whole repo. Satisfying it
+required reworking the shared Python twin: `.format()` → f-strings (UP032), `raise … from` (B904),
+`base.get(name)` (SIM401), and wrapping two long strings. The reworked file is **format-stable at
+both 99 and 100 columns**, so a single source now satisfies `barley` and `wort` without a
+per-repo fork.
+
+One deliberate divergence remains, in the test file only: `scripts/` is a package in `wort`
+(`__init__.py`), and pyright runs over the repo, so the import is `from scripts import
+check_scorecard as sc` and the job runs `python3 -m unittest scripts.test_check_scorecard`.
+
+### 8.4 Known source drift in the two unpushed sibling branches
+
+The `barley` and `sowinsights` branches still carry the **pre-rework** revision of
+`check_scorecard.py`. The difference is stylistic, not behavioural: both revisions were run against
+three real Scorecard results under generated baselines and produced **byte-identical stdout and
+identical exit codes**. Those branches are unpushed and can be refreshed before they open; doing so
+was not attempted here, because a write to `barley` or `sowinsights` needs its own approval.
+
+### 8.5 Not verified
+
+- **The first CI run.** The workflow fires on push to `main` touching `.github/workflows/**`, so
+  the merge triggers it. Unlike the `hops` port there is no self-hosted-runner risk — `wort` runs
+  `ubuntu-latest`, where the Docker container action is upstream's supported path.
+- **`GITHUB_TOKEN` vs user-token parity.** The baseline was measured with a user token. As
+  everywhere else in this work, the first CI value for `Branch-Protection` is a measurement to
+  reconcile, not a regression to act on.
