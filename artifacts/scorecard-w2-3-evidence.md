@@ -1033,3 +1033,44 @@ gated here combined.
    merge to the default branch, and in `barley` — which integrates on `develop` — that is rare. If it
    proves too quiet, an upserted issue on the push run is the fix, not a restored cron.
 5. **The org-level ruleset change**, still unowned.
+
+## 16. All merged; first runs green (2026-08-25)
+
+| Repo | PR | Merged | Workflow on default branch | First run |
+|---|---|---|---|---|
+| `hops` | #545 | 13:38 | `hops-scorecard.yml` | **success** — push on `main`, run 32854576604 |
+| `hops-mcp` | #55 | earlier | `hops-mcp-scorecard.yml` | success — push on `main` |
+| `wort` | #216 + #217 | 13:33 | `scorecard.yml` | success — push on `main` |
+| `sowinsights` | #5 + #6 | 13:39 | `scorecard.yml` | success — push on `main` |
+| `barley` | #1691 + #1699 | 13:33 | `scorecard.yml` on `develop` | success — **`pull_request` on an unrelated feature branch** |
+
+`barley`'s latest run is the most interesting of the five: `pull_request` on
+`fix/IGAL-2724-entity-name-substitution-guard`, a branch that has nothing to do with this work. The
+gate is now running on ordinary product pull requests, which is the whole point.
+
+### 16.1 The token-parity question, finally answered
+
+Opened in the plan as *not verifiable before merge*, restated in §8.5 and §9. `hops`' first CI run
+scored **all 18 checks** and reconciles against the user-token baseline exactly:
+
+| | Baseline (user token, `628b57db2`) | CI (`GITHUB_TOKEN`, `dca2ed7b0`) |
+|---|---:|---:|
+| Pinned-Dependencies · Token-Permissions | 0 · 0 | 0 · 0 |
+| Dangerous-Workflow · Binary-Artifacts | 10 · 9 | 10 · 9 |
+| Code-Review · CI-Tests | 10 · 10 | 10 · 10 |
+| Vulnerabilities · Maintained · Contributors · Packaging | 0 · 10 · 10 · 10 | 0 · 10 · 10 · 10 |
+| Dependency-Update-Tool | 10 | 10 |
+| **Branch-Protection** | **5** | **-1** |
+
+**Eleven of twelve tracked checks match exactly.** The twelfth is the one predicted in §9:
+`Branch-Protection`'s GraphQL query needs repo-admin scope, so it is unreadable from CI and reports
+inconclusive — reported, never gated, with the baseline holding the real user-token value. Aggregate
+5.5 vs 5.4, and the difference is that `-1`, not a posture change.
+
+No gated check regressed. The gate passed on its first run in the repository it was built for.
+
+### 16.2 Status: W2.3 complete
+
+Five repositories, eight merged pull requests for the Scorecard work, five green first runs, and the
+control now fires on ordinary product pull requests. The follow-ups from §15.5 items 1 and 2 are
+closed. Items 3–5 remain open and are recommendations, not work in flight.

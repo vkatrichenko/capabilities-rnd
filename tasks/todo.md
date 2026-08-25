@@ -299,9 +299,12 @@ the baseline is unrecoverable.
 - [x] **W2.3 CLOSED (2026-08-25)** → evidence §15. Scorecard is a standing control in four of
       five repos; the fifth is approved and waiting on a merge.
       **Landed:** `hops-mcp` #55 · `wort` #216 · `sowinsights` #5 · `barley` #1691.
-      **Open:** `hops` #545 (APPROVED, CLEAN, **not merged** — verified; `hops-scorecard.yml` is not
-      on hops' default branch), plus three follow-ups fixing repos whose default branch runs a
-      superseded workflow: `wort` #217, `sowinsights` #6, `barley` #1699.
+      **All merged 2026-08-25** — `hops` #545, `wort` #217, `sowinsights` #6, `barley` #1699 —
+      and **five green first runs** (evidence §16). `barley`'s latest is a `pull_request` run on an
+      unrelated product branch: the gate now fires on ordinary work.
+      **Token parity answered** (open since the plan): `hops`' first CI run scored all 18 checks
+      and matches the user-token baseline on **11 of 12** tracked checks. The twelfth is
+      `Branch-Protection`, `-1` from CI exactly as predicted — reported, never gated.
       Three of four merged repos needing a follow-up is the direct cost of merging before the
       pattern stabilised — the argument for W2.3i's trial-in-one-repo discipline, adopted late.
       **Five defects, none found by review:** W2.3f upstream's permission block omits two scopes ·

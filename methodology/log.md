@@ -1096,3 +1096,18 @@ purpose is to show a capability working. It is also the only version of the docu
 someone checking it. The gate is real but modest; the measurement is where the value was, and the
 single most valuable output of the whole item is a finding that needs an org settings change rather
 than any code we wrote.
+
+**Closeout confirmed (2026-08-25).** All eight Scorecard pull requests merged; five green first
+runs. `hops`' run answered the question the plan opened with as unverifiable — CI-token parity —
+by matching the user-token baseline on eleven of twelve tracked checks, the twelfth being the
+`Branch-Protection` `-1` predicted three days earlier. A prediction written down before the run and
+checked against it afterwards is worth more than the same observation made retrospectively; that is
+the only reason the reconciliation means anything.
+
+The published blueprint artifact was updated in the same pass: roadmap item 10 marked delivered, the
+Scorecard row added to the Phase 2 delivery table, and a new callout carrying the org-wide sweep —
+1 of 26 default branches requiring a status check, 1 of 26 with a dependency-update tool, and
+`wort`'s enabled-but-bypassed review rule. The callout ends with what the gate does **not** do:
+eight of twenty gated check-instances sit at zero and cannot fall, and `Branch-Protection` cannot be
+read from CI. **A report that only lists what worked is a report a reader has to fact-check; one
+that names its own limits is one they can use.**
