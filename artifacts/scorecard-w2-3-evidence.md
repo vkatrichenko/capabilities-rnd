@@ -715,3 +715,46 @@ container action and `actions/setup-node` work on that repo's CodeBuild runners,
 workflow uses `setup-node` — before the merge rather than after it. The pre-merge test is no longer
 a one-off manoeuvre to be reverted; it is the permanent shape of the workflow, and every future edit
 to the gate or its baseline gets the same treatment.
+
+## 12. The comparison posts to the pull request — trialled in `hops-mcp` (2026-08-25)
+
+With the gate now running on pull requests (§11), the output should be where the decision is taken.
+It already rendered on the run summary page — the artifact holds only the raw JSON — but that is one
+click into the Actions tab a reviewer has no particular reason to make.
+
+Added to `hops-mcp` #55 first, deliberately, before the other four: it is also the branch that
+settles §10.5's open runner question, so one run answers both.
+
+| Requirement | Resolution |
+|---|---|
+| Job permission | `pull-requests: read` → **`write`**, at job level with top-level still read-only |
+| Mechanism | `actions/github-script`, SHA-pinned `3a2844b7e` (v9.0.0) |
+| Repeat pushes | upsert on a hidden `<!-- openssf-scorecard-gate -->` marker — edit one comment, never stack |
+| Comment on failure | `if: always() && github.event_name == 'pull_request'` |
+
+**The write grant costs nothing on the check this workflow gates**, which was worth verifying rather
+than assuming. Upstream's `Token-Permissions` documentation:
+
+> The highest score is awarded when the permissions definitions … are set as read-only at the top
+> level and the required write permissions are declared at the run-level. … Though a project's score
+> won't be penalized, the check's details will include warnings for more sensitive run-level
+> permissions
+
+`pull-requests` is not among the six scopes on that warning list (`actions`, `checks`, `contents`,
+`deployments`, `packages`, `security-events`). Job-level write is the documented best-practice shape.
+
+**`actions/github-script` over `gh pr comment`**, and the reason is §10's lesson rather than taste:
+`gh` may or may not exist on a self-hosted CodeBuild runner, and assuming a tool is present is what
+broke `sowinsights`. `github-script` runs on the Actions runtime itself. It is also what
+`hops`, `hops-mcp` and `barley` already use to comment, so no new mechanism enters these repos.
+
+**One restructure it forced.** The comparison step exits non-zero on a gated regression, so anything
+appended after it in the same step never runs — including the summary. The checker now writes to
+`scorecard-summary.md`, and two later steps guarded with `always()` consume it: the run summary page
+and the comment. The file is written before the non-zero return, so a failing run still has one; the
+comment step falls back to a short "no summary produced" body if the job died before the comparison.
+
+Verified: `prettier --check` clean, workflow parses with the expected eight steps and permissions,
+the inline `github-script` body passes `node --check`, and the 23 Node self-tests still pass.
+Commit `7f930e1` on #55, **unpushed**. Not yet ported to the other four — that waits on seeing it
+work once.

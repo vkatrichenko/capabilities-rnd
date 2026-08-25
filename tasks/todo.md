@@ -362,6 +362,17 @@ the baseline is unrecoverable.
       best-pinned repo in the org.
       Accidental validation: `dme-core` is empty, Scorecard returns `"checks": null`, and both
       twins exit 2 rather than reading zero checks as zero regressions.
+- [ ] **W2.3i — the comparison posts to the pull request; trialled in `hops-mcp` (2026-08-25)** →
+      evidence §12. Commit `7f930e1` on #55, **unpushed**. `pull-requests: write` at job level
+      (verified against upstream's own docs: job-level write is the documented shape and
+      `pull-requests` is not on their sensitive-scope list, so it costs nothing on the check this
+      workflow gates). `actions/github-script` SHA-pinned `3a2844b7e` — chosen over `gh pr comment`
+      because `gh` may not exist on a self-hosted CodeBuild runner, which is exactly the assumption
+      that broke W2.3g. Upserted on a hidden marker so repeated pushes edit one comment.
+      Forced one restructure: the comparison exits non-zero on a gated regression, so the summary
+      now goes to a file that two `always()` steps consume — the run summary page and the comment.
+      Verified: prettier clean, workflow parses, inline script passes `node --check`, 23 Node tests.
+      **Open:** port to the other four once one real run shows it working.
 - [x] **W2.3h — PR-gated, not push-gated; two checks leave the gated set (2026-08-25)** →
       evidence §11. Trigger is now `schedule` + `pull_request` + `workflow_dispatch`; **`push` to
       the default branch removed**. A run on main can only report a fait accompli — both real
