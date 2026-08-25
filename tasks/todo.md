@@ -375,10 +375,15 @@ the baseline is unrecoverable.
       **Best single argument in the work item for per-check gating:** the aggregate fell 4.2 → 3.6
       entirely from measurement failure, so any threshold gate below 3.6 would have passed this run
       green while three of eighteen checks stopped working.
-      Fixes committed and **unpushed**: `wort` `fix/scorecard-token-permissions` `d36675a`,
-      `hops` `827744ae3` on the open #545 branch (second commit, not an amend — the branch is
-      already reviewed). ⚠️ `barley`, `hops-mcp`, `sowinsights` carry the same latent bug and
-      would each fail on their first run; fixing them needs their own approval.
+      **All five ports fixed, all unpushed.** `wort` `fix/scorecard-token-permissions` `d36675a`
+      and `hops` `827744ae3` (second commit on the open #545 branch, not an amend — it is already
+      reviewed). `barley` `76d941ece`, `hops-mcp` `3745270`, `sowinsights` `9c4a454` amended on
+      fresh approval — unpushed and unreviewed, so an amend is the clean shape there. The same
+      amend closed the W2.3e source drift: `barley` and `sowinsights` now carry the canonical
+      Python twin, `diff`-verified identical.
+      Each verified under its own repo's gate: barley 23 tests + ruff clean, hops-mcp 22 Node tests
+      + prettier clean, sowinsights 23 tests. No baseline value changed anywhere — the fix grants
+      read scopes so checks can be measured, it does not move a score.
 - [x] **W2.3e — Scorecard ported to `wort` (2026-08-24)**, on explicit fresh approval — `wort` is
       outside the charter's four, and W2.3d named it as the one repo outside scope where a standing
       measurement pays. Branch `chore/openssf-scorecard` `c897304`, **committed and unpushed**.

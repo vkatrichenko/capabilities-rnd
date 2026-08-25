@@ -428,13 +428,18 @@ One deliberate divergence remains, in the test file only: `scripts/` is a packag
 (`__init__.py`), and pyright runs over the repo, so the import is `from scripts import
 check_scorecard as sc` and the job runs `python3 -m unittest scripts.test_check_scorecard`.
 
-### 8.4 Known source drift in the two unpushed sibling branches
+### 8.4 Source drift in the two unpushed sibling branches — resolved 2026-08-25
 
 The `barley` and `sowinsights` branches still carry the **pre-rework** revision of
 `check_scorecard.py`. The difference is stylistic, not behavioural: both revisions were run against
 three real Scorecard results under generated baselines and produced **byte-identical stdout and
 identical exit codes**. Those branches are unpushed and can be refreshed before they open; doing so
 was not attempted here, because a write to `barley` or `sowinsights` needs its own approval.
+
+**Resolved 2026-08-25 on fresh approval.** Both branches were amended (unpushed and unreviewed, so
+an amend rather than a follow-up commit) and now carry the canonical revision — verified
+byte-identical to `tooling/ci/scorecard/check_scorecard.py` and its test by `diff`. Same amend
+carried the token-permission fix from §9.
 
 ### 8.5 Not verified at the time of the port — since resolved, see §9
 
@@ -514,11 +519,22 @@ Every port copied the same permission block from the same upstream README.
 |---|---|---:|---|
 | `wort` | **merged**, fix on `fix/scorecard-token-permissions` `d36675a`, unpushed | 10 | it did |
 | `hops` | PR #545 open, fix committed `827744ae3`, unpushed | 10 | yes |
-| `barley` | branch unpushed | 10 | yes |
-| `hops-mcp` | branch unpushed | 10 | yes |
-| `sowinsights` | branch unpushed | 0 | yes — `0 → -1` is an inconclusive reading, which the comparison gates regardless of the baseline value |
+| `barley` | branch amended `76d941ece`, unpushed | 10 | yes |
+| `hops-mcp` | branch amended `3745270`, unpushed | 10 | yes |
+| `sowinsights` | branch amended `9c4a454`, unpushed | 0 | yes — `0 → -1` is an inconclusive reading, which the comparison gates regardless of the baseline value |
 
-`hops` and `wort` are fixed. The three sibling branches are **not** — writing to them needs their
-own approval, the same constraint recorded in §8.4. Catching this before `hops` #545 merged is the
-concrete payoff of having ported to a fifth repository: the cheapest place to discover a
-configuration bug is the repository you are allowed to break.
+**All five are now fixed** — the three sibling branches on fresh approval given the same day.
+Catching this before `hops` #545 merged is the concrete payoff of having ported to a fifth
+repository: the cheapest place to discover a configuration bug is the repository you are allowed to
+break.
+
+Verification of the three sibling fixes, each under that repo's own gate:
+
+| Repo | Evidence |
+|---|---|
+| `barley` | 23 self-tests pass (1 skipped); `ruff check` and `ruff format --check` clean under barley's `pyproject.toml`; workflow parses, permissions read-only |
+| `hops-mcp` | 22 Node self-tests pass; `prettier --check` clean on the workflow (it claimed the file on the original port, so this was worth re-running); permissions read-only |
+| `sowinsights` | 23 self-tests pass (1 skipped); workflow parses, permissions read-only |
+
+No baseline value changed in any of the five. The fix grants read scopes so the checks can be
+measured; it does not move a score, and none of the ratchets were touched.

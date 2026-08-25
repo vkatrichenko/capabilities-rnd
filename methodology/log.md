@@ -867,3 +867,15 @@ One process note. The fix went to `hops` as a *second commit* on the open PR rat
 and force-push. The branch has already been reviewed, including by CodeRabbit; a force-push discards
 that review context to save one line of history. Cheap to squash at merge, not cheap to un-lose a
 review.
+
+**Same-day addendum.** The three sibling branches were fixed on fresh approval, which also closed
+the source drift recorded the day before. Two shapes of the same fix, chosen by review state rather
+than by preference: a second commit on `hops` #545 because that branch has been reviewed, an amend
+on `barley`, `hops-mcp` and `sowinsights` because those have never been pushed. Worth stating as a
+rule, since the instinct is to be consistent across repos: **history hygiene is decided by whether
+anyone has read the history yet.**
+
+Each fix was verified under its own repository's gate rather than under ours — barley's ruff,
+hops-mcp's prettier, and the respective test runners. Re-running `prettier --check` on hops-mcp's
+workflow was not ceremony: prettier claimed that same file during the original port, so it was the
+one place where a comment-only edit could plausibly break a gate.
