@@ -949,3 +949,87 @@ fix is a schedule on `barley` specifically — not a push trigger that cannot wo
 Two guards behaved correctly on the way down: `Publish the summary` succeeded rather than erroring
 on a run that produced no file (the `[ -f ]` guard from §12), and the artifact upload warned instead
 of failing. The job still failed, which is right — a measurement that did not happen is not a pass.
+
+## 15. Closeout (2026-08-25)
+
+W2.3 is complete. Scorecard runs as a standing control in four of the five repositories it was
+ported to, and the fifth is approved and waiting on a merge button.
+
+### 15.1 Where each port stands
+
+| Repo | Landed | Still open | Notes |
+|---|---|---|---|
+| `hops-mcp` | **#55 merged** | — | The trial repo. Its first PR run found §13's fail-open and settled §10.5's runner question |
+| `wort` | **#216 merged** | #217 — token scopes + trigger shape | `main` currently runs the §9 pre-fix workflow |
+| `sowinsights` | **#5 merged** | #6 — runner fix + trigger shape | `main` currently runs the §10 pre-fix workflow |
+| `barley` | **#1691 merged** | #1699 — push trigger `main` only | `develop` currently fails on every merge until #1699 lands |
+| `hops` | — | **#545 — approved, mergeable, unmerged** | Carries every fix from §9–§14 in one branch |
+
+**Stated plainly because the report is evidence: `hops` has not merged.** #545 is `APPROVED` with
+`mergeStateStatus: CLEAN`, and `hops-scorecard.yml` is not on `hops`' default branch. It is the only
+one of the five whose workflow has never executed — and, because every correction from §9 onward was
+folded into it before it merged, the only one that will be correct on its first run.
+
+Three of the four merged repos need their follow-up PR to reach a working state. That is a direct
+consequence of merging before the pattern had stabilised, and it is the clearest argument in this
+work item for the trial-in-one-repo discipline that §12 adopted late.
+
+### 15.2 What actually shipped
+
+- **A gate**, in five repositories: four checks — `Pinned-Dependencies`, `Token-Permissions`,
+  `Dangerous-Workflow`, `Binary-Artifacts` — compared per-check against a committed baseline, failing
+  the pull request on a drop, fail-closed on a broken measurement.
+- **Two implementations of one policy**, Node and stdlib Python, chosen per repo by what that repo's
+  CI already has, held to byte-identical output by `agreement-check.sh`.
+- **A baseline per repo**, committed, raised only by a reviewed commit.
+- **The report where the decision is taken** — upserted PR comment, plus the run summary page and a
+  JSON artifact.
+- **Research output**: the four-repo posture table (§4), the 27-repo org sweep
+  (`artifacts/scorecard-org-sweep.md`), and the Gate-0 delta (§1).
+
+### 15.3 What was learned, and what it cost
+
+Five defects, none found by review:
+
+| # | Defect | Found by |
+|---|---|---|
+| §9 | Upstream's documented permission block omits `statuses` and `actions` | a failed run |
+| §10 | `setup-python` does not work on self-hosted CodeBuild runners | a failed run |
+| §13 | A local-mode run reported clean on 11 of 18 checks — a fail-open we wrote | putting output in front of a person |
+| §14.2 | The `paths` filter left two of four gated checks unenforced | a user question about something adjacent |
+| §14.4 | `scorecard-action` rejects `push` off the default branch | a failed run |
+
+Four of the five were in the harness around Scorecard, not in Scorecard. The measurement was right
+from day one; the plumbing took a week.
+
+### 15.4 Honest assessment of the standing control
+
+Recorded so the article does not overclaim. **Eight of the twenty gated check-instances across the
+five repos sit at 0 and cannot fall** — `Token-Permissions` is 0 everywhere, `Pinned-Dependencies` is
+0 or 1 in four of five. What is genuinely live is `Dangerous-Workflow` (10 everywhere),
+`Binary-Artifacts` (8–10), and `wort`'s `Pinned-Dependencies` at 8. The scores are also normalised
+ratios, so small regressions may not move a score at all.
+
+And the check that motivated adopting Scorecard for this research — `Branch-Protection`, the only
+instrument here that measures whether a control is *enforced* rather than present — **cannot be read
+from CI at all**; its GraphQL query needs repo-admin scope. It works only from a user token, run by
+hand. The finding stands; it does not live in the workflow.
+
+The highest-value output of this work item was never the gate. It was the measurement: 25 of 26
+default branches requiring zero status checks, Dependabot in 1 of 26, and `wort`'s branch protection
+switched on and routed around. One org-level ruleset change is still worth more than everything
+gated here combined.
+
+### 15.5 Open, not blocking
+
+1. **Three follow-up PRs** — `wort` #217, `sowinsights` #6, `barley` #1699 — each fixing a repo whose
+   `main`/`develop` currently runs a superseded workflow.
+2. **`hops` #545** to merge.
+3. **Two dead gates could be made live cheaply.** `permissions: contents: read` in `wort`'s `ci.yml`,
+   and in `hops-mcp`'s three workflows without a top-level block, moves `Token-Permissions` 0 → 10;
+   re-baselining at 10 converts an inert gate into a live one. Neither is in scope for these ports —
+   both are changes to CI jobs this research does not own.
+4. **No scheduled run anywhere**, by decision (§14.1). The seven remote-only checks refresh only on a
+   merge to the default branch, and in `barley` — which integrates on `develop` — that is rare. If it
+   proves too quiet, an upserted issue on the push run is the fix, not a restored cron.
+5. **The org-level ruleset change**, still unowned.

@@ -1061,3 +1061,38 @@ one run before being written into a commit, and in the end it was — by the fai
 consolation is that the two runs make an unusually clean pair of evidence, PR into `develop` passing
 and push to `develop` failing within a minute of each other, which is what the correction is now
 argued from rather than from the source alone.
+
+## 2026-08-25 (closeout) — W2.3, and what a week of failures taught
+
+The gate is a standing control in four repositories, with `hops` approved and awaiting a merge. The
+measurement work — the four-repo table, the 27-repo sweep, the Gate-0 delta — was finished in a day.
+The plumbing took a week and produced five defects.
+
+**None of the five was found by review.** Two came from failed runs, one from putting the output in
+front of a person, one from a user asking "does that make sense?" about something adjacent, and one
+more from a failed run. Every one of them was in code that had been read carefully, in some cases by
+me twice. That is the single most useful thing to carry to the next capability: **reviewing a change
+tells you whether it does what it says; running it, and showing someone the result, tells you
+whether what it says is worth doing.** Budget for the second kind of check, because the first kind
+will not find these.
+
+**Four of the five were in the harness, not in the tool.** Scorecard measured correctly from the
+first run. What went wrong was permission scopes, a runner assumption, a path filter kept across a
+redesign, a branch constraint, and a fail-open in our own comparison logic. Worth remembering when
+estimating the next "just add a scanner to CI" item: the scanner is the cheap part.
+
+**The ordering mistake, stated so it is not repeated.** Four repositories merged the port before the
+pattern had stabilised, and three of them now need a follow-up pull request to reach a working
+state. The trial-in-one-repo discipline was adopted at §12 — after the mistake, not before. The rule
+is cheap and should be default: **when a change carries an unknown, land it in one place first, in
+the place where being wrong costs least.** `wort`, the repository furthest outside the charter, is
+where the token-scope defect surfaced and it saved `hops` from merging with it.
+
+**On honesty about what shipped.** The closeout records that eight of twenty gated check-instances
+sit at 0 and cannot fall, that the scores are normalised ratios which may not move on small
+regressions, and that `Branch-Protection` — the check that motivated adopting Scorecard for this
+research at all — cannot be read from CI. Writing that down is uncomfortable in a document whose
+purpose is to show a capability working. It is also the only version of the document that survives
+someone checking it. The gate is real but modest; the measurement is where the value was, and the
+single most valuable output of the whole item is a finding that needs an org settings change rather
+than any code we wrote.

@@ -125,6 +125,6 @@ Two consequences:
 | W1.3 PRV-17 declaration | **Yes** — WARN 1/2 → PASS 2/2 | Audit re-run |
 | W1.4 pin github MCP digest | No — AIS-04 already PASSes unpinned | `.mcp.json` diff + the W2.1 checker output |
 | Hook relocation (new) | **Yes** — ADP-04 FAIL 0/5 → PASS, AIS-03 SKIP → runs | Audit re-run |
-| W2.3 Scorecard | **Yes**, vs G0.3 | Baseline captured: aggregate 5.4/10. Compare per-check only — 4 checks are open-source norms that a private repo cannot and should not move, SAST 0 is a false negative, Signed-Releases is inconclusive. **Measured 2026-08-23** → `artifacts/scorecard-w2-3-evidence.md`: no check moved, aggregate still 5.4; the three merged PRs are invisible to Scorecard by construction |
+| W2.3 Scorecard | **Yes**, vs G0.3 | Baseline captured: aggregate 5.4/10. Compare per-check only — 4 checks are open-source norms that a private repo cannot and should not move, SAST 0 is a false negative, Signed-Releases is inconclusive. **Measured 2026-08-23** → `artifacts/scorecard-w2-3-evidence.md`: no check moved, aggregate still 5.4; the three merged PRs are invisible to Scorecard by construction. **Shipped as a standing control 2026-08-25** — gate merged in `hops-mcp`, `wort`, `sowinsights`, `barley`; `hops` #545 approved and awaiting merge. See evidence §15 for what is genuinely enforced and what is inert |
 
 Acceptance for the checkpoint stays as approved: **no dimension regresses.**

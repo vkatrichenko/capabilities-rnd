@@ -296,6 +296,24 @@ the baseline is unrecoverable.
       **Scope is wider than written:** 3 of hops' 4 registered hooks exist only as *inline*
       `command` strings inside `.claude/settings.json` — the scanner must read those too, not
       just files under a hooks directory.
+- [x] **W2.3 CLOSED (2026-08-25)** → evidence §15. Scorecard is a standing control in four of
+      five repos; the fifth is approved and waiting on a merge.
+      **Landed:** `hops-mcp` #55 · `wort` #216 · `sowinsights` #5 · `barley` #1691.
+      **Open:** `hops` #545 (APPROVED, CLEAN, **not merged** — verified; `hops-scorecard.yml` is not
+      on hops' default branch), plus three follow-ups fixing repos whose default branch runs a
+      superseded workflow: `wort` #217, `sowinsights` #6, `barley` #1699.
+      Three of four merged repos needing a follow-up is the direct cost of merging before the
+      pattern stabilised — the argument for W2.3i's trial-in-one-repo discipline, adopted late.
+      **Five defects, none found by review:** W2.3f upstream's permission block omits two scopes ·
+      W2.3g `setup-python` on CodeBuild · W2.3j a fail-open we wrote · W2.3k the `paths` filter left
+      two of four gated checks unenforced · W2.3k `push` off the default branch. Four of five were
+      in the harness, not in Scorecard.
+      **Honest limits, recorded so the article does not overclaim:** 8 of 20 gated check-instances
+      sit at 0 and cannot fall; scores are normalised ratios so small regressions may not move
+      them; and `Branch-Protection` — the check that motivated adopting Scorecard, the only
+      instrument here measuring *enforcement* — cannot be read from CI at all. The highest-value
+      output was the measurement, not the gate: 25 of 26 default branches requiring zero status
+      checks is still worth more than everything gated here combined.
 - [x] **W2.3 — OpenSSF Scorecard in hops CI + the Gate 0 delta (2026-08-23)** → evidence:
       `artifacts/scorecard-w2-3-evidence.md`; tooling: `tooling/ci/scorecard/`. hops branch
       `HOP-0000/openssf-scorecard-posture-check` off `origin/main` @ `628b57db2`, commit
@@ -410,7 +428,7 @@ the baseline is unrecoverable.
       Verified: 27 Node / 28 Python tests, **18/18 agreement including the real local-mode
       artifact**, ruff clean and format-stable at 99 and 100, prettier clean.
       Commit `f3c3db4` on #55; ported to the other four in W2.3k.
-- [ ] **W2.3i — the comparison posts to the pull request; trialled in `hops-mcp` (2026-08-25)** →
+- [x] **W2.3i — the comparison posts to the pull request; trialled in `hops-mcp` (2026-08-25)** →
       evidence §12. Commit `7f930e1` on #55, **unpushed**. `pull-requests: write` at job level
       (verified against upstream's own docs: job-level write is the documented shape and
       `pull-requests` is not on their sensitive-scope list, so it costs nothing on the check this
@@ -422,7 +440,7 @@ the baseline is unrecoverable.
       Verified: prettier clean, workflow parses, inline script passes `node --check`, 23 Node tests.
       **First run (32846478467) resolved three open questions green** — container action and
       `actions/setup-node` both work on `hops-mcp`'s CodeBuild runners (W2.3g's assumption), and the
-      upserted comment lands. **Open:** port to the other four once W2.3j's fix rides along.
+      upserted comment lands. Ported to the other four in W2.3k, after the trial proved it.
 - [x] **W2.3h — PR-gated, not push-gated; two checks leave the gated set (2026-08-25)** →
       evidence §11. Trigger is now `schedule` + `pull_request` + `workflow_dispatch`; **`push` to
       the default branch removed**. A run on main can only report a fait accompli — both real
