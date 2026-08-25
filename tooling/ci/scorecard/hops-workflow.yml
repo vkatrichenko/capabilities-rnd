@@ -48,6 +48,18 @@ jobs:
       issues: read
       pull-requests: read
       checks: read
+      # `actions` and `statuses` are NOT in upstream's README permission block,
+      # and without them two checks fail with 403 rather than scoring — proven
+      # on wort run 32837708276, where CI-Tests went 10 -> -1 and failed the
+      # gate. Verified against the API call each check makes:
+      #   actions:  Packaging -> ListWorkflowRunsByFileName
+      #   statuses: CI-Tests  -> ListStatuses
+      actions: read
+      statuses: read
+      # Branch-Protection cannot be read by GITHUB_TOKEN at all — the GraphQL
+      # query needs repo-admin scope — so it reports -1 in CI and its baseline
+      # records the user-token value. It is a reported check, never gated, so
+      # an inconclusive reading says "not measurable here", not "regressed".
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7

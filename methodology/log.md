@@ -827,3 +827,43 @@ scope discipline is what keeps these ports acceptable to their owners. Named in 
 adding a workflow adds dependencies to the check being gated — so a tag-referenced action in the new
 workflow would have failed the job on its first run. Worth noticing as a design property: the
 controls worth shipping are the ones that apply to the change that ships them.
+
+## 2026-08-25 — the first real run failed, and that was the most useful hour of the work item
+
+`wort` #216 merged, the job fired, and it failed. Not a posture change: two of Scorecard's API calls
+returned 403 under the default `GITHUB_TOKEN`, `CI-Tests` scored `-1` instead of 10, and the
+comparison failed closed on it.
+
+**The permission list came from upstream's README, and upstream's README is incomplete.** It
+documents `contents`, `issues`, `pull-requests`, `checks` as the "recommended reads for private
+repos". It omits `statuses: read` (which `CI-Tests` needs for `ListStatuses`) and `actions: read`
+(which `Packaging` needs for `ListWorkflowRunsByFileName`). Following the documentation exactly
+produced a job that could not measure two of its own checks. The methodology lesson is narrow and
+useful: **for a tool that reads an API, the authority on required permissions is the failing call,
+not the vendor's example block** — and the failing call is only observable in a real run. This was
+listed as "not verifiable before merge" in the plan for a reason, and the reason held.
+
+**The strongest evidence for the design choice arrived by accident.** The aggregate fell 4.2 → 3.6
+in that run, every point of it measurement failure rather than posture. A threshold gate written the
+obvious way — `fail if aggregate < 3.5` — would have passed the run green while three of eighteen
+checks silently stopped working. The per-check ratchet failed it and printed Scorecard's own 403.
+Until now, "fail closed" was justified here by pointing at two historical defects (barley's
+fail-open cassette scrubber, the gitleaks `regexTarget` bug). This is the first time the principle
+was tested by an accident instead of a constructed fixture, and it is a much better citation.
+
+Also worth recording because it is funny and it is the point: **a job added to measure whether this
+organisation over-grants workflow tokens failed because its own token was under-granted.** Least
+privilege has a floor. Finding it is empirical.
+
+**The port to a fifth repository paid for itself before the fourth one merged.** `hops` #545 was
+open, green, and carried the identical permission block; its baseline has `CI-Tests` at 10, so it
+would have failed on its first run after merge. So would `barley` and `hops-mcp`. The bug was found
+in `wort` — the repository furthest from the charter, the one where breaking a CI job costs least.
+Generalizable: **when rolling one control out to several repositories, merge it first where a
+failure is cheapest, not where it matters most.** The instinct is the opposite, because the
+important repo is the one you care about.
+
+One process note. The fix went to `hops` as a *second commit* on the open PR rather than an amend
+and force-push. The branch has already been reviewed, including by CodeRabbit; a force-push discards
+that review context to save one line of history. Cheap to squash at merge, not cheap to un-lose a
+review.

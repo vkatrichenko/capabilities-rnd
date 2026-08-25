@@ -362,6 +362,23 @@ the baseline is unrecoverable.
       best-pinned repo in the org.
       Accidental validation: `dme-core` is empty, Scorecard returns `"checks": null`, and both
       twins exit 2 rather than reading zero checks as zero regressions.
+- [x] **W2.3f — first real CI run, and the token bug it found (2026-08-25)** → evidence §9.
+      `wort` #216 merged; run 32837708276 **failed correctly**. `CI-Tests` 10 → `-1` (403 on
+      `ListStatuses`), `Packaging` 10 → `-1` (403 on `ListWorkflowRunsByFileName`),
+      `Branch-Protection` 5 → `-1` (GraphQL needs repo-admin scope).
+      **Root cause: `ossf/scorecard-action`'s documented permission block omits `statuses: read`
+      and `actions: read`.** The workflow's permission list was copied from it. Both scopes added,
+      read-only, each annotated with the API call that needs it. `Branch-Protection` stays `-1` in
+      CI by design — reported, never gated; the baseline keeps the user-token value of 5.
+      **Everything previously unverifiable is now verified:** container action runs, self-tests run
+      in CI, `if: always()` artifact survived a failing job, fail-closed path exercised for real.
+      **Best single argument in the work item for per-check gating:** the aggregate fell 4.2 → 3.6
+      entirely from measurement failure, so any threshold gate below 3.6 would have passed this run
+      green while three of eighteen checks stopped working.
+      Fixes committed and **unpushed**: `wort` `fix/scorecard-token-permissions` `d36675a`,
+      `hops` `827744ae3` on the open #545 branch (second commit, not an amend — the branch is
+      already reviewed). ⚠️ `barley`, `hops-mcp`, `sowinsights` carry the same latent bug and
+      would each fail on their first run; fixing them needs their own approval.
 - [x] **W2.3e — Scorecard ported to `wort` (2026-08-24)**, on explicit fresh approval — `wort` is
       outside the charter's four, and W2.3d named it as the one repo outside scope where a standing
       measurement pays. Branch `chore/openssf-scorecard` `c897304`, **committed and unpushed**.

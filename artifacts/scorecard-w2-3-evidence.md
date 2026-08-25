@@ -436,7 +436,7 @@ three real Scorecard results under generated baselines and produced **byte-ident
 identical exit codes**. Those branches are unpushed and can be refreshed before they open; doing so
 was not attempted here, because a write to `barley` or `sowinsights` needs its own approval.
 
-### 8.5 Not verified
+### 8.5 Not verified at the time of the port — since resolved, see §9
 
 - **The first CI run.** The workflow fires on push to `main` touching `.github/workflows/**`, so
   the merge triggers it. Unlike the `hops` port there is no self-hosted-runner risk — `wort` runs
@@ -444,3 +444,81 @@ was not attempted here, because a write to `barley` or `sowinsights` needs its o
 - **`GITHUB_TOKEN` vs user-token parity.** The baseline was measured with a user token. As
   everywhere else in this work, the first CI value for `Branch-Protection` is a measurement to
   reconcile, not a regression to act on.
+
+## 9. First real CI run — `wort` #216, and the bug it found (2026-08-25)
+
+`wort` PR #216 merged; the push to `main` touched `.github/workflows/**` and fired the job.
+[Run 32837708276](https://github.com/provectus-barhopping/wort/actions/runs/32837708276) —
+**the job failed, and it was right to.**
+
+### 9.1 What the run proved
+
+Everything that was listed as unverifiable before a real run, verified:
+
+| Previously unverified | Result |
+|---|---|
+| The Docker container action runs at all | ✅ `Pull ghcr.io/ossf/scorecard-action:v2.4.4` then `Run OpenSSF Scorecard`, both green |
+| The self-tests run in CI, not just locally | ✅ `Self-test the comparison` green — 23 tests |
+| The artifact survives a failing gate (`if: always()`) | ✅ `scorecard-results` uploaded from a failed job, and is the source of this section |
+| Fail-closed behaviour on real degraded input | ✅ a gated check at `-1` failed the run instead of being read as zero regressions |
+
+### 9.2 The bug: upstream's documented permission block is incomplete
+
+Three checks returned `-1`. From the uploaded artifact, each with the API call that failed:
+
+| Check | Policy | Baseline → CI | Cause |
+|---|---|---|---|
+| `CI-Tests` | **gated** | 10 → -1 | `Client.Repositories.ListStatuses` → `GET /commits/{sha}/statuses` **403** |
+| `Packaging` | reported | 10 → -1 | `Client.Actions.ListWorkflowRunsByFileName` → `GET /actions/workflows/{file}/runs` **403** |
+| `Branch-Protection` | reported | 5 → -1 | `githubv4.Query` branch-protection query **403** |
+
+The first two need `statuses: read` and `actions: read`. **Neither scope appears in
+`ossf/scorecard-action`'s README permission block** — which is precisely where this workflow's
+permission list came from, quoted in §2 as "recommended reads for private repos". Following the
+documentation exactly produced a job that could not measure two of its own checks.
+
+Fixed by adding both read-only scopes, with the failing API call named against each so the next
+person does not delete them as cargo cult. No write grant added.
+
+`Branch-Protection` stays `-1` in CI by design: its GraphQL query needs repo-admin scope, which
+`GITHUB_TOKEN` does not have and should not be given for a measurement job. It is a reported check,
+never gated, so an inconclusive reading there says *not measurable from CI* rather than *regressed*,
+and the baseline keeps the user-token value of 5 so the real reading is not lost. This is the
+token-parity reconciliation §8.5 said would be needed — the answer is that one check is simply not
+readable from CI, and that is now written down instead of rediscovered.
+
+### 9.3 Why this is the strongest argument in the whole work item for per-check fail-closed gating
+
+The aggregate fell **4.2 → 3.6** in the same run. Every point of that fall was measurement failure,
+not posture. A gate written the obvious way — `fail if aggregate < 3.5`, or any threshold below
+3.6 — would have **passed this run green** while three of eighteen checks silently stopped working.
+The per-check ratchet failed it, named the check, and printed Scorecard's own 403 as the reason.
+
+That is the same defect shape as the two Phase 1/2 controls this design was explicitly built
+against: barley's fail-open cassette scrubber (W3.5) and the gitleaks `regexTarget = "line"` defect
+(W1.6). Both reported clean while not working. **A security control's most important behaviour is
+what it does when it cannot measure** — and this is the first time in this project that the
+principle was tested by an accident rather than by a constructed fixture.
+
+There is a second-order point worth keeping for the article: the check that broke was
+`Token-Permissions`-adjacent in the most literal way. A job added to measure whether this
+organisation grants its workflow tokens too much permission failed because it had been granted too
+*little*. Least privilege has a floor, and finding it is an empirical exercise, not a documentation
+one.
+
+### 9.4 The same bug is latent in all four other ports
+
+Every port copied the same permission block from the same upstream README.
+
+| Repo | State | Baseline `CI-Tests` | Would have failed on first run |
+|---|---|---:|---|
+| `wort` | **merged**, fix on `fix/scorecard-token-permissions` `d36675a`, unpushed | 10 | it did |
+| `hops` | PR #545 open, fix committed `827744ae3`, unpushed | 10 | yes |
+| `barley` | branch unpushed | 10 | yes |
+| `hops-mcp` | branch unpushed | 10 | yes |
+| `sowinsights` | branch unpushed | 0 | yes — `0 → -1` is an inconclusive reading, which the comparison gates regardless of the baseline value |
+
+`hops` and `wort` are fixed. The three sibling branches are **not** — writing to them needs their
+own approval, the same constraint recorded in §8.4. Catching this before `hops` #545 merged is the
+concrete payoff of having ported to a fifth repository: the cheapest place to discover a
+configuration bug is the repository you are allowed to break.
