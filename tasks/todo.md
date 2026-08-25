@@ -362,6 +362,29 @@ the baseline is unrecoverable.
       best-pinned repo in the org.
       Accidental validation: `dme-core` is empty, Scorecard returns `"checks": null`, and both
       twins exit 2 rather than reading zero checks as zero regressions.
+- [x] **W2.3k — final trigger shape: PR + push, no filter, no cron (2026-08-25)** → evidence §14.
+      User decision: two triggers only, `schedule` and `workflow_dispatch` dropped. They are not
+      redundant — `scorecard-action` branches on event name, so `pull_request` = local mode (the
+      four gated checks, before the merge) and `push` = remote mode (all 18, the only way the seven
+      API-only checks are read at all).
+      **Cost stated and accepted:** the seven remote-only checks now refresh only on a merge; new
+      advisories (69 open in `hops-mcp`, 286 in `barley`) will not surface between merges. Counter:
+      nobody opened the Monday summary page — W2.3j exists because a defect sat there for two days
+      and was found only once the output reached a PR comment.
+      **Path filter removed from both, and it was wrong twice over.** `Pinned-Dependencies` reads
+      Dockerfiles (it flagged `Dockerfile:2` in `hops-mcp`'s own run) and `Binary-Artifacts` reads
+      the whole tree (`sowinsights`' committed `.pyc`), so a PR unpinning a base image or committing
+      a binary never triggered the gate. And with no cron, a filtered push run would leave the seven
+      remote-only checks refreshing almost never. Cost: the job runs on every PR and merge —
+      **60–80s observed**.
+      Same commit ports W2.3i's PR comment and W2.3j's local-mode fix to the other four, so all five
+      now carry an identical shape.
+      Commits, all **unpushed**: `hops` `c3edddbdc` (#545) · `hops-mcp` `6f12a67` (#55) · `barley`
+      `cbe029af6` (#1691) · `sowinsights` `072d536` · `wort` `230f8fc` (#217).
+      Verified per repo: triggers/permissions/step count parse, inline `github-script` passes
+      `node --check` in all five, 27 Node / 28 Python tests, and each repo's own lint gate.
+      **Follow-up if the report proves too quiet:** an upserted issue on the push run
+      (`issues: write`, same step) rather than restoring the cron.
 - [x] **W2.3j — a local-mode run reported clean on 11 of 18 checks (2026-08-25)** → evidence §13.
       The comment from the first PR run showed the report was wrong. `scorecard-action` runs in
       **local directory mode** on a `pull_request` event (`Local: .`, `repo.name` = `file://.`), so
@@ -379,8 +402,7 @@ the baseline is unrecoverable.
       `missing from results`.
       Verified: 27 Node / 28 Python tests, **18/18 agreement including the real local-mode
       artifact**, ruff clean and format-stable at 99 and 100, prettier clean.
-      Commit `f3c3db4` on #55, **unpushed**. ⚠️ The other four repos carry the pre-fix comparison
-      and would produce the same misleading report on their first PR run.
+      Commit `f3c3db4` on #55; ported to the other four in W2.3k.
 - [ ] **W2.3i — the comparison posts to the pull request; trialled in `hops-mcp` (2026-08-25)** →
       evidence §12. Commit `7f930e1` on #55, **unpushed**. `pull-requests: write` at job level
       (verified against upstream's own docs: job-level write is the documented shape and

@@ -844,3 +844,72 @@ and the markdown says the aggregate is not comparable.
 
 Commit `f3c3db4` on #55, **unpushed**. The other four repos still carry the pre-fix comparison and
 would produce the same misleading report on their first PR run.
+
+## 14. Final trigger shape: pull request + push, no filter, no cron (2026-08-25)
+
+Decided by Vladyslav Katrychenko after §13: keep two triggers, drop `schedule` and
+`workflow_dispatch`. Applied to all five repos, along with the two fixes proven in `hops-mcp` (§12
+comment, §13 local-mode report).
+
+```yaml
+on:
+  pull_request:
+    branches: [main]        # barley: [main, develop] — its PRs target develop
+  push:
+    branches: [main]
+```
+
+### 14.1 Why these two cover the whole check set
+
+`scorecard-action` branches on event name (`options/options.go:173`): `--local .` for
+`pull_request`, `--repo` for everything else. So the two triggers are not redundant — they are the
+two measurement modes:
+
+| Trigger | Mode | Scores | Role |
+|---|---|---|---|
+| `pull_request` | local | 11 file-based checks, incl. **all four gated** | the gate — before the merge |
+| `push` to default | remote | all 18, incl. the seven API-only | the full picture — after it |
+
+Removing the cron costs one thing, stated plainly: **the seven remote-only checks now refresh only
+when someone merges.** New advisories published against existing dependencies (69 open in
+`hops-mcp`, 286 in `barley`) will not surface between merges, and in a quiet repo that could be
+months. The counter-argument, which is the one taken: nobody was going to open a Monday run's
+summary page. §13 exists because a defect sat visible on that page for two days and was found only
+when the output was put in a pull request comment.
+
+### 14.2 The path filter was wrong twice over
+
+Removed from both triggers. It had been inherited from a design where `push` was the only trigger
+and API cost was the concern.
+
+- **Two gated checks read files outside `.github/workflows/**`.** `Pinned-Dependencies` reads
+  Dockerfiles and package-manager commands — it flagged `Dockerfile:2` in `hops-mcp`'s own first
+  run, and the mutable `python:3.11-bullseye` base image in `sowinsights`. `Binary-Artifacts` reads
+  the whole tree — `sowinsights` scores 8 on committed `app/__pycache__/*.pyc`. **A pull request
+  unpinning a base image or committing a binary would not have triggered the gate at all.**
+- With no cron, filtering the `push` run would leave the seven remote-only checks refreshing almost
+  never.
+
+Cost of removing it: the job runs on every PR and every merge. Observed duration on `hops-mcp`:
+**60–80 seconds**.
+
+### 14.3 All five now carry the same shape
+
+| Repo | Commit | Triggers | Path filter | `pull-requests` | Steps | Tests |
+|---|---|---|---|---|---|---|
+| `hops` | `c3edddbdc` (#545) | PR + push | none | write | 8 | 27 Node |
+| `hops-mcp` | `6f12a67` (#55) | PR + push | none | write | 8 | 27 Node |
+| `barley` | `cbe029af6` (#1691) | PR + push `[main, develop]` | none | write | 8 | 28 Python |
+| `sowinsights` | `072d536` | PR + push | none | write | 7 | 28 Python |
+| `wort` | `230f8fc` (#217) | PR + push | none | write | 8 | 28 Python |
+
+`sowinsights` has seven steps rather than eight because §10 removed its `setup-python`.
+
+Verified per repo: workflow parses with the expected triggers, permissions and step count; the
+inline `github-script` body passes `node --check` in all five; `barley` and `wort` `ruff` clean,
+`wort` `pyright` clean, `hops-mcp` `prettier --check` clean, `hops` pre-commit clean.
+
+**Where the weekly report went.** There is no scheduled run any more, so the posture report lands
+only on the run summary page of a merge, plus the PR comment. If that turns out to be too quiet, the
+cheap fix is an upserted issue on the `push` run — the same `github-script` step with
+`issues: write` — rather than bringing the cron back.

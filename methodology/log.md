@@ -1010,3 +1010,40 @@ One smaller thing worth keeping: the defect was visible only because the output 
 a human. The same table had been rendering on the run summary page for two days and nobody looked;
 it took a pull request comment and the question "does the report look okay?" to surface it. **A
 report nobody reads is a report that cannot be wrong.**
+
+## 2026-08-25 (fifth entry) — the trigger set settles, and a filter that was quietly wrong
+
+Final shape, decided by the user: `pull_request` and `push` to the default branch. No cron, no
+manual dispatch.
+
+**I argued for the cron and lost on a point I had made myself.** The case for keeping it was that
+seven checks — review coverage, open advisories, branch protection — are not in any diff and refresh
+only when someone merges. That is true, and in a quiet repository it means months. The counter is
+that a day earlier I had written "a report nobody reads is a report that cannot be wrong", after a
+defect sat visible on a run summary page for two days and surfaced only once the output reached a
+pull request comment. **A signal with no reader is not a signal**, and a weekly run that nobody
+opens does not become valuable by being scheduled. The right response to the real loss is a louder
+channel — an upserted issue on the push run — not a quieter run on a timer.
+
+**The question that found the actual bug was "does that make sense?".** The user asked why
+`Code-Review` and `CI-Tests` are not evaluated on a pull request, since code changes in a pull
+request. The answer is that neither measures the diff — both are statistics over merged history —
+but answering it properly meant re-reading what each gated check reads from disk, and that exposed
+something else: **the `paths: ['.github/workflows/**']` filter meant two of the four gated checks
+were not enforced at all.** `Pinned-Dependencies` reads Dockerfiles, `Binary-Artifacts` reads the
+whole tree; both had live examples in our own evidence — `Dockerfile:2` in `hops-mcp`,
+`app/__pycache__/*.pyc` in `sowinsights`. A pull request unpinning a base image would not have run
+the gate.
+
+That filter had been correct once, on a `push`-only design where the concern was API cost, and it
+survived two redesigns without being re-examined. **Configuration inherited across a redesign is
+where the stale assumptions hide** — the same shape as the `runs-on` defect, one level up: not a
+value copied to the wrong repository, but a value kept through a change that invalidated it. Neither
+was visible in a diff, because in both cases the wrong line was the one that did not change.
+
+Worth naming the pattern in how these were found. Four defects this week, and none came from
+review: the token scopes came from a failed run, `setup-python` from a failed run, the local-mode
+fail-open from putting output in front of a person, and the path filter from a user asking a
+"does this make sense" question about something adjacent. **Reviewing a change tells you whether it
+does what it says. Running it, and showing someone the result, tells you whether what it says is
+worth doing.**

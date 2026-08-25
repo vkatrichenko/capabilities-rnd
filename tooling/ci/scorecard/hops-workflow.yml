@@ -11,23 +11,34 @@
 #     runs `docker://ghcr.io/ossf/scorecard-action:v2.4.4`, a MUTABLE tag, so
 #     pinning the action does not pin the code that executes. Recorded in
 #     artifacts/scorecard-w2-3-evidence.md; not a reason to reject the action.
+#
+# Two triggers, and the mode difference between them is the whole design.
+#
+# On a pull request, scorecard-action runs in local directory mode — its
+# options.go sets `--local .` for any pull_request event. That measures the tree
+# being proposed rather than the default branch, which is what makes the four
+# gated checks meaningful before a merge instead of after one.
+#
+# On a push to the default branch it runs in remote mode against the GitHub API,
+# and that is the only run scoring the seven checks a local run cannot see at
+# all: Code-Review, CI-Tests, Branch-Protection, Maintained, Contributors,
+# CII-Best-Practices, Signed-Releases.
+#
+# No path filter on either trigger, deliberately. Two gated checks read files
+# outside `.github/workflows/**` — Pinned-Dependencies reads Dockerfiles and
+# package-manager commands, Binary-Artifacts reads the whole tree — so a filter
+# would let an unpinned base image or a committed binary through.
 
 name: OpenSSF Scorecard
 
 on:
-  # Weekly full posture read. Scorecard measures repository-level state —
-  # branch protection, workflow pinning, open advisories — most of which no
-  # single PR changes, so a per-PR run would pay minutes of GitHub API calls to
-  # re-measure the same answer.
-  schedule:
-    - cron: '0 6 * * 1'
-  workflow_dispatch:
-  # The gate. Asking before the merge is the only version of this that
-  # prevents a regression rather than reporting one after the default
-  # branch is already red.
+  # The gate: local mode, so it scores the tree being proposed.
   pull_request:
     branches: [main]
-    paths: ['.github/workflows/**']
+  # The full picture: remote mode, the only run that scores the seven
+  # checks a local run cannot see.
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -46,7 +57,11 @@ jobs:
       # and SARIF upload needs GitHub Advanced Security, which this repo has
       # not got — hence JSON plus an artifact.
       issues: read
-      pull-requests: read
+      # write, not read: the job posts its comparison table back to the pull
+      # request. Upstream's own Token-Permissions docs call job-level write the
+      # correct shape, and `pull-requests` is not on their sensitive list, so
+      # this costs nothing on the check this very workflow gates.
+      pull-requests: write
       checks: read
       # `actions` and `statuses` are NOT in upstream's README permission block,
       # and without them two checks fail with 403 rather than scoring — proven
@@ -80,12 +95,52 @@ jobs:
       - name: Self-test the comparison
         run: node --test scripts/check-scorecard.test.mjs
 
+      # The summary goes to a file rather than straight to $GITHUB_STEP_SUMMARY
+      # because two later steps need it and this one exits non-zero on a gated
+      # regression, which would skip anything appended after it. The file is
+      # written before that exit, so a failing run still has one.
       - name: Compare against the committed baseline
         run: |
           node scripts/check-scorecard.mjs \
             --results scorecard-results.json \
             --baseline scripts/scorecard-baseline.json \
-            --summary "$GITHUB_STEP_SUMMARY"
+            --summary scorecard-summary.md
+
+      - name: Publish the summary
+        if: always()
+        run: |
+          if [ -f scorecard-summary.md ]; then
+            cat scorecard-summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # A reviewer should not have to open the Actions tab to see what a change
+      # did to the repository's posture. Upserted on a hidden marker so repeated
+      # pushes edit one comment instead of stacking; a bot that spams a pull
+      # request is a bot people learn to ignore.
+      - name: Comment the comparison on the pull request
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('fs')
+            const marker = '<!-- openssf-scorecard-gate -->'
+            const summary = fs.existsSync('scorecard-summary.md')
+              ? fs.readFileSync('scorecard-summary.md', 'utf8')
+              : '## OpenSSF Scorecard\n\nNo summary was produced — the job failed before the comparison ran. See the run log.'
+            const body = `${marker}\n${summary}`
+            const { owner, repo } = context.repo
+            const issue_number = context.issue.number
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+            })
+            const existing = comments.find((c) => c.body && c.body.includes(marker))
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body })
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body })
+            }
 
       - name: Upload Scorecard results
         # always(): the comparison hard-fails on a gated regression, which would
