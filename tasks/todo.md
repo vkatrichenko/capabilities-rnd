@@ -379,8 +379,15 @@ the baseline is unrecoverable.
       **60–80s observed**.
       Same commit ports W2.3i's PR comment and W2.3j's local-mode fix to the other four, so all five
       now carry an identical shape.
-      Commits, all **unpushed**: `hops` `c3edddbdc` (#545) · `hops-mcp` `6f12a67` (#55) · `barley`
-      `cbe029af6` (#1691) · `sowinsights` `072d536` · `wort` `230f8fc` (#217).
+      Commits: `hops` `c3edddbdc` (#545) · `hops-mcp` `6f12a67` (#55) · `barley` `cbe029af6`
+      (#1691) · `sowinsights` `072d536` · `wort` `230f8fc` (#217).
+      ⚠️ **Correction, `266815224`** (evidence §14.4): `barley`'s **push** trigger must be `[main]`
+      only. `scorecard-action` returns `errOnlyDefaultBranchSupported` for any non-`pull_request`
+      event off the default branch, so `push: develop` failed on its first merge
+      (run 32852738128). `pull_request` events are exempt — the PR run into `develop` passed in
+      1m49s while the push run failed in 27s. Gate unaffected; but `barley` integrates on `develop`
+      and `main` sees a merge rarely, so the seven remote-only checks will refresh rarely **there**
+      specifically. A schedule on `barley` alone is the fix if that matters.
       Verified per repo: triggers/permissions/step count parse, inline `github-script` passes
       `node --check` in all five, 27 Node / 28 Python tests, and each repo's own lint gate.
       **Follow-up if the report proves too quiet:** an upserted issue on the push run

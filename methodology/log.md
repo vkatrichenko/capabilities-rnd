@@ -1047,3 +1047,17 @@ fail-open from putting output in front of a person, and the path filter from a u
 "does this make sense" question about something adjacent. **Reviewing a change tells you whether it
 does what it says. Running it, and showing someone the result, tells you whether what it says is
 worth doing.**
+
+**Same-day correction.** `barley`'s push trigger was set to `[main, develop]` because that repo
+integrates on `develop`. `scorecard-action` rejects any non-`pull_request` event off the default
+branch outright, so it failed on the first merge. The reasoning was right about the repo and wrong
+about the tool, and I had already read the file that says so — the branch check sits forty lines
+above the local/remote switch I quoted the day before. **Reading a source file for one answer does
+not mean you have read it**; I extracted the rule I went looking for and walked past the one next to
+it.
+
+Cheap validation available and not used: the same branch adaptation could have been checked against
+one run before being written into a commit, and in the end it was — by the failure. The
+consolation is that the two runs make an unusually clean pair of evidence, PR into `develop` passing
+and push to `develop` failing within a minute of each other, which is what the correction is now
+argued from rather than from the source alone.

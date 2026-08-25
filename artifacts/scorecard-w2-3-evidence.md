@@ -913,3 +913,39 @@ inline `github-script` body passes `node --check` in all five; `barley` and `wor
 only on the run summary page of a merge, plus the PR comment. If that turns out to be too quiet, the
 cheap fix is an upserted issue on the `push` run — the same `github-script` step with
 `issues: write` — rather than bringing the cron back.
+
+### 14.4 `barley`: the push trigger must be `main` only (2026-08-25)
+
+Run [32852738128](https://github.com/provectus-barhopping/barley/actions/runs/32852738128) failed on
+a push to `develop`:
+
+```
+::error ::Only the default branch main is supported.
+```
+
+`scorecard-action` refuses any non-`pull_request` event off the default branch, before running
+anything — `options/options.go:122`:
+
+```go
+if !o.isPullRequestEvent() && !o.isDefaultBranch() {
+    return errOnlyDefaultBranchSupported
+}
+```
+
+§14 listed `[main, develop]` on **both** triggers for `barley`, reasoning that the repo integrates
+on `develop`. That reasoning holds for pull requests and not for pushes, and the same validation is
+why: `pull_request` events are exempt. The evidence is one run of each on the same branch — the PR
+run on #1691 into `develop` **passed in 1m49s**, the push run to `develop` **failed in 27s**.
+
+Corrected to `pull_request: [main, develop]`, `push: [main]` (`266815224`).
+
+**The gate is unaffected** — it runs on every PR into `develop` and scores all four gated checks
+against the proposed tree. What is lost is specific and worth stating: `barley` merges land on
+`develop`, `main` sees a merge rarely (1 of the last 8 merged PRs), and the push run is the only one
+that scores the seven remote-only checks. **In `barley`, those will now refresh rarely.** That is
+§14.1's accepted cost, concentrated in the one repo where it bites hardest. If it matters there, the
+fix is a schedule on `barley` specifically — not a push trigger that cannot work.
+
+Two guards behaved correctly on the way down: `Publish the summary` succeeded rather than erroring
+on a run that produced no file (the `[ -f ]` guard from §12), and the artifact upload warned instead
+of failing. The job still failed, which is right — a measurement that did not happen is not a pass.
