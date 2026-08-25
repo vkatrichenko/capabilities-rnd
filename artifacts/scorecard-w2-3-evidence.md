@@ -538,3 +538,86 @@ Verification of the three sibling fixes, each under that repo's own gate:
 
 No baseline value changed in any of the five. The fix grants read scopes so the checks can be
 measured; it does not move a score, and none of the ratchets were touched.
+
+## 10. Second real run — `sowinsights`, and the runner assumption (2026-08-25)
+
+`sowinsights` merged (#5) and the job fired:
+[run 32840533614](https://github.com/provectus-barhopping/sowinsights/actions/runs/32840533614).
+Failed — at a different step, for an unrelated reason.
+
+### 10.1 The §9 fix is confirmed working
+
+Read from the run's own Scorecard output before anything else, because it is the thing §9 could not
+verify:
+
+| Check | §9 symptom | This run |
+|---|---|---|
+| `Packaging` | -1, 403 on `ListWorkflowRunsByFileName` | **10** — `packaging workflow detected` |
+| `CI-Tests` | -1, 403 on `ListStatuses` | **0** — `0 out of 4 merged PRs checked by a CI test` |
+| `Branch-Protection` | -1, GraphQL 403 | -1, unchanged **and expected** — needs repo-admin scope |
+
+Scorecard's own `Token-Permissions` details name the new grants at
+`.github/workflows/scorecard.yml:58` and `:59`. `statuses: read` and `actions: read` were the fix,
+and they hold.
+
+### 10.2 The new failure: `actions/setup-python` does not work on a self-hosted runner
+
+```
+Set up Python
+  python-version: 3.11
+  ##[error]The version '3.11' with architecture 'x64' was not found for this operating system.
+```
+
+`actions/setup-python` resolves a **prebuilt interpreter by operating system** from the
+`actions/python-versions` manifest, and that manifest covers the GitHub-hosted images only. These
+are self-hosted AWS CodeBuild runners (`/codebuild/output/src…` in the log), which are not in it.
+
+**This was a porting defect, and its shape is worth recording.** The step came from the `barley`
+port, where it is correct — `barley` runs on `ubuntu-latest`. Copying a workflow between two repos
+changed one thing invisibly: the `runs-on` label. No other workflow in `sowinsights` uses
+`setup-python`, so the repo carried no precedent to copy, and nothing about reading the file would
+have revealed the problem. **Porting a workflow means re-checking every step against the target's
+runner, not only against its language.**
+
+Fixed by removing the action. The checker is standard library only and needs nothing newer than
+Python 3.9, so the runner's own `python3` suffices; the job now prints `python3 --version` first so
+a future interpreter change is visible in the log rather than inferred from a traceback.
+
+### 10.3 The comparison would have passed
+
+Run offline against the artifact the failed job uploaded and the committed baseline — exit **0**:
+
+> Pinned-Dependencies 0 → 1 · Code-Review 0 → 1 · Maintained 8 → 10 (improved) · everything else
+> unchanged · Branch-Protection 5 → -1 (reported, not gated) · **No gated check regressed**
+
+So the gate itself is correct on `sowinsights` today, and the `if: always()` artifact upload is what
+made that provable from a job that died two steps earlier. That design choice has now paid for
+itself twice in two runs.
+
+### 10.4 Own dependencies pinned
+
+The same commit pins `actions/checkout` and `actions/upload-artifact` by SHA. Scorecard's output for
+this run listed **three of the four unpinned GitHub-owned actions in the org's `sowinsights` as
+belonging to the Scorecard workflow itself** — a job that gates `Pinned-Dependencies` while leaving
+its own dependencies on mutable tags. It did not fail anything (the baseline is 0, so 0 → 1 is an
+improvement), which is precisely why it needed catching by reading rather than by the gate.
+
+### 10.5 Status of all five ports
+
+| Repo | State | Runner | Interpreter step | First run |
+|---|---|---|---|---|
+| `wort` | merged; fix PR #217 open | `ubuntu-latest` | `setup-python` 3.13 — **worked** | failed on tokens (§9), fix pending merge |
+| `sowinsights` | merged; fix `25aa106` unpushed | CodeBuild | **removed** — was the failure | failed on `setup-python`, fix pending |
+| `hops` | PR #545 open | CodeBuild | `setup-node@v7` | not yet run |
+| `barley` | PR #1691 open | `ubuntu-latest` | `setup-python@v6` 3.12 | not yet run |
+| `hops-mcp` | PR #55 open | CodeBuild | `setup-node@v4` | not yet run |
+
+All three open PRs carry the §9 token fix — verified from their diffs.
+
+**The one remaining unverified assumption**, stated because it is the same shape as the one that
+just failed: `hops-mcp` uses `actions/setup-node` on a CodeBuild runner, and **no existing workflow
+in `hops-mcp` uses `setup-node`** — its CI runs everything inside Docker. The reasons to expect it
+to work are real but indirect: `hops` uses `setup-node@v7` on its own CodeBuild runners across five
+workflows, and unlike `setup-python`, `setup-node` falls back to downloading from `nodejs.org` when
+the tool-cache manifest has no match for the OS. That is an argument, not evidence. It resolves on
+`hops-mcp` #55's first run.

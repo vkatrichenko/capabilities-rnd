@@ -879,3 +879,43 @@ Each fix was verified under its own repository's gate rather than under ours —
 hops-mcp's prettier, and the respective test runners. Re-running `prettier --check` on hops-mcp's
 workflow was not ceremony: prettier claimed that same file during the original port, so it was the
 one place where a comment-only edit could plausibly break a gate.
+
+## 2026-08-25 (second run) — the assumption that travels with a copied workflow
+
+`sowinsights` merged and failed at `Set up Python`, not at the gate. `actions/setup-python` resolves
+a prebuilt interpreter by operating system from the `actions/python-versions` manifest, which covers
+the GitHub-hosted images only; `sowinsights` runs on self-hosted CodeBuild runners.
+
+**The defect was created by the port, and by nothing else.** That step is correct in `barley`, which
+runs on `ubuntu-latest`. Copying the workflow across changed one line — `runs-on` — and with it the
+validity of a step three lines further down. Nothing in reading the file reveals that; the two
+statements are true separately and false together. The rule that would have caught it: **when
+porting a workflow, re-verify every step against the target's runner, not only against its
+language.** The language check was done carefully — Python twin for the Python repo. The runner
+check was not done at all, because `runs-on` had been adapted per repo and therefore felt handled.
+
+A second, cheaper signal was available and ignored: **no other workflow in `sowinsights` uses
+`setup-python`.** Absence of precedent in the target repo is evidence, and it was sitting in the
+same directory. Where a repo already does a thing, copy how it does it; where it has never done the
+thing, treat that as a question rather than a blank slate.
+
+**Good news arrived in the same run, and it is worth separating from the bad.** The token fix from
+the previous entry is confirmed: `Packaging` scored 10 and `CI-Tests` scored 0 instead of both
+returning -1, and Scorecard's own `Token-Permissions` output names the two new grants by file and
+line. Verifying a fix from the artifact of a job that failed for an unrelated reason is only
+possible because the upload step is guarded with `if: always()` — a decision made for a different
+scenario (preserving evidence when the gate fails) that has now paid off twice in two runs, both
+times for reasons it was not designed for.
+
+**Running the comparison offline against the failed run's artifact answered the question the job
+could not.** Exit 0, three checks improved, no gated regression — so the gate is correct on that
+repo today and only the plumbing was broken. Cheap habit worth keeping: when a CI job dies before
+the interesting step, re-run the interesting step locally on whatever the job did manage to produce,
+rather than waiting for a green run to find out.
+
+**And the tool caught its own author again, in the opposite direction from last time.** Scorecard's
+`Pinned-Dependencies` details listed three unpinned GitHub-owned actions — all three in the
+Scorecard workflow itself, a job whose purpose is to gate that very check. It did not fail anything,
+because the baseline was 0 and the change was an improvement. **A control that only speaks when it
+regresses will not tell you that the control itself is part of the problem.** That one had to be
+read, not gated.

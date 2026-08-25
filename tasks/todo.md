@@ -362,6 +362,30 @@ the baseline is unrecoverable.
       best-pinned repo in the org.
       Accidental validation: `dme-core` is empty, Scorecard returns `"checks": null`, and both
       twins exit 2 rather than reading zero checks as zero regressions.
+- [x] **W2.3g — second real run: `setup-python` does not work on the CodeBuild runners
+      (2026-08-25)** → evidence §10. `sowinsights` merged (#5); run 32840533614 failed at
+      `Set up Python`: *"The version '3.11' with architecture 'x64' was not found for this
+      operating system"*. `actions/setup-python` resolves a prebuilt interpreter by OS from the
+      `actions/python-versions` manifest, which covers GitHub-hosted images only.
+      **The §9 token fix is confirmed working** — same run scored `Packaging` 10 and `CI-Tests` 0
+      instead of `-1`, and Scorecard's own `Token-Permissions` details name the two new grants.
+      **Porting defect, worth generalizing:** the step came from the `barley` port where it is
+      correct (`ubuntu-latest`). Copying a workflow between repos silently changed `runs-on`.
+      Re-check every step against the target's **runner**, not only its language.
+      Fixed by removing the action — the checker is stdlib-only and needs ≥3.9, so the runner's
+      `python3` is enough; `python3 --version` is printed so a future change shows in the log.
+      Same commit pins `actions/checkout` and `actions/upload-artifact` by SHA: three of the four
+      unpinned GitHub-owned actions Scorecard flagged in that repo were **in the Scorecard workflow
+      itself**, which gates `Pinned-Dependencies`. Improvement, not regression — which is why only
+      reading caught it.
+      **The comparison would have passed:** run offline against the failed job's artifact, exit 0,
+      three checks improved. The `if: always()` upload is what made that provable — it has now paid
+      for itself in both real runs.
+      Fix committed and **unpushed**: `sowinsights` `fix/scorecard-runner-python` `25aa106`.
+      ⚠️ Remaining unverified, same shape: `hops-mcp` #55 uses `setup-node` on a CodeBuild runner
+      and **no existing workflow there uses `setup-node`**. `hops` proves it works on its own
+      CodeBuild runners, and `setup-node` (unlike `setup-python`) falls back to nodejs.org — an
+      argument, not evidence. Resolves on that PR's first run.
 - [x] **W2.3f — first real CI run, and the token bug it found (2026-08-25)** → evidence §9.
       `wort` #216 merged; run 32837708276 **failed correctly**. `CI-Tests` 10 → `-1` (403 on
       `ListStatuses`), `Packaging` 10 → `-1` (403 on `ListWorkflowRunsByFileName`),
