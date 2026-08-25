@@ -26,7 +26,7 @@ src, mode, dst = sys.argv[1], sys.argv[2], sys.argv[3]
 with open(src, encoding="utf-8") as fh:
     b = json.load(fh)
 if mode == "raise":
-    for name in ("Binary-Artifacts", "Code-Review", "CI-Tests", "Dangerous-Workflow"):
+    for name in ("Binary-Artifacts", "Dangerous-Workflow", "Token-Permissions"):
         if b["checks"].get(name, 10) < 10:
             b["checks"][name] += 1
             break

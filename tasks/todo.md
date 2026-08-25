@@ -362,6 +362,33 @@ the baseline is unrecoverable.
       best-pinned repo in the org.
       Accidental validation: `dme-core` is empty, Scorecard returns `"checks": null`, and both
       twins exit 2 rather than reading zero checks as zero regressions.
+- [x] **W2.3h — PR-gated, not push-gated; two checks leave the gated set (2026-08-25)** →
+      evidence §11. Trigger is now `schedule` + `pull_request` + `workflow_dispatch`; **`push` to
+      the default branch removed**. A run on main can only report a fait accompli — both real
+      failures this week (W2.3f, W2.3g) were reported after the merge and preventable before it.
+      **A claim of mine did not survive checking:** I argued push-to-main was needed because merges
+      here bypass PRs. Last 20 commits on each default branch — `wort` 20/20 via PR, `hops-mcp`
+      20/20, `sowinsights` likewise. These repos bypass **approval**, not pull requests;
+      `Code-Review` counts approvals and I read an approval statistic as a process one. Same shape
+      as the Phase 1 `score`-vs-`coverage` error, this time committed by me. §7 and §8 carry the
+      old claim — corrected in §11.1.
+      **Policy change the trigger forced:** `Code-Review` and `CI-Tests` move to reported-only, so
+      the gated set is Pinned-Dependencies, Token-Permissions, Dangerous-Workflow,
+      Binary-Artifacts — 4 gated / 8 reported / 6 ignored. Rule now stateable in one line: **every
+      gated check is a property of the tree at the commit being measured.** It was already written
+      in the script's own `REPORTED` comment and violated two lines above it.
+      **Two near-misses:** `barley`'s PRs target `develop`, so its trigger lists both branches — a
+      copied `main`-only trigger would never have fired. And `agreement-check.sh` was mutating the
+      two newly-ungated checks to synthesise a regression; it would have compared two clean runs
+      and still printed ALL AGREE. Mutation list narrowed to gated checks.
+      No baseline value changed anywhere — both moved checks stay in `TRACKED`, measured and
+      printed. A self-test in each twin now asserts they are reported, not gated.
+      Commits, all **unpushed**: `hops` `2bcbfa766` (#545) · `barley` `0d20b178c` (#1691) ·
+      `hops-mcp` `78ca553` (#55) · `wort` `22ba350` (#217) · `sowinsights` `41c0845`.
+      Verified per repo: 23 Node / 24 Python tests, each repo's own lint gate, 15/15 agreement,
+      Python twin still format-stable at 99 and 100 columns.
+      **Bonus:** `hops-mcp` #55 now runs the job it adds, settling W2.3g's open `setup-node`-on-
+      CodeBuild question before merge instead of after.
 - [x] **W2.3g — second real run: `setup-python` does not work on the CodeBuild runners
       (2026-08-25)** → evidence §10. `sowinsights` merged (#5); run 32840533614 failed at
       `Set up Python`: *"The version '3.11' with architecture 'x64' was not found for this

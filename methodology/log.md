@@ -919,3 +919,51 @@ Scorecard workflow itself, a job whose purpose is to gate that very check. It di
 because the baseline was 0 and the change was an improvement. **A control that only speaks when it
 regresses will not tell you that the control itself is part of the problem.** That one had to be
 read, not gated.
+
+## 2026-08-25 (third entry) — the user asked the question the design should have asked itself
+
+After two red default branches in a day, Vladyslav asked why the job runs on merge at all, when by
+then the change is already in. The honest answer is that it should not, and the original design
+carried an unexamined assumption: that a security check belongs at the same place as the deploy.
+
+**A control has to be placed where the answer is still actionable.** A push-to-`main` run can only
+report; the remedy is a revert. Everything the job can catch in a diff is catchable on the pull
+request, at the same cost, several hours earlier. Both real failures this week were reported after
+the merge and would have been prevented before it. Two data points is not much, but it is two out of
+two, and the argument does not depend on them.
+
+**I defended the wrong position first, on an unverified claim.** I argued push-to-`main` was needed
+as a backstop because merges here bypass pull requests, citing `Code-Review` scores of 1/30 and
+3/22. Checking the last 20 commits on each default branch: `wort` 20/20 through PRs, `hops-mcp`
+20/20, `sowinsights` likewise once merge commits are read correctly. **These repos bypass *approval*,
+not pull requests.** Scorecard's `Code-Review` counts approvals, and I read an approval statistic as
+a process statistic. The lesson is specific and worth keeping: *a metric's name is not its
+definition* — the same error as `score` vs `coverage` in Phase 1, and as the Token-Permissions
+non-monotonicity, now committed by me rather than found in someone else's tooling.
+
+**The trigger change forced a policy change, and that is the interesting part.** Failing a pull
+request is only defensible if every gated check is one its author can fix. Two were not:
+`Code-Review` and `CI-Tests` score a rolling window of recent changesets, so gating them means one
+pull request fails because two others merged unreviewed that week. Moving them to reported-only
+leaves a set with a property worth stating: **every gated check is a property of the tree at the
+commit being measured.**
+
+That rule was already written in the script's own `REPORTED` comment — "failures nobody can fix,
+which is how a gate gets deleted" — and I had violated it in the same file, for two checks, without
+noticing. **Writing the principle down is not the same as applying it**; it took a change of trigger
+to expose the inconsistency. Worth a habit: when a stated rule and a list disagree, the list is
+usually the older thought.
+
+**Two near-misses caught by asking "what does this repo actually do?" rather than copying.**
+`barley`'s pull requests target `develop`, not `main` — a trigger copied from a `main`-merging repo
+would never have fired, and the port would have looked complete while measuring nothing. And the
+agreement check had been mutating `Code-Review`/`CI-Tests` to synthesise a regression; after the
+policy change it would have compared two clean runs and agreed on nothing, still printing ALL AGREE.
+**A test whose fixture depends on policy has to be re-read when policy changes** — otherwise it goes
+quietly vacuous, which is the same failure mode as a fail-open scanner.
+
+**And the pre-merge test stopped being a manoeuvre.** The original proposal was to add a
+`pull_request` trigger temporarily, verify, then strip it before merge — which ships a workflow that
+differs from the one tested, exactly the shape of defect that produced §10. Keeping the trigger
+makes the verification permanent and applies it to every future edit of the gate and its baseline.
+The one-off version would have been thrown away after answering one question once.

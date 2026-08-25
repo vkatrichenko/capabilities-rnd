@@ -621,3 +621,97 @@ to work are real but indirect: `hops` uses `setup-node@v7` on its own CodeBuild 
 workflows, and unlike `setup-python`, `setup-node` falls back to downloading from `nodejs.org` when
 the tool-cache manifest has no match for the OS. That is an argument, not evidence. It resolves on
 `hops-mcp` #55's first run.
+
+## 11. Trigger and policy revision — PR-gated, not push-gated (2026-08-25)
+
+Two red `main`s in one day (§9 `wort`, §10 `sowinsights`) prompted the right question from Vladyslav
+Katrychenko: *why run this on merge at all, when the changes are already in?*
+
+He is right, and the original design was wrong on this point. **Both failures were reported after
+the fact, and both were caught by a run that could have happened on the pull request.** A
+push-to-`main` run cannot prevent anything; its only remedy is a revert.
+
+### 11.1 A claim of mine that did not survive checking
+
+The argument for keeping push-to-`main` was that merges in this org bypass PRs, so a PR trigger
+would not fire. Checked against the last 20 commits on each default branch:
+
+| Repo | Commits arriving via a PR or merge commit |
+|---|---|
+| `wort` | 20 / 20 |
+| `hops-mcp` | 20 / 20 |
+| `sowinsights` | all — the apparent gaps are branch commits listed alongside their own merge commits, including GitLab-era `Merge branch … into 'main'` |
+
+**These repos do not bypass pull requests; they bypass *approval*.** Scorecard's `Code-Review` check
+counts approvals, and reading "1 of 30 approved" as "PRs are bypassed" conflated two different
+things. Recorded because the original claim appears in §7 and §8 and would otherwise stand.
+
+### 11.2 The trigger set
+
+```yaml
+on:
+  schedule: [{ cron: '0 6 * * 1' }]   # the instrument
+  workflow_dispatch:
+  pull_request:                        # the gate
+    branches: [main]
+    paths: ['.github/workflows/**']
+```
+
+The cron is not decoration and is the reason `pull_request` alone is not enough: **most of what
+Scorecard scores is not in any diff.** An advisory published against a dependency already present,
+branch protection edited in the GitHub UI, a dependency-update tool switched off — no code event
+fires for any of them.
+
+**`barley` lists `develop` as well as `main`.** Its pull requests target `develop` (7 of the last 8
+merged PRs). A trigger copied verbatim from a repo that merges into `main` would simply never have
+fired there — the same porting failure as §10's `runs-on`, caught this time before it shipped.
+
+### 11.3 The policy change gating on a PR requires
+
+Failing a pull request is only defensible if every gated check is one its author can fix. Two were
+not, so **`Code-Review` and `CI-Tests` move to reported-only**:
+
+| | Before | After |
+|---|---|---|
+| **Gated** (4) | Pinned-Dependencies, Token-Permissions, Dangerous-Workflow, Binary-Artifacts, Code-Review, CI-Tests | Pinned-Dependencies, Token-Permissions, Dangerous-Workflow, Binary-Artifacts |
+| **Reported** (8) | Vulnerabilities, Branch-Protection, Maintained, Dependency-Update-Tool, Contributors, Packaging | + Code-Review, CI-Tests |
+| **Ignored** (6) | unchanged | unchanged |
+
+Both score a rolling window of recent changesets, so they track team behaviour rather than the
+commit being measured. Gating them means one pull request fails because two others merged unreviewed
+that week — the precise dynamic that gets a gate deleted or bypassed.
+
+This is not a new principle; it is the one already written in the script's own `REPORTED` comment
+("failures nobody can fix, which is how a gate gets deleted"), applied consistently for the first
+time. The resulting rule is clean enough to state in one line: **every gated check is a property of
+the tree at the commit being measured.**
+
+The two moved checks are still measured, still compared against the baseline, and still printed in
+the job summary. **No baseline value changed in any repo** — both remain in `TRACKED`.
+
+A self-test in each twin now asserts they are reported and not gated, so the decision lives in the
+test suite rather than in a comment. `agreement-check.sh`'s mutation list was narrowed to gated
+checks only; it had been raising `Code-Review`/`CI-Tests`, which after this change would have
+compared two clean runs and quietly stopped testing anything.
+
+### 11.4 Verification
+
+| Repo | Branch / commit | Tests | Repo's own gate |
+|---|---|---|---|
+| `hops` | `2bcbfa766` on #545 | 23 Node | pre-commit clean |
+| `barley` | `0d20b178c` on #1691 | 24 Python (1 skip) | `ruff check` + `format --check` clean |
+| `hops-mcp` | `78ca553` on #55 | 23 Node | `prettier --check` clean |
+| `wort` | `22ba350` on #217 | 24 Python (1 skip) | `ruff check .` + `pyright` clean |
+| `sowinsights` | `41c0845` | 24 Python (1 skip) | no lint pipeline exists |
+
+Plus, on the canonical pair: **15 of 15 agreement comparisons still byte-identical**, and the Python
+twin still format-stable at both 99 and 100 columns. All five workflows parse, and all five now
+expose exactly `pull_request`, `schedule`, `workflow_dispatch`.
+
+### 11.5 What this buys beyond the immediate fix
+
+`hops-mcp` #55 now **runs the job it adds**. That settles §10.5's open question — whether the
+container action and `actions/setup-node` work on that repo's CodeBuild runners, where no existing
+workflow uses `setup-node` — before the merge rather than after it. The pre-merge test is no longer
+a one-off manoeuvre to be reverted; it is the permanent shape of the workflow, and every future edit
+to the gate or its baseline gets the same treatment.

@@ -71,6 +71,22 @@ class Policy(unittest.TestCase):
         # dropping it.
         self.assertEqual(len(seen), 18)
 
+    def test_rolling_window_checks_are_reported_not_gated(self):
+        """Code-Review and CI-Tests score recent changesets, not this commit.
+
+        Gating them fails one pull request because other people merged
+        unreviewed that week — the reason this job is safe to run on a PR is
+        that every gated check is fixable by the author of the change.
+        """
+        for name in ("Code-Review", "CI-Tests"):
+            self.assertIn(name, sc.REPORTED)
+            self.assertNotIn(name, sc.GATED)
+        _, regressions, _ = sc.compare(
+            results({"Code-Review": 0, "CI-Tests": 0}),
+            baseline({"Code-Review": 10, "CI-Tests": 10}),
+        )
+        self.assertEqual(regressions, [])
+
     def test_policy_matches_the_node_implementation(self):
         """The two twins must not drift apart in what they gate.
 
@@ -146,7 +162,7 @@ class FailsClosed(unittest.TestCase):
 
     def test_gated_check_missing_from_baseline_fails(self):
         base = baseline()
-        del base["checks"]["CI-Tests"]
+        del base["checks"]["Dangerous-Workflow"]
         _, regressions, _ = sc.compare(results(), base)
         self.assertEqual(len(regressions), 1)
         self.assertEqual(regressions[0]["status"], "missing from baseline")
@@ -159,7 +175,9 @@ class FailsClosed(unittest.TestCase):
         self.assertEqual(regressions[0]["status"], "inconclusive (-1)")
 
     def test_check_already_inconclusive_in_baseline_stays_quiet(self):
-        _, regressions, _ = sc.compare(results({"Code-Review": -1}), baseline({"Code-Review": -1}))
+        _, regressions, _ = sc.compare(
+            results({"Token-Permissions": -1}), baseline({"Token-Permissions": -1})
+        )
         self.assertEqual(regressions, [])
 
 
@@ -176,14 +194,14 @@ class Main(unittest.TestCase):
         code, out = run(
             [
                 "--results",
-                tmp_file(results({"Code-Review": 4})),
+                tmp_file(results({"Binary-Artifacts": 4})),
                 "--baseline",
-                tmp_file(baseline({"Code-Review": 10})),
+                tmp_file(baseline({"Binary-Artifacts": 10})),
             ]
         )
         self.assertEqual(code, 1)
         self.assertIn("Gated regressions", out)
-        self.assertIn("Code-Review**: 10 -> 4", out)
+        self.assertIn("Binary-Artifacts**: 10 -> 4", out)
 
     def test_exit_0_when_nothing_regressed(self):
         code, out = run(["--results", tmp_file(results()), "--baseline", tmp_file(baseline())])
@@ -194,9 +212,9 @@ class Main(unittest.TestCase):
         code, out = run(
             [
                 "--results",
-                tmp_file(results({"CI-Tests": 1})),
+                tmp_file(results({"Dangerous-Workflow": 1})),
                 "--baseline",
-                tmp_file(baseline({"CI-Tests": 10})),
+                tmp_file(baseline({"Dangerous-Workflow": 10})),
                 "--advisory",
             ]
         )

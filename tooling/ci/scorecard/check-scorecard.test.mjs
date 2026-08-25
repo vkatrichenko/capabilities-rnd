@@ -59,6 +59,22 @@ describe('policy', () => {
     // someone has to decide gated/reported/ignored rather than silently drop it.
     assert.equal(seen.length, 18)
   })
+
+  test('rolling-window checks are reported, not gated', () => {
+    // Code-Review and CI-Tests score recent changesets, not this commit.
+    // Gating them fails one pull request because other people merged
+    // unreviewed that week — the reason this job is safe to run on a PR is
+    // that every gated check is fixable by the author of the change.
+    for (const name of ['Code-Review', 'CI-Tests']) {
+      assert.ok(REPORTED.includes(name))
+      assert.ok(!GATED.includes(name))
+    }
+    const v = compare(
+      results({ 'Code-Review': 0, 'CI-Tests': 0 }),
+      baseline({ 'Code-Review': 10, 'CI-Tests': 10 })
+    )
+    assert.deepEqual(v.regressions, [])
+  })
 })
 
 describe('compare', () => {
@@ -114,7 +130,7 @@ describe('fails closed', () => {
 
   test('a gated check missing from the baseline fails — a stale baseline is not a pass', () => {
     const b = baseline()
-    delete b.checks['CI-Tests']
+    delete b.checks['Dangerous-Workflow']
     const v = compare(results(), b)
     assert.equal(v.regressions.length, 1)
     assert.equal(v.regressions[0].status, 'missing from baseline')
@@ -127,7 +143,7 @@ describe('fails closed', () => {
   })
 
   test('a check that was already -1 in the baseline stays quiet', () => {
-    const v = compare(results({ 'Code-Review': -1 }), baseline({ 'Code-Review': -1 }))
+    const v = compare(results({ 'Token-Permissions': -1 }), baseline({ 'Token-Permissions': -1 }))
     assert.deepEqual(v.regressions, [])
   })
 })
@@ -144,12 +160,12 @@ describe('version drift', () => {
 describe('main', () => {
   test('exit 1 on a gated regression, and the check is named in the output', () => {
     const { code, out } = run([
-      '--results', tmpFile('r.json', results({ 'Code-Review': 4 })),
-      '--baseline', tmpFile('b.json', baseline({ 'Code-Review': 10 })),
+      '--results', tmpFile('r.json', results({ 'Binary-Artifacts': 4 })),
+      '--baseline', tmpFile('b.json', baseline({ 'Binary-Artifacts': 10 })),
     ])
     assert.equal(code, 1)
     assert.match(out, /Gated regressions/)
-    assert.match(out, /Code-Review\*\*: 10 -> 4/)
+    assert.match(out, /Binary-Artifacts\*\*: 10 -> 4/)
   })
 
   test('exit 0 when nothing regressed', () => {
@@ -163,8 +179,8 @@ describe('main', () => {
 
   test('--advisory downgrades a regression to exit 0 but still prints it', () => {
     const { code, out } = run([
-      '--results', tmpFile('r.json', results({ 'CI-Tests': 1 })),
-      '--baseline', tmpFile('b.json', baseline({ 'CI-Tests': 10 })),
+      '--results', tmpFile('r.json', results({ 'Dangerous-Workflow': 1 })),
+      '--baseline', tmpFile('b.json', baseline({ 'Dangerous-Workflow': 10 })),
       '--advisory',
     ])
     assert.equal(code, 0)

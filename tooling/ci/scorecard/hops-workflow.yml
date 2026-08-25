@@ -22,10 +22,10 @@ on:
   schedule:
     - cron: '0 6 * * 1'
   workflow_dispatch:
-  # The three gated checks that a merge realistically moves (Pinned-Dependencies,
-  # Token-Permissions, Dangerous-Workflow) all read `.github/workflows/**`, so a
-  # workflow change gets an immediate answer instead of waiting for Monday.
-  push:
+  # The gate. Asking before the merge is the only version of this that
+  # prevents a regression rather than reporting one after the default
+  # branch is already red.
+  pull_request:
     branches: [main]
     paths: ['.github/workflows/**']
 

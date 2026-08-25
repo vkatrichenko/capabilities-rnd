@@ -35,15 +35,21 @@ export const GATED = [
   'Token-Permissions',
   'Dangerous-Workflow',
   'Binary-Artifacts',
-  'Code-Review',
-  'CI-Tests',
 ]
 
-// Reported but never gated: these move with the outside world (a new advisory
-// published against a dependency we already had) or with repository settings
-// that no PR author can change. Gating them produces failures nobody can fix,
-// which is how a gate gets deleted.
+// Reported but never gated. Three reasons, all the same underneath: nobody can
+// fix a failure here in the change that triggered it, and a gate that fails for
+// reasons its author cannot address is a gate that gets deleted.
+//   - Code-Review and CI-Tests score a rolling window of recent changesets, so
+//     they move with team behaviour. Gating them means one pull request fails
+//     because two others merged unreviewed that week.
+//   - Vulnerabilities and Maintained move with the outside world — an advisory
+//     published against a dependency we already had.
+//   - Branch-Protection, Dependency-Update-Tool, Contributors and Packaging are
+//     repository settings or history that no pull request touches.
 export const REPORTED = [
+  'Code-Review',
+  'CI-Tests',
   'Vulnerabilities',
   'Branch-Protection',
   'Maintained',
