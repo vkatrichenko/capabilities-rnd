@@ -1,0 +1,24 @@
+{
+  "_comment": "Ratchet for check-scorecard.mjs. Raising a score here is a reviewed commit, never automatic.",
+  "scorecard_version": "v5.5.0",
+  "measured": {
+    "date": "2026-08-23T14:10:02+03:00",
+    "repo": "github.com/provectus-barhopping/hops",
+    "commit": "628b57db2eac21247311149b6d5aae98a9e375f6",
+    "aggregate": 5.4
+  },
+  "checks": {
+    "Pinned-Dependencies": 0,
+    "Token-Permissions": 0,
+    "Dangerous-Workflow": 10,
+    "Binary-Artifacts": 9,
+    "Code-Review": 10,
+    "CI-Tests": 10,
+    "Vulnerabilities": 0,
+    "Branch-Protection": 5,
+    "Maintained": 10,
+    "Dependency-Update-Tool": 10,
+    "Contributors": 10,
+    "Packaging": 10
+  }
+}

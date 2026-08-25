@@ -688,3 +688,426 @@ That belongs in the methodology section of the article as a technique, not as an
 Report republished with every delivery row green. Next: the measurement checkpoint (re-run the
 AWOS audit) — but note that of the merged items only W1.5, still unshipped, produces a large audit
 delta. The checkpoint will under-report the phase unless that is said explicitly.
+
+## 2026-08-23 — W2.3: Scorecard in CI, and a delta of zero
+
+Two runs of Scorecard v5.5.0 against `hops` (current `main`, and the Gate 0 commit via `--commit`),
+three more against the sibling repos, a Node comparison tool with 22 offline self-tests, and a hops
+branch that is committed and unpushed. Full evidence: `artifacts/scorecard-w2-3-evidence.md`.
+
+**The result is a negative one, and it is the point.** Not one check moved between the 2026-08-18
+baseline and today, across three merged security PRs. Scorecard has no secret-scanning check, no
+concept of a dependency cooldown, and no opinion about whether a package name exists — so #515,
+#518 and #528 are invisible to it by construction. Reporting that plainly is more useful than
+finding something to claim: the pairing of AWOS (does the control exist?) with Scorecard (is it
+enforced?) only earns its keep if we also say what neither of them sees.
+
+**Method note — the version-matched re-baseline was worth the extra run, and not for its result.**
+The baseline was captured at v5.1.1-45 and CI will run v5.5.0, so a raw before/after would confuse
+tool drift with repository change. Re-reading the *same commit* at the new version returned
+identical scores, including an advisory count of 65 on both. That is a control that cost one command
+and now lets the delta be stated without a caveat. The by-product mattered more: `--commit` silently
+runs only **9 of 18** checks, and its aggregate (4.9) is computed over that subset. Comparing it
+with 5.4 would have manufactured a regression out of nothing. A tool that quietly narrows its own
+scope and still prints a headline number is exactly the failure mode this project keeps finding.
+
+**A finding one layer below where anyone looks.** The workflow pins `ossf/scorecard-action` to a
+commit SHA — and that action's own `action.yaml` runs `docker://ghcr.io/ossf/scorecard-action:v2.4.4`,
+a mutable tag. The pin fixes which manifest is read, not which code executes. Found inside the tool
+adopted to measure exactly this class of gap. Generalized for the article: **"pinned" is a claim
+about one layer** — a SHA-pinned action, a digest-pinned image built `FROM` a tag, a lockfile whose
+registry permits re-publication.
+
+**The cross-repo table corrected a claim I was about to make.** All four repos score
+Token-Permissions 0, and the obvious sentence — "none of them declares top-level workflow
+permissions" — is false. `barley` declares them in 27 of 28 workflows and scores 0 anyway, on two
+`contents: write` grants and one workflow with none. It is materially ahead of `hops` (which
+declares none, anywhere) at an identical score, because the check is effectively a minimum over
+workflows. The details field said so; the score did not. Caught only because the write-up was built
+from the raw JSON rather than from the score table — which is now the rule for these artifacts.
+
+Independent confirmations worth recording: Scorecard flagged `sowinsights`' committed `.pyc` files
+and its mutable `python:3.11-bullseye` base image without being told to look, both Phase 1c
+findings; and `barley`'s Code-Review 2 (2 of 9 changesets approved) is a third instrument agreeing
+with the gitleaks history scan and barley's own audit about how that repo merges.
+
+## 2026-08-23 (later) — the question that widened the measurement
+
+Asked whether Scorecard should not cover every related repo rather than just `hops`. It should, and
+the answer split cleanly in two: **measurement** is read-only and costs one command per repo, so it
+went org-wide immediately; **the CI job** is a change, and changes need the owning team's approval,
+which is why three sibling branches now sit committed and unpushed rather than merged.
+
+**The scope question was the finding.** The charter names four repos. The org has 27. Sweeping all
+of them turned an argued-from-`hops` claim into a verified org-level one: 25 of 26 default branches
+require zero passing status checks, and the enterprise ruleset carries no `required_status_checks`
+rule type at all. The top recommendation stopped being "ask the HOPS tech lead" and became "one
+change to the `provectus-global` ruleset". Four repos was a scoping decision inherited from the
+charter and never re-examined; re-examining it cost 25 minutes of wall-clock.
+
+**Two score inversions in one day, both found the same way.** `barley` declares top-level workflow
+permissions in 27 of 28 workflows and scores Token-Permissions 0; `hops` declares none anywhere and
+also scores 0. `barley` is the only repo in the org that blocks a merge on a passing check and
+scores Branch-Protection 4, below the 25 repos that block nothing. Both were caught by reading the
+`details` field rather than the score, and both would have been asserted backwards from the score
+table alone. **A per-check score is not monotone in the control it names** — the same lesson as the
+Phase 1 AWOS `score`-vs-`coverage` correction, from a different tool, which is what makes it a
+methodology claim rather than a quirk.
+
+**Porting rule, stated because it was nearly got wrong: one policy, two implementations, chosen by
+what each repo's own lint pipeline claims.** The instinct was to ship the Node checker everywhere.
+But W3.1 ported Python → Node for `hops` precisely because hops CI has no Python; shipping Node into
+`barley` and `sowinsights` is that mistake mirrored. So there is a stdlib Python twin, and an
+agreement check that runs both implementations over every real Scorecard result under three baseline
+mutations each — 15/15 byte-identical. Two implementations of one policy drift unless something
+stops them.
+
+**Running each repo's own gate found things reading its config did not.** `ruff format --check`
+under barley's `pyproject.toml` rejected the first pass. `make check` in `hops-mcp`, after a full
+`npm ci`, showed prettier claiming the new workflow YAML — while confirming that `scripts/` really
+is outside eslint, prettier and tsconfig, which was the reason the Node twin was safe to put there.
+Neither would have been caught by inspection. Cheap rule: before committing to someone else's repo,
+run their gate, not your reading of it.
+
+**And an unplanted test of our own fail-closed rule.** `dme-core` is an empty repo; Scorecard
+returns `"checks": null` with aggregate -1. Both twins exit 2 on it rather than treating zero checks
+as zero regressions. The degenerate input the tool was designed against turned up on the first
+org-wide run without being constructed.
+
+## 2026-08-24 — porting outward: `wort`, and what a stricter repo teaches
+
+**The question was "should this go to all 27 repos?" and the honest answer was no.** The instinct
+after building a control is to maximise its coverage. The org sweep already held the data to refuse
+that: filter to *actively maintained* **and** *has CI* and 27 collapses to seven. Sixteen of
+twenty-six repos score Maintained 0; eleven have no GitHub Actions workflows, so three of the six
+gated checks would read `-1` there and the weekly job would measure very little at real cost. **A
+control that cannot move is not a control** — for the dormant tail, the right artefact is a periodic
+sweep run from one place, which is what the sweep already is.
+
+There is a sequencing point underneath it, and it matters more than the coverage. 25 of 26 default
+branches require zero passing status checks. A gating workflow added to a repo where no check is
+required produces a red X that merges anyway. **Rolling out a gate before the org enforces gates is
+decoration.** One ruleset change dominates twenty-odd repository PRs.
+
+**Running someone else's linter is worth more the stricter they are.** `wort`'s `make lint` is
+pyupgrade + bugbear + flake8-simplify + `E501` at 100 columns, plus repo-wide pyright — materially
+stricter than `barley`'s `E,W,F,I` with `E501` ignored. It rejected the Python twin on four counts
+(`.format()` over f-strings, `raise` without `from`, an `if`-block where `.get` reads, two long
+strings). None of that is cosmetic in effect: the fix produced a file that is **format-stable at
+both 99 and 100 columns**, so one source now satisfies two repos with different line lengths instead
+of forking per repo. The generalizable form: *satisfy the strictest consumer and the others come
+free; satisfy the loosest and you own a fork per repo.*
+
+Held to it afterwards by re-running the agreement check — 15/15 byte-identical against the Node
+twin, on five real results including `wort`'s. A rewrite that passes its own tests but silently
+changes output is exactly what an agreement check exists to catch.
+
+**Fresh approval is per-repository, and the tooling enforced it.** The user approved `wort`
+explicitly. When the same rework was then copied toward `barley` and `sowinsights` — a strictly
+mechanical propagation, behaviourally proven identical — the write was refused, correctly: those
+repos were approved for their own port on a different day, not for edits today. So the two unpushed
+sibling branches now carry a stale-but-equivalent revision, and that is recorded as known drift
+rather than quietly fixed. **Proving two revisions equivalent is not the same as being allowed to
+replace one with the other.**
+
+**The sharpest declared-vs-enforced case in the org turned up here.** `wort`'s `main` requires a
+pull request and one approving review; Scorecard reads 1 of 30 changesets approved, and branch
+protection reports administrators exempt. Earlier instances of this finding were about a control
+being *absent* (no required status checks). This one is a control that is *present, switched on, and
+routed around* — a strictly stronger version of the same claim, and the better example for the
+article.
+
+**Third instance of the score non-monotonicity, and this time it names a one-line fix.** Three of
+`wort`'s four workflows declare top-level `permissions`; `ci.yml` does not, and Token-Permissions
+reads 0 for the repo. Adding `permissions: contents: read` to that one file moves the check 0 → 10.
+It was deliberately left out of the port: it is a change to a CI job this research does not own, and
+scope discipline is what keeps these ports acceptable to their owners. Named in the PR body instead.
+
+**A gate that constrains its own author is a good sign.** `Pinned-Dependencies` is gated at 8, and
+adding a workflow adds dependencies to the check being gated — so a tag-referenced action in the new
+workflow would have failed the job on its first run. Worth noticing as a design property: the
+controls worth shipping are the ones that apply to the change that ships them.
+
+## 2026-08-25 — the first real run failed, and that was the most useful hour of the work item
+
+`wort` #216 merged, the job fired, and it failed. Not a posture change: two of Scorecard's API calls
+returned 403 under the default `GITHUB_TOKEN`, `CI-Tests` scored `-1` instead of 10, and the
+comparison failed closed on it.
+
+**The permission list came from upstream's README, and upstream's README is incomplete.** It
+documents `contents`, `issues`, `pull-requests`, `checks` as the "recommended reads for private
+repos". It omits `statuses: read` (which `CI-Tests` needs for `ListStatuses`) and `actions: read`
+(which `Packaging` needs for `ListWorkflowRunsByFileName`). Following the documentation exactly
+produced a job that could not measure two of its own checks. The methodology lesson is narrow and
+useful: **for a tool that reads an API, the authority on required permissions is the failing call,
+not the vendor's example block** — and the failing call is only observable in a real run. This was
+listed as "not verifiable before merge" in the plan for a reason, and the reason held.
+
+**The strongest evidence for the design choice arrived by accident.** The aggregate fell 4.2 → 3.6
+in that run, every point of it measurement failure rather than posture. A threshold gate written the
+obvious way — `fail if aggregate < 3.5` — would have passed the run green while three of eighteen
+checks silently stopped working. The per-check ratchet failed it and printed Scorecard's own 403.
+Until now, "fail closed" was justified here by pointing at two historical defects (barley's
+fail-open cassette scrubber, the gitleaks `regexTarget` bug). This is the first time the principle
+was tested by an accident instead of a constructed fixture, and it is a much better citation.
+
+Also worth recording because it is funny and it is the point: **a job added to measure whether this
+organisation over-grants workflow tokens failed because its own token was under-granted.** Least
+privilege has a floor. Finding it is empirical.
+
+**The port to a fifth repository paid for itself before the fourth one merged.** `hops` #545 was
+open, green, and carried the identical permission block; its baseline has `CI-Tests` at 10, so it
+would have failed on its first run after merge. So would `barley` and `hops-mcp`. The bug was found
+in `wort` — the repository furthest from the charter, the one where breaking a CI job costs least.
+Generalizable: **when rolling one control out to several repositories, merge it first where a
+failure is cheapest, not where it matters most.** The instinct is the opposite, because the
+important repo is the one you care about.
+
+One process note. The fix went to `hops` as a *second commit* on the open PR rather than an amend
+and force-push. The branch has already been reviewed, including by CodeRabbit; a force-push discards
+that review context to save one line of history. Cheap to squash at merge, not cheap to un-lose a
+review.
+
+**Same-day addendum.** The three sibling branches were fixed on fresh approval, which also closed
+the source drift recorded the day before. Two shapes of the same fix, chosen by review state rather
+than by preference: a second commit on `hops` #545 because that branch has been reviewed, an amend
+on `barley`, `hops-mcp` and `sowinsights` because those have never been pushed. Worth stating as a
+rule, since the instinct is to be consistent across repos: **history hygiene is decided by whether
+anyone has read the history yet.**
+
+Each fix was verified under its own repository's gate rather than under ours — barley's ruff,
+hops-mcp's prettier, and the respective test runners. Re-running `prettier --check` on hops-mcp's
+workflow was not ceremony: prettier claimed that same file during the original port, so it was the
+one place where a comment-only edit could plausibly break a gate.
+
+## 2026-08-25 (second run) — the assumption that travels with a copied workflow
+
+`sowinsights` merged and failed at `Set up Python`, not at the gate. `actions/setup-python` resolves
+a prebuilt interpreter by operating system from the `actions/python-versions` manifest, which covers
+the GitHub-hosted images only; `sowinsights` runs on self-hosted CodeBuild runners.
+
+**The defect was created by the port, and by nothing else.** That step is correct in `barley`, which
+runs on `ubuntu-latest`. Copying the workflow across changed one line — `runs-on` — and with it the
+validity of a step three lines further down. Nothing in reading the file reveals that; the two
+statements are true separately and false together. The rule that would have caught it: **when
+porting a workflow, re-verify every step against the target's runner, not only against its
+language.** The language check was done carefully — Python twin for the Python repo. The runner
+check was not done at all, because `runs-on` had been adapted per repo and therefore felt handled.
+
+A second, cheaper signal was available and ignored: **no other workflow in `sowinsights` uses
+`setup-python`.** Absence of precedent in the target repo is evidence, and it was sitting in the
+same directory. Where a repo already does a thing, copy how it does it; where it has never done the
+thing, treat that as a question rather than a blank slate.
+
+**Good news arrived in the same run, and it is worth separating from the bad.** The token fix from
+the previous entry is confirmed: `Packaging` scored 10 and `CI-Tests` scored 0 instead of both
+returning -1, and Scorecard's own `Token-Permissions` output names the two new grants by file and
+line. Verifying a fix from the artifact of a job that failed for an unrelated reason is only
+possible because the upload step is guarded with `if: always()` — a decision made for a different
+scenario (preserving evidence when the gate fails) that has now paid off twice in two runs, both
+times for reasons it was not designed for.
+
+**Running the comparison offline against the failed run's artifact answered the question the job
+could not.** Exit 0, three checks improved, no gated regression — so the gate is correct on that
+repo today and only the plumbing was broken. Cheap habit worth keeping: when a CI job dies before
+the interesting step, re-run the interesting step locally on whatever the job did manage to produce,
+rather than waiting for a green run to find out.
+
+**And the tool caught its own author again, in the opposite direction from last time.** Scorecard's
+`Pinned-Dependencies` details listed three unpinned GitHub-owned actions — all three in the
+Scorecard workflow itself, a job whose purpose is to gate that very check. It did not fail anything,
+because the baseline was 0 and the change was an improvement. **A control that only speaks when it
+regresses will not tell you that the control itself is part of the problem.** That one had to be
+read, not gated.
+
+## 2026-08-25 (third entry) — the user asked the question the design should have asked itself
+
+After two red default branches in a day, Vladyslav asked why the job runs on merge at all, when by
+then the change is already in. The honest answer is that it should not, and the original design
+carried an unexamined assumption: that a security check belongs at the same place as the deploy.
+
+**A control has to be placed where the answer is still actionable.** A push-to-`main` run can only
+report; the remedy is a revert. Everything the job can catch in a diff is catchable on the pull
+request, at the same cost, several hours earlier. Both real failures this week were reported after
+the merge and would have been prevented before it. Two data points is not much, but it is two out of
+two, and the argument does not depend on them.
+
+**I defended the wrong position first, on an unverified claim.** I argued push-to-`main` was needed
+as a backstop because merges here bypass pull requests, citing `Code-Review` scores of 1/30 and
+3/22. Checking the last 20 commits on each default branch: `wort` 20/20 through PRs, `hops-mcp`
+20/20, `sowinsights` likewise once merge commits are read correctly. **These repos bypass *approval*,
+not pull requests.** Scorecard's `Code-Review` counts approvals, and I read an approval statistic as
+a process statistic. The lesson is specific and worth keeping: *a metric's name is not its
+definition* — the same error as `score` vs `coverage` in Phase 1, and as the Token-Permissions
+non-monotonicity, now committed by me rather than found in someone else's tooling.
+
+**The trigger change forced a policy change, and that is the interesting part.** Failing a pull
+request is only defensible if every gated check is one its author can fix. Two were not:
+`Code-Review` and `CI-Tests` score a rolling window of recent changesets, so gating them means one
+pull request fails because two others merged unreviewed that week. Moving them to reported-only
+leaves a set with a property worth stating: **every gated check is a property of the tree at the
+commit being measured.**
+
+That rule was already written in the script's own `REPORTED` comment — "failures nobody can fix,
+which is how a gate gets deleted" — and I had violated it in the same file, for two checks, without
+noticing. **Writing the principle down is not the same as applying it**; it took a change of trigger
+to expose the inconsistency. Worth a habit: when a stated rule and a list disagree, the list is
+usually the older thought.
+
+**Two near-misses caught by asking "what does this repo actually do?" rather than copying.**
+`barley`'s pull requests target `develop`, not `main` — a trigger copied from a `main`-merging repo
+would never have fired, and the port would have looked complete while measuring nothing. And the
+agreement check had been mutating `Code-Review`/`CI-Tests` to synthesise a regression; after the
+policy change it would have compared two clean runs and agreed on nothing, still printing ALL AGREE.
+**A test whose fixture depends on policy has to be re-read when policy changes** — otherwise it goes
+quietly vacuous, which is the same failure mode as a fail-open scanner.
+
+**And the pre-merge test stopped being a manoeuvre.** The original proposal was to add a
+`pull_request` trigger temporarily, verify, then strip it before merge — which ships a workflow that
+differs from the one tested, exactly the shape of defect that produced §10. Keeping the trigger
+makes the verification permanent and applies it to every future edit of the gate and its baseline.
+The one-off version would have been thrown away after answering one question once.
+
+## 2026-08-25 (fourth entry) — two safe changes that combined into a silent failure
+
+The first pull-request run of the gate posted its comment, and the comment showed the report was
+wrong. `scorecard-action` runs in local directory mode on a `pull_request` event, so seven
+API-backed checks do not run; the comparison called five of them "missing from results" — its phrase
+for *the measurement broke* — printed an aggregate covering 11 of 18 checks next to a baseline
+covering 18, and **passed**.
+
+**The interesting part is not the wrong labels. It is that two individually correct decisions
+composed into a fail-open.** Fail-closed had always been scoped to gated checks. Moving
+`Code-Review` and `CI-Tests` to reported-only was right on its own terms. Running on pull requests
+was right on its own terms. Together they produced a run that measured a little over half the
+repository and reported clean — and before the reported-only change, this exact run would have
+failed loudly on the same input. **A safety property proven of two changes separately is not proven
+of both**, and neither review would have caught it, because each change was examined against the
+state before it rather than against the other.
+
+That is the third fail-open in this project's evidence file, and the first one we wrote ourselves.
+It arrived where the previous two did: not in the logic, but in the boundary of what the safety rule
+covers. barley's cassette scrubber checked a denylist of keys and passed everything else; the
+gitleaks rule matched per line and missed anything wrapped; this one failed closed on gated checks
+and said nothing about the rest.
+
+**The fix was to describe the mode rather than avoid it.** The instinct was to force a remote scan
+on pull requests. That would have been worse: local mode measures the tree being *proposed*, which
+is the only thing a pull request can meaningfully be judged on. The right move was to teach the
+comparison that a run has a mode, and that "this check did not run here" and "this check should have
+run and did not" are different sentences. The gated set is unaffected because all four gated checks
+are file-based — but that is now asserted by a test rather than left as a happy accident, along with
+the rule that a gated check absent from a local run still fails.
+
+**And the trial paid off exactly as intended.** Porting an untested pattern to five repositories is
+what produced the `setup-python` defect; trialling it in one repository first is what caught this
+one before four more copies of it existed. The same run also settled three open questions green —
+container action on CodeBuild, `setup-node` on CodeBuild, and the comment mechanism — so one push
+answered more than it cost. **When a change has an unknown in it, the cheapest experiment is one
+instance of it, in the place where being wrong matters least.**
+
+One smaller thing worth keeping: the defect was visible only because the output was put in front of
+a human. The same table had been rendering on the run summary page for two days and nobody looked;
+it took a pull request comment and the question "does the report look okay?" to surface it. **A
+report nobody reads is a report that cannot be wrong.**
+
+## 2026-08-25 (fifth entry) — the trigger set settles, and a filter that was quietly wrong
+
+Final shape, decided by the user: `pull_request` and `push` to the default branch. No cron, no
+manual dispatch.
+
+**I argued for the cron and lost on a point I had made myself.** The case for keeping it was that
+seven checks — review coverage, open advisories, branch protection — are not in any diff and refresh
+only when someone merges. That is true, and in a quiet repository it means months. The counter is
+that a day earlier I had written "a report nobody reads is a report that cannot be wrong", after a
+defect sat visible on a run summary page for two days and surfaced only once the output reached a
+pull request comment. **A signal with no reader is not a signal**, and a weekly run that nobody
+opens does not become valuable by being scheduled. The right response to the real loss is a louder
+channel — an upserted issue on the push run — not a quieter run on a timer.
+
+**The question that found the actual bug was "does that make sense?".** The user asked why
+`Code-Review` and `CI-Tests` are not evaluated on a pull request, since code changes in a pull
+request. The answer is that neither measures the diff — both are statistics over merged history —
+but answering it properly meant re-reading what each gated check reads from disk, and that exposed
+something else: **the `paths: ['.github/workflows/**']` filter meant two of the four gated checks
+were not enforced at all.** `Pinned-Dependencies` reads Dockerfiles, `Binary-Artifacts` reads the
+whole tree; both had live examples in our own evidence — `Dockerfile:2` in `hops-mcp`,
+`app/__pycache__/*.pyc` in `sowinsights`. A pull request unpinning a base image would not have run
+the gate.
+
+That filter had been correct once, on a `push`-only design where the concern was API cost, and it
+survived two redesigns without being re-examined. **Configuration inherited across a redesign is
+where the stale assumptions hide** — the same shape as the `runs-on` defect, one level up: not a
+value copied to the wrong repository, but a value kept through a change that invalidated it. Neither
+was visible in a diff, because in both cases the wrong line was the one that did not change.
+
+Worth naming the pattern in how these were found. Four defects this week, and none came from
+review: the token scopes came from a failed run, `setup-python` from a failed run, the local-mode
+fail-open from putting output in front of a person, and the path filter from a user asking a
+"does this make sense" question about something adjacent. **Reviewing a change tells you whether it
+does what it says. Running it, and showing someone the result, tells you whether what it says is
+worth doing.**
+
+**Same-day correction.** `barley`'s push trigger was set to `[main, develop]` because that repo
+integrates on `develop`. `scorecard-action` rejects any non-`pull_request` event off the default
+branch outright, so it failed on the first merge. The reasoning was right about the repo and wrong
+about the tool, and I had already read the file that says so — the branch check sits forty lines
+above the local/remote switch I quoted the day before. **Reading a source file for one answer does
+not mean you have read it**; I extracted the rule I went looking for and walked past the one next to
+it.
+
+Cheap validation available and not used: the same branch adaptation could have been checked against
+one run before being written into a commit, and in the end it was — by the failure. The
+consolation is that the two runs make an unusually clean pair of evidence, PR into `develop` passing
+and push to `develop` failing within a minute of each other, which is what the correction is now
+argued from rather than from the source alone.
+
+## 2026-08-25 (closeout) — W2.3, and what a week of failures taught
+
+The gate is a standing control in four repositories, with `hops` approved and awaiting a merge. The
+measurement work — the four-repo table, the 27-repo sweep, the Gate-0 delta — was finished in a day.
+The plumbing took a week and produced five defects.
+
+**None of the five was found by review.** Two came from failed runs, one from putting the output in
+front of a person, one from a user asking "does that make sense?" about something adjacent, and one
+more from a failed run. Every one of them was in code that had been read carefully, in some cases by
+me twice. That is the single most useful thing to carry to the next capability: **reviewing a change
+tells you whether it does what it says; running it, and showing someone the result, tells you
+whether what it says is worth doing.** Budget for the second kind of check, because the first kind
+will not find these.
+
+**Four of the five were in the harness, not in the tool.** Scorecard measured correctly from the
+first run. What went wrong was permission scopes, a runner assumption, a path filter kept across a
+redesign, a branch constraint, and a fail-open in our own comparison logic. Worth remembering when
+estimating the next "just add a scanner to CI" item: the scanner is the cheap part.
+
+**The ordering mistake, stated so it is not repeated.** Four repositories merged the port before the
+pattern had stabilised, and three of them now need a follow-up pull request to reach a working
+state. The trial-in-one-repo discipline was adopted at §12 — after the mistake, not before. The rule
+is cheap and should be default: **when a change carries an unknown, land it in one place first, in
+the place where being wrong costs least.** `wort`, the repository furthest outside the charter, is
+where the token-scope defect surfaced and it saved `hops` from merging with it.
+
+**On honesty about what shipped.** The closeout records that eight of twenty gated check-instances
+sit at 0 and cannot fall, that the scores are normalised ratios which may not move on small
+regressions, and that `Branch-Protection` — the check that motivated adopting Scorecard for this
+research at all — cannot be read from CI. Writing that down is uncomfortable in a document whose
+purpose is to show a capability working. It is also the only version of the document that survives
+someone checking it. The gate is real but modest; the measurement is where the value was, and the
+single most valuable output of the whole item is a finding that needs an org settings change rather
+than any code we wrote.
+
+**Closeout confirmed (2026-08-25).** All eight Scorecard pull requests merged; five green first
+runs. `hops`' run answered the question the plan opened with as unverifiable — CI-token parity —
+by matching the user-token baseline on eleven of twelve tracked checks, the twelfth being the
+`Branch-Protection` `-1` predicted three days earlier. A prediction written down before the run and
+checked against it afterwards is worth more than the same observation made retrospectively; that is
+the only reason the reconciliation means anything.
+
+The published blueprint artifact was updated in the same pass: roadmap item 10 marked delivered, the
+Scorecard row added to the Phase 2 delivery table, and a new callout carrying the org-wide sweep —
+1 of 26 default branches requiring a status check, 1 of 26 with a dependency-update tool, and
+`wort`'s enabled-but-bypassed review rule. The callout ends with what the gate does **not** do:
+eight of twenty gated check-instances sit at zero and cannot fall, and `Branch-Protection` cannot be
+read from CI. **A report that only lists what worked is a report a reader has to fact-check; one
+that names its own limits is one they can use.**

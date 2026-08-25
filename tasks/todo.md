@@ -262,7 +262,10 @@ the baseline is unrecoverable.
       GitHub Actions** (`hops-dev.yml` ×5, `hops-main.yml` ×5, `hops-mr-check.yml` ×5,
       `hops-demo.yml`, `hops-preview.yml`) — the CI-side twin of the `.mcp.json` finding, same
       control, and this one moves Scorecard's Pinned-Dependencies. Pin both surfaces in one item;
-      leave the 100 GitHub-owned actions alone (low risk, high churn).
+      leave the GitHub-owned actions alone (low risk, high churn — now 102 after #528).
+      **Scoreboard exists as of W2.3 (2026-08-23):** Pinned-Dependencies 0 with 0/17 third-party
+      actions pinned is in the committed CI baseline, so this item lands as a measured improvement
+      rather than as a diff. Still 0/17 today — nothing has moved it.
 
 - [x] **W1.6 — NEW (2026-08-19), landed as a hops PR: gitleaks allowlist scope.**
       `hops/.gitleaks.toml` used `regexTarget = "line"`, which allowlists the whole line —
@@ -293,7 +296,258 @@ the baseline is unrecoverable.
       **Scope is wider than written:** 3 of hops' 4 registered hooks exist only as *inline*
       `command` strings inside `.claude/settings.json` — the scanner must read those too, not
       just files under a hooks directory.
-- [ ] **W2.3** OpenSSF Scorecard action in hops CI; delta vs the Gate 0 baseline
+- [x] **W2.3 CLOSED (2026-08-25)** → evidence §15. Scorecard is a standing control in four of
+      five repos; the fifth is approved and waiting on a merge.
+      **Landed:** `hops-mcp` #55 · `wort` #216 · `sowinsights` #5 · `barley` #1691.
+      **All merged 2026-08-25** — `hops` #545, `wort` #217, `sowinsights` #6, `barley` #1699 —
+      and **five green first runs** (evidence §16). `barley`'s latest is a `pull_request` run on an
+      unrelated product branch: the gate now fires on ordinary work.
+      **Token parity answered** (open since the plan): `hops`' first CI run scored all 18 checks
+      and matches the user-token baseline on **11 of 12** tracked checks. The twelfth is
+      `Branch-Protection`, `-1` from CI exactly as predicted — reported, never gated.
+      Three of four merged repos needing a follow-up is the direct cost of merging before the
+      pattern stabilised — the argument for W2.3i's trial-in-one-repo discipline, adopted late.
+      **Five defects, none found by review:** W2.3f upstream's permission block omits two scopes ·
+      W2.3g `setup-python` on CodeBuild · W2.3j a fail-open we wrote · W2.3k the `paths` filter left
+      two of four gated checks unenforced · W2.3k `push` off the default branch. Four of five were
+      in the harness, not in Scorecard.
+      **Honest limits, recorded so the article does not overclaim:** 8 of 20 gated check-instances
+      sit at 0 and cannot fall; scores are normalised ratios so small regressions may not move
+      them; and `Branch-Protection` — the check that motivated adopting Scorecard, the only
+      instrument here measuring *enforcement* — cannot be read from CI at all. The highest-value
+      output was the measurement, not the gate: 25 of 26 default branches requiring zero status
+      checks is still worth more than everything gated here combined.
+- [x] **W2.3 — OpenSSF Scorecard in hops CI + the Gate 0 delta (2026-08-23)** → evidence:
+      `artifacts/scorecard-w2-3-evidence.md`; tooling: `tooling/ci/scorecard/`. hops branch
+      `HOP-0000/openssf-scorecard-posture-check` off `origin/main` @ `628b57db2`, commit
+      `c0a93c356`, 4 files, **not pushed**.
+      **The delta is zero, and that is the finding.** Not one check moved between the G0.3 baseline
+      and current `main` across #515, #518 and #528 — Scorecard has no secret-scanning check, no
+      cooldown concept and no opinion on package names, so all three are invisible to it by
+      construction. Only real movement: open advisories 65 → 58, which is upstream churn, not our
+      work, and does not change the score (Vulnerabilities saturates at 0).
+      Design: weekly cron + `workflow_dispatch` + `push` to main filtered to `.github/workflows/**`
+      (not `pull_request` — repo-level state a PR does not change). Per-check ratchet against a
+      committed baseline, **not** an aggregate threshold: 6 gated, 6 reported, 6 ignored, every one
+      of the 18 classified and a self-test that fails if upstream adds a nineteenth. Fails closed on
+      a missing / inconclusive / unbaselined gated check.
+      Verified: 22 offline self-tests; exit 1 on both positive controls (hand-raised baseline;
+      gated check deleted from real results), exit 0 on the true baseline; local run with and
+      without the new workflow scores the four workflow-facing checks identically, so the workflow
+      does not move what it measures.
+      **Not verifiable before merge** (stated in the PR): whether a Docker container action runs on
+      the CodeBuild runners, and how `GITHUB_TOKEN` scope changes Branch-Protection against the
+      enterprise ruleset. The merge is itself a push to main touching `.github/workflows/**`, so it
+      fires the job.
+      Version handling: baseline was v5.1.1-45, CI runs v5.5.0. Re-read the Gate 0 commit at v5.5.0
+      to separate tool drift from repo change — identical, including the 65 advisories. Caveat
+      found: `--commit` runs only **9 of 18** checks and still prints an aggregate (4.9); it is not
+      comparable with 5.4.
+      **New finding:** the action is SHA-pinned but its `action.yaml` runs
+      `docker://ghcr.io/ossf/scorecard-action:v2.4.4` — a mutable tag. Pinning the action does not
+      pin the code that executes. Feeds W1.4 and the article.
+- [x] **W2.3c — Scorecard ported to the three sibling repos (2026-08-23)**, all **committed and
+      unpushed**, each needing its owners' go-ahead like the gitleaks port did (#1636):
+      `barley` `chore/openssf-scorecard-posture-check` `0333af457` off `origin/develop`
+      (`ubuntu-latest`, Python twin); `hops-mcp` `069a379` off `origin/main`
+      (`codebuild-hops-mcp-…`, Node twin); `sowinsights` `9958596` off `origin/main`
+      (`codebuild-hops-sowinsights-…`, Python twin).
+      **One policy, two implementations, chosen by what each repo's lint pipeline claims** — Node
+      where the repo is Node (`hops`, `hops-mcp`), a stdlib Python twin where it is Python
+      (`barley`, `sowinsights`), the same reasoning W3.1 used porting Python → Node for hops.
+      `tooling/ci/scorecard/agreement-check.sh` holds the two to byte-identical stdout and exit
+      codes: **15/15 comparisons agree** across 5 real results × 3 baseline cases.
+      Verified per repo against **their own** gates, not ours: `ruff format --check` + `ruff check`
+      under barley's `pyproject.toml` (caught an unformatted first pass), `make check` in hops-mcp
+      after `npm ci` (caught prettier claiming the workflow YAML), `yamllint` everywhere.
+      Deliberate: `Code-Review` and `CI-Tests` are rolling-window metrics gated at today's value, so
+      barley (Code-Review 2) and sowinsights (0) will fail the weekly run if review discipline
+      slips. Stated in each PR body.
+- [x] **W2.3d — org-wide Scorecard sweep, all 27 repos (2026-08-23)** →
+      `artifacts/scorecard-org-sweep.md`. Read-only, nothing changed, no scope expansion — the four
+      charter repos stay the unit of analysis.
+      **Baseline finding 1 generalizes:** 25 of 26 default branches require **zero** passing status
+      checks, and the enterprise ruleset `provectus-global` carries no `required_status_checks` rule
+      type anywhere. `barley` is the only repo in the org that blocks a merge on a check. That makes
+      the top recommendation a single org-level settings change, not 26 repo-level ones.
+      **Second score inversion in one day:** `barley`, the only enforced repo, scores
+      Branch-Protection **4** — below the 25 that enforce nothing. With the Token-Permissions
+      inversion (barley declares permissions in 27/28 workflows and still scores 0, hops declares
+      none anywhere and also scores 0), that is two independent cases of a per-check score ranking
+      the wrong way round. **A per-check score is not monotone in the control it names** — the
+      article claim, and the same lesson as AWOS `score` vs `coverage`.
+      **Dependabot exists in 1 of 26 repos** (`hops`). 15 of 26 repos are dormant and 14 have no
+      workflows at all, so low aggregates there are absence, not misconfiguration — do not report
+      them as findings. Outside the charter's four, `wort` is the one worth a look: actively
+      maintained, 46 open advisories, 0 of its recent changesets reviewed, and simultaneously the
+      best-pinned repo in the org.
+      Accidental validation: `dme-core` is empty, Scorecard returns `"checks": null`, and both
+      twins exit 2 rather than reading zero checks as zero regressions.
+- [x] **W2.3k — final trigger shape: PR + push, no filter, no cron (2026-08-25)** → evidence §14.
+      User decision: two triggers only, `schedule` and `workflow_dispatch` dropped. They are not
+      redundant — `scorecard-action` branches on event name, so `pull_request` = local mode (the
+      four gated checks, before the merge) and `push` = remote mode (all 18, the only way the seven
+      API-only checks are read at all).
+      **Cost stated and accepted:** the seven remote-only checks now refresh only on a merge; new
+      advisories (69 open in `hops-mcp`, 286 in `barley`) will not surface between merges. Counter:
+      nobody opened the Monday summary page — W2.3j exists because a defect sat there for two days
+      and was found only once the output reached a PR comment.
+      **Path filter removed from both, and it was wrong twice over.** `Pinned-Dependencies` reads
+      Dockerfiles (it flagged `Dockerfile:2` in `hops-mcp`'s own run) and `Binary-Artifacts` reads
+      the whole tree (`sowinsights`' committed `.pyc`), so a PR unpinning a base image or committing
+      a binary never triggered the gate. And with no cron, a filtered push run would leave the seven
+      remote-only checks refreshing almost never. Cost: the job runs on every PR and merge —
+      **60–80s observed**.
+      Same commit ports W2.3i's PR comment and W2.3j's local-mode fix to the other four, so all five
+      now carry an identical shape.
+      Commits: `hops` `c3edddbdc` (#545) · `hops-mcp` `6f12a67` (#55) · `barley` `cbe029af6`
+      (#1691) · `sowinsights` `072d536` · `wort` `230f8fc` (#217).
+      ⚠️ **Correction, `266815224`** (evidence §14.4): `barley`'s **push** trigger must be `[main]`
+      only. `scorecard-action` returns `errOnlyDefaultBranchSupported` for any non-`pull_request`
+      event off the default branch, so `push: develop` failed on its first merge
+      (run 32852738128). `pull_request` events are exempt — the PR run into `develop` passed in
+      1m49s while the push run failed in 27s. Gate unaffected; but `barley` integrates on `develop`
+      and `main` sees a merge rarely, so the seven remote-only checks will refresh rarely **there**
+      specifically. A schedule on `barley` alone is the fix if that matters.
+      Verified per repo: triggers/permissions/step count parse, inline `github-script` passes
+      `node --check` in all five, 27 Node / 28 Python tests, and each repo's own lint gate.
+      **Follow-up if the report proves too quiet:** an upserted issue on the push run
+      (`issues: write`, same step) rather than restoring the cron.
+- [x] **W2.3j — a local-mode run reported clean on 11 of 18 checks (2026-08-25)** → evidence §13.
+      The comment from the first PR run showed the report was wrong. `scorecard-action` runs in
+      **local directory mode** on a `pull_request` event (`Local: .`, `repo.name` = `file://.`), so
+      seven API-backed checks — `Code-Review`, `CI-Tests`, `Branch-Protection`, `Maintained`,
+      `Contributors`, `CII-Best-Practices`, `Signed-Releases` — do not run at all.
+      **The real defect: the job passed.** Fail-closed only covered gated checks going missing, and
+      all seven are reported. W2.3h made it worse — before it, `Code-Review`/`CI-Tests` were gated,
+      so this exact run would have failed loudly. Two individually-defensible changes combined into
+      a silent half-measurement. Same shape as the fail-open defects this design was built against.
+      Local mode is **correct** for a PR (it measures the proposed tree), so the fix describes it:
+      `API_ONLY` constant, status `not measurable in local mode`, header `local working tree`,
+      aggregate labelled not comparable with the count that ran, plus a note.
+      **Fail-closed unchanged where it matters:** a gated check absent from a local run still fails
+      — all four gated checks are file-based — and a remote run still calls an absent API check
+      `missing from results`.
+      Verified: 27 Node / 28 Python tests, **18/18 agreement including the real local-mode
+      artifact**, ruff clean and format-stable at 99 and 100, prettier clean.
+      Commit `f3c3db4` on #55; ported to the other four in W2.3k.
+- [x] **W2.3i — the comparison posts to the pull request; trialled in `hops-mcp` (2026-08-25)** →
+      evidence §12. Commit `7f930e1` on #55, **unpushed**. `pull-requests: write` at job level
+      (verified against upstream's own docs: job-level write is the documented shape and
+      `pull-requests` is not on their sensitive-scope list, so it costs nothing on the check this
+      workflow gates). `actions/github-script` SHA-pinned `3a2844b7e` — chosen over `gh pr comment`
+      because `gh` may not exist on a self-hosted CodeBuild runner, which is exactly the assumption
+      that broke W2.3g. Upserted on a hidden marker so repeated pushes edit one comment.
+      Forced one restructure: the comparison exits non-zero on a gated regression, so the summary
+      now goes to a file that two `always()` steps consume — the run summary page and the comment.
+      Verified: prettier clean, workflow parses, inline script passes `node --check`, 23 Node tests.
+      **First run (32846478467) resolved three open questions green** — container action and
+      `actions/setup-node` both work on `hops-mcp`'s CodeBuild runners (W2.3g's assumption), and the
+      upserted comment lands. Ported to the other four in W2.3k, after the trial proved it.
+- [x] **W2.3h — PR-gated, not push-gated; two checks leave the gated set (2026-08-25)** →
+      evidence §11. Trigger is now `schedule` + `pull_request` + `workflow_dispatch`; **`push` to
+      the default branch removed**. A run on main can only report a fait accompli — both real
+      failures this week (W2.3f, W2.3g) were reported after the merge and preventable before it.
+      **A claim of mine did not survive checking:** I argued push-to-main was needed because merges
+      here bypass PRs. Last 20 commits on each default branch — `wort` 20/20 via PR, `hops-mcp`
+      20/20, `sowinsights` likewise. These repos bypass **approval**, not pull requests;
+      `Code-Review` counts approvals and I read an approval statistic as a process one. Same shape
+      as the Phase 1 `score`-vs-`coverage` error, this time committed by me. §7 and §8 carry the
+      old claim — corrected in §11.1.
+      **Policy change the trigger forced:** `Code-Review` and `CI-Tests` move to reported-only, so
+      the gated set is Pinned-Dependencies, Token-Permissions, Dangerous-Workflow,
+      Binary-Artifacts — 4 gated / 8 reported / 6 ignored. Rule now stateable in one line: **every
+      gated check is a property of the tree at the commit being measured.** It was already written
+      in the script's own `REPORTED` comment and violated two lines above it.
+      **Two near-misses:** `barley`'s PRs target `develop`, so its trigger lists both branches — a
+      copied `main`-only trigger would never have fired. And `agreement-check.sh` was mutating the
+      two newly-ungated checks to synthesise a regression; it would have compared two clean runs
+      and still printed ALL AGREE. Mutation list narrowed to gated checks.
+      No baseline value changed anywhere — both moved checks stay in `TRACKED`, measured and
+      printed. A self-test in each twin now asserts they are reported, not gated.
+      Commits, all **unpushed**: `hops` `2bcbfa766` (#545) · `barley` `0d20b178c` (#1691) ·
+      `hops-mcp` `78ca553` (#55) · `wort` `22ba350` (#217) · `sowinsights` `41c0845`.
+      Verified per repo: 23 Node / 24 Python tests, each repo's own lint gate, 15/15 agreement,
+      Python twin still format-stable at 99 and 100 columns.
+      **Bonus:** `hops-mcp` #55 now runs the job it adds, settling W2.3g's open `setup-node`-on-
+      CodeBuild question before merge instead of after.
+- [x] **W2.3g — second real run: `setup-python` does not work on the CodeBuild runners
+      (2026-08-25)** → evidence §10. `sowinsights` merged (#5); run 32840533614 failed at
+      `Set up Python`: *"The version '3.11' with architecture 'x64' was not found for this
+      operating system"*. `actions/setup-python` resolves a prebuilt interpreter by OS from the
+      `actions/python-versions` manifest, which covers GitHub-hosted images only.
+      **The §9 token fix is confirmed working** — same run scored `Packaging` 10 and `CI-Tests` 0
+      instead of `-1`, and Scorecard's own `Token-Permissions` details name the two new grants.
+      **Porting defect, worth generalizing:** the step came from the `barley` port where it is
+      correct (`ubuntu-latest`). Copying a workflow between repos silently changed `runs-on`.
+      Re-check every step against the target's **runner**, not only its language.
+      Fixed by removing the action — the checker is stdlib-only and needs ≥3.9, so the runner's
+      `python3` is enough; `python3 --version` is printed so a future change shows in the log.
+      Same commit pins `actions/checkout` and `actions/upload-artifact` by SHA: three of the four
+      unpinned GitHub-owned actions Scorecard flagged in that repo were **in the Scorecard workflow
+      itself**, which gates `Pinned-Dependencies`. Improvement, not regression — which is why only
+      reading caught it.
+      **The comparison would have passed:** run offline against the failed job's artifact, exit 0,
+      three checks improved. The `if: always()` upload is what made that provable — it has now paid
+      for itself in both real runs.
+      Fix committed and **unpushed**: `sowinsights` `fix/scorecard-runner-python` `25aa106`.
+      ⚠️ Remaining unverified, same shape: `hops-mcp` #55 uses `setup-node` on a CodeBuild runner
+      and **no existing workflow there uses `setup-node`**. `hops` proves it works on its own
+      CodeBuild runners, and `setup-node` (unlike `setup-python`) falls back to nodejs.org — an
+      argument, not evidence. Resolves on that PR's first run.
+- [x] **W2.3f — first real CI run, and the token bug it found (2026-08-25)** → evidence §9.
+      `wort` #216 merged; run 32837708276 **failed correctly**. `CI-Tests` 10 → `-1` (403 on
+      `ListStatuses`), `Packaging` 10 → `-1` (403 on `ListWorkflowRunsByFileName`),
+      `Branch-Protection` 5 → `-1` (GraphQL needs repo-admin scope).
+      **Root cause: `ossf/scorecard-action`'s documented permission block omits `statuses: read`
+      and `actions: read`.** The workflow's permission list was copied from it. Both scopes added,
+      read-only, each annotated with the API call that needs it. `Branch-Protection` stays `-1` in
+      CI by design — reported, never gated; the baseline keeps the user-token value of 5.
+      **Everything previously unverifiable is now verified:** container action runs, self-tests run
+      in CI, `if: always()` artifact survived a failing job, fail-closed path exercised for real.
+      **Best single argument in the work item for per-check gating:** the aggregate fell 4.2 → 3.6
+      entirely from measurement failure, so any threshold gate below 3.6 would have passed this run
+      green while three of eighteen checks stopped working.
+      **All five ports fixed, all unpushed.** `wort` `fix/scorecard-token-permissions` `d36675a`
+      and `hops` `827744ae3` (second commit on the open #545 branch, not an amend — it is already
+      reviewed). `barley` `76d941ece`, `hops-mcp` `3745270`, `sowinsights` `9c4a454` amended on
+      fresh approval — unpushed and unreviewed, so an amend is the clean shape there. The same
+      amend closed the W2.3e source drift: `barley` and `sowinsights` now carry the canonical
+      Python twin, `diff`-verified identical.
+      Each verified under its own repo's gate: barley 23 tests + ruff clean, hops-mcp 22 Node tests
+      + prettier clean, sowinsights 23 tests. No baseline value changed anywhere — the fix grants
+      read scopes so checks can be measured, it does not move a score.
+- [x] **W2.3e — Scorecard ported to `wort` (2026-08-24)**, on explicit fresh approval — `wort` is
+      outside the charter's four, and W2.3d named it as the one repo outside scope where a standing
+      measurement pays. Branch `chore/openssf-scorecard` `c897304`, **committed and unpushed**.
+      Baseline agg 4.2 @ `c29cbc4e4`, measured fresh against current `main`.
+      **The rollout question is settled: not all 27.** Maintained-and-has-CI leaves seven repos —
+      the charter's four plus `hops-fin-service`, `barley-fe`, `wort`. Sixteen of twenty-six score
+      Maintained 0 and eleven have no workflows, so three of the six gated checks would read `-1`
+      there. For the dormant tail the artefact is a periodic org sweep from one repo, not twenty-odd
+      workflows.
+      **Third instance of the non-monotonicity:** three of `wort`'s four workflows declare top-level
+      `permissions`; `ci.yml` does not, and takes Token-Permissions to 0. A one-line
+      `permissions: contents: read` in `ci.yml` moves it 0 → 10 — the highest-value single line
+      available in the org. Named as a follow-up in the PR body, **not** included in the port.
+      **Sharpest declared-vs-enforced case found so far:** `main` requires a PR and one approval,
+      admins are exempt from that rule, and Code-Review reads 1 of 30 changesets approved. The
+      setting is on and still not binding — a stronger form of W2.3d's status-check finding.
+      `wort`'s lint (pyupgrade, bugbear, simplify, `E501` at 100, repo-wide pyright) forced a rework
+      of the shared Python twin. It is now **format-stable at both 99 and 100 columns**, so one
+      source satisfies `barley` and `wort`. ⚠️ The unpushed `barley` and `sowinsights` branches
+      still carry the pre-rework revision — proven byte-identical in output, but stale in source;
+      refreshing them needs their own approval.
+- [x] **W2.3b — four-repo Scorecard posture table (2026-08-23)**, read-only, in the same evidence
+      file. Aggregates `hops` 5.4 · `hops-mcp` 4.7 · `barley` 4.1 · `sowinsights` 3.4 (ordering
+      only — ~2.2 of each is open-source-norm checks that do not apply). Independent confirmation
+      of two Phase 1c findings without being told to look: `sowinsights`' committed `.pyc`
+      (Binary-Artifacts 8) and its mutable `python:3.11-bullseye` base image. `barley`: 50 unpinned
+      third-party actions, 108 unpinned container images, 286 open advisories, Code-Review 2 (2/9
+      changesets approved). **Correction to an obvious-looking claim:** all four score
+      Token-Permissions 0, but `barley` declares top-level permissions in 27 of 28 workflows and
+      loses on two `contents: write` grants — it is ahead of `hops` (which declares none anywhere)
+      at an identical score. Read the details, not the score.
 
 ### Measurement checkpoint (after Waves 1–2)
 - [ ] Re-run `/awos:ai-readiness-audit` on hops — acceptance: **no dimension regresses**.
@@ -371,7 +625,15 @@ the baseline is unrecoverable.
       it is not performing one. Raise as a question about seats, not a code change.
 
 ### Recommendations to owners (not our changes)
-- [ ] **NEW, highest value (2026-08-18) — require `secret-scan` as a status check on `hops` `main`.**
+- [ ] **NEW, highest value (2026-08-18, widened 2026-08-23) — require passing status checks at the
+      org level.** Verified across **26 repos**, from two independent endpoints: 25 default branches
+      require **zero** passing checks, and the enterprise ruleset `provectus-global` carries only
+      `deletion`, `non_fast_forward`, `pull_request` — there is no `required_status_checks` rule type
+      in the org at all. `barley` is the sole exception (`CI Gate`, `non_admins`). So this is one
+      settings change at the `provectus-global` ruleset, not a per-repo ask, and it is what makes
+      every gate this project shipped actually binding. Detail: `artifacts/scorecard-org-sweep.md`.
+      Original hops-only framing below.
+- [ ] **(2026-08-18) — require `secret-scan` as a status check on `hops` `main`.**
       Verified from two GitHub endpoints: `main` requires a PR + 1 approval and **zero passing
       checks** (`enforcement_level: "off"`, enterprise ruleset carries only `deletion`,
       `non_fast_forward`, `pull_request`). The gitleaks gate, SonarQube and osv are all advisory at
