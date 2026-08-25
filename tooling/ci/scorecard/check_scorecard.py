@@ -76,6 +76,34 @@ IGNORED = {
 
 TRACKED = GATED + REPORTED
 
+# Checks that need the GitHub API. `ossf/scorecard-action` runs in local
+# directory mode on a pull_request event — "Local: ." in its log, `file://.` as
+# the repo name — and these seven do not run at all there: they are absent from
+# the results rather than scored. Their absence is a property of the run mode,
+# not of the repository, and reporting it as "missing from results" says the
+# measurement broke when nothing broke.
+#
+# Every gated check is file-based and so is measurable in both modes. That is
+# not a coincidence to rely on silently: a gated check absent from a local run
+# still fails, because a gate that cannot be evaluated is not a gate.
+API_ONLY = [
+    "Code-Review",
+    "CI-Tests",
+    "Branch-Protection",
+    "Maintained",
+    "Contributors",
+    "CII-Best-Practices",
+    "Signed-Releases",
+]
+
+ALL_CHECK_COUNT = 18
+
+
+def is_local_run(results):
+    """True when Scorecard scanned a directory rather than a GitHub repository."""
+    repo = results.get("repo") or {}
+    return str(repo.get("name") or "").startswith("file://")
+
 
 class InputError(Exception):
     pass
@@ -130,6 +158,14 @@ def compare(results, baseline):
         raise InputError("not a baseline file: no `checks` object")
 
     rows, regressions, notes = [], [], []
+    local = is_local_run(results)
+    if local:
+        notes.append(
+            "Local directory mode — this is what scorecard-action does on a pull_request event. "
+            f"{len(checks)} of {ALL_CHECK_COUNT} checks ran; the {len(API_ONLY)} that need the "
+            "GitHub API did not, and are marked as such in the table rather than counted as "
+            "regressions. The aggregate is not comparable with the baseline's."
+        )
 
     base_version = baseline.get("scorecard_version", "unknown")
     now_version = (results.get("scorecard") or {}).get("version", "unknown")
@@ -159,9 +195,14 @@ def compare(results, baseline):
         }
 
         if after is None:
-            row["status"] = "missing from results"
-            if gated:
-                regressions.append(row)
+            # A gated check absent from a local run is still a failure: it is
+            # file-based, so local mode is no excuse for it not being there.
+            if local and not gated and name in API_ONLY:
+                row["status"] = "not measurable in local mode"
+            else:
+                row["status"] = "missing from results"
+                if gated:
+                    regressions.append(row)
         elif before is None:
             row["status"] = "missing from baseline"
             if gated:
@@ -206,6 +247,9 @@ def to_markdown(results, baseline, verdict):
     base_commit = (measured.get("commit") or "")[:9]
     base_date = measured.get("date", "?")
     aggregate = results.get("score")
+    local = is_local_run(results)
+    scanned = len(results.get("checks") or [])
+    scope = "local working tree" if local else f"`{repo_name}` @ `{repo_commit}`"
 
     def num(value):
         return "—" if value is None else str(value)
@@ -213,15 +257,18 @@ def to_markdown(results, baseline, verdict):
     out = []
     out.append("## OpenSSF Scorecard")
     out.append("")
-    out.append(
-        f"`{repo_name}` @ `{repo_commit}` · Scorecard {version} · "
-        f"baseline `{base_commit}` ({base_date})"
-    )
+    out.append(f"{scope} · Scorecard {version} · baseline `{base_commit}` ({base_date})")
     out.append("")
-    out.append(
-        f"Aggregate **{aggregate}** — reported only. It is not a gate: four checks score a "
-        "private repo against open-source norms, and SAST is a known false negative here."
-    )
+    if local:
+        out.append(
+            f"Aggregate **{aggregate}** — **not comparable** with the baseline: this run scored "
+            f"{scanned} of {ALL_CHECK_COUNT} checks. It is never a gate in either mode."
+        )
+    else:
+        out.append(
+            f"Aggregate **{aggregate}** — reported only. It is not a gate: four checks score a "
+            "private repo against open-source norms, and SAST is a known false negative here."
+        )
     out.append("")
     out.append("| Check | Policy | Baseline | Now | Status |")
     out.append("|---|---|---:|---:|---|")

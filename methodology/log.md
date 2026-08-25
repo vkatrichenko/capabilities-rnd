@@ -967,3 +967,46 @@ quietly vacuous, which is the same failure mode as a fail-open scanner.
 differs from the one tested, exactly the shape of defect that produced §10. Keeping the trigger
 makes the verification permanent and applies it to every future edit of the gate and its baseline.
 The one-off version would have been thrown away after answering one question once.
+
+## 2026-08-25 (fourth entry) — two safe changes that combined into a silent failure
+
+The first pull-request run of the gate posted its comment, and the comment showed the report was
+wrong. `scorecard-action` runs in local directory mode on a `pull_request` event, so seven
+API-backed checks do not run; the comparison called five of them "missing from results" — its phrase
+for *the measurement broke* — printed an aggregate covering 11 of 18 checks next to a baseline
+covering 18, and **passed**.
+
+**The interesting part is not the wrong labels. It is that two individually correct decisions
+composed into a fail-open.** Fail-closed had always been scoped to gated checks. Moving
+`Code-Review` and `CI-Tests` to reported-only was right on its own terms. Running on pull requests
+was right on its own terms. Together they produced a run that measured a little over half the
+repository and reported clean — and before the reported-only change, this exact run would have
+failed loudly on the same input. **A safety property proven of two changes separately is not proven
+of both**, and neither review would have caught it, because each change was examined against the
+state before it rather than against the other.
+
+That is the third fail-open in this project's evidence file, and the first one we wrote ourselves.
+It arrived where the previous two did: not in the logic, but in the boundary of what the safety rule
+covers. barley's cassette scrubber checked a denylist of keys and passed everything else; the
+gitleaks rule matched per line and missed anything wrapped; this one failed closed on gated checks
+and said nothing about the rest.
+
+**The fix was to describe the mode rather than avoid it.** The instinct was to force a remote scan
+on pull requests. That would have been worse: local mode measures the tree being *proposed*, which
+is the only thing a pull request can meaningfully be judged on. The right move was to teach the
+comparison that a run has a mode, and that "this check did not run here" and "this check should have
+run and did not" are different sentences. The gated set is unaffected because all four gated checks
+are file-based — but that is now asserted by a test rather than left as a happy accident, along with
+the rule that a gated check absent from a local run still fails.
+
+**And the trial paid off exactly as intended.** Porting an untested pattern to five repositories is
+what produced the `setup-python` defect; trialling it in one repository first is what caught this
+one before four more copies of it existed. The same run also settled three open questions green —
+container action on CodeBuild, `setup-node` on CodeBuild, and the comment mechanism — so one push
+answered more than it cost. **When a change has an unknown in it, the cheapest experiment is one
+instance of it, in the place where being wrong matters least.**
+
+One smaller thing worth keeping: the defect was visible only because the output was put in front of
+a human. The same table had been rendering on the run summary page for two days and nobody looked;
+it took a pull request comment and the question "does the report look okay?" to surface it. **A
+report nobody reads is a report that cannot be wrong.**

@@ -181,6 +181,56 @@ class FailsClosed(unittest.TestCase):
         self.assertEqual(regressions, [])
 
 
+class LocalMode(unittest.TestCase):
+    """scorecard-action runs `--local .` on a pull_request event.
+
+    Seven API-backed checks simply do not run there. Calling that "missing from
+    results" reports a broken measurement when nothing broke — but the reverse
+    error is worse, so a gated check absent from a local run still fails.
+    """
+
+    @staticmethod
+    def local_results(names):
+        res = results()
+        res["repo"] = {"name": "file://.", "commit": "unknown"}
+        res["checks"] = [c for c in res["checks"] if c["name"] in names]
+        return res
+
+    def measurable(self):
+        return [n for n in ALL_CHECKS if n not in sc.API_ONLY]
+
+    def test_api_checks_are_marked_not_regressed(self):
+        rows, regressions, notes = sc.compare(self.local_results(self.measurable()), baseline())
+        self.assertEqual(regressions, [])
+        for name in sc.API_ONLY:
+            row = next((r for r in rows if r["name"] == name), None)
+            if row is not None:
+                self.assertEqual(row["status"], "not measurable in local mode")
+        self.assertEqual(len(notes), 1)
+        self.assertIn("Local directory mode", notes[0])
+
+    def test_a_gated_check_absent_from_a_local_run_still_fails(self):
+        names = [n for n in self.measurable() if n != "Binary-Artifacts"]
+        _, regressions, _ = sc.compare(self.local_results(names), baseline())
+        self.assertEqual([r["name"] for r in regressions], ["Binary-Artifacts"])
+        self.assertEqual(regressions[0]["status"], "missing from results")
+
+    def test_a_remote_run_still_calls_an_absent_api_check_missing(self):
+        res = results()
+        res["checks"] = [c for c in res["checks"] if c["name"] != "Branch-Protection"]
+        rows, _, notes = sc.compare(res, baseline())
+        row = next(r for r in rows if r["name"] == "Branch-Protection")
+        self.assertEqual(row["status"], "missing from results")
+        self.assertEqual(notes, [])
+
+    def test_markdown_says_the_aggregate_is_not_comparable(self):
+        res = self.local_results(self.measurable())
+        out = sc.to_markdown(res, baseline(), sc.compare(res, baseline()))
+        self.assertIn("local working tree ·", out)
+        self.assertIn("**not comparable**", out)
+        self.assertNotIn("@ `abc123def`", out)
+
+
 class VersionDrift(unittest.TestCase):
     def test_version_change_is_a_note_not_a_failure(self):
         _, regressions, notes = sc.compare(results(version="v5.6.0"), baseline(version="v5.5.0"))

@@ -14,7 +14,17 @@ import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { compare, baselineFrom, main, GATED, REPORTED, IGNORED, TRACKED } from './check-scorecard.mjs'
+import {
+  compare,
+  toMarkdown,
+  baselineFrom,
+  main,
+  GATED,
+  REPORTED,
+  IGNORED,
+  TRACKED,
+  API_ONLY,
+} from './check-scorecard.mjs'
 
 const ALL = [...TRACKED, ...Object.keys(IGNORED)]
 
@@ -145,6 +155,56 @@ describe('fails closed', () => {
   test('a check that was already -1 in the baseline stays quiet', () => {
     const v = compare(results({ 'Token-Permissions': -1 }), baseline({ 'Token-Permissions': -1 }))
     assert.deepEqual(v.regressions, [])
+  })
+})
+
+describe('local mode', () => {
+  // scorecard-action runs `--local .` on a pull_request event. Seven API-backed
+  // checks simply do not run there. Calling that 'missing from results' reports
+  // a broken measurement when nothing broke — but the reverse error is worse,
+  // so a gated check absent from a local run still fails.
+  const measurable = ALL.filter((n) => !API_ONLY.includes(n))
+  const localResults = (names) => {
+    const r = results()
+    r.repo = { name: 'file://.', commit: 'unknown' }
+    r.checks = r.checks.filter((c) => names.includes(c.name))
+    return r
+  }
+
+  test('API checks are marked, not treated as regressions', () => {
+    const v = compare(localResults(measurable), baseline())
+    assert.deepEqual(v.regressions, [])
+    for (const name of API_ONLY) {
+      const row = v.rows.find((r) => r.name === name)
+      if (row) assert.equal(row.status, 'not measurable in local mode')
+    }
+    assert.equal(v.notes.length, 1)
+    assert.match(v.notes[0], /Local directory mode/)
+  })
+
+  test('a gated check absent from a local run still fails', () => {
+    const names = measurable.filter((n) => n !== 'Binary-Artifacts')
+    const v = compare(localResults(names), baseline())
+    assert.deepEqual(
+      v.regressions.map((r) => r.name),
+      ['Binary-Artifacts'],
+    )
+    assert.equal(v.regressions[0].status, 'missing from results')
+  })
+
+  test('a remote run still calls an absent API check missing', () => {
+    const r = results()
+    r.checks = r.checks.filter((c) => c.name !== 'Branch-Protection')
+    const v = compare(r, baseline())
+    assert.equal(v.rows.find((x) => x.name === 'Branch-Protection').status, 'missing from results')
+    assert.deepEqual(v.notes, [])
+  })
+
+  test('markdown says the aggregate is not comparable', () => {
+    const r = localResults(measurable)
+    const out = toMarkdown(r, baseline(), compare(r, baseline()))
+    assert.match(out, /local working tree ·/)
+    assert.match(out, /\*\*not comparable\*\*/)
   })
 })
 

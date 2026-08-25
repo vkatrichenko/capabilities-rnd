@@ -362,6 +362,25 @@ the baseline is unrecoverable.
       best-pinned repo in the org.
       Accidental validation: `dme-core` is empty, Scorecard returns `"checks": null`, and both
       twins exit 2 rather than reading zero checks as zero regressions.
+- [x] **W2.3j — a local-mode run reported clean on 11 of 18 checks (2026-08-25)** → evidence §13.
+      The comment from the first PR run showed the report was wrong. `scorecard-action` runs in
+      **local directory mode** on a `pull_request` event (`Local: .`, `repo.name` = `file://.`), so
+      seven API-backed checks — `Code-Review`, `CI-Tests`, `Branch-Protection`, `Maintained`,
+      `Contributors`, `CII-Best-Practices`, `Signed-Releases` — do not run at all.
+      **The real defect: the job passed.** Fail-closed only covered gated checks going missing, and
+      all seven are reported. W2.3h made it worse — before it, `Code-Review`/`CI-Tests` were gated,
+      so this exact run would have failed loudly. Two individually-defensible changes combined into
+      a silent half-measurement. Same shape as the fail-open defects this design was built against.
+      Local mode is **correct** for a PR (it measures the proposed tree), so the fix describes it:
+      `API_ONLY` constant, status `not measurable in local mode`, header `local working tree`,
+      aggregate labelled not comparable with the count that ran, plus a note.
+      **Fail-closed unchanged where it matters:** a gated check absent from a local run still fails
+      — all four gated checks are file-based — and a remote run still calls an absent API check
+      `missing from results`.
+      Verified: 27 Node / 28 Python tests, **18/18 agreement including the real local-mode
+      artifact**, ruff clean and format-stable at 99 and 100, prettier clean.
+      Commit `f3c3db4` on #55, **unpushed**. ⚠️ The other four repos carry the pre-fix comparison
+      and would produce the same misleading report on their first PR run.
 - [ ] **W2.3i — the comparison posts to the pull request; trialled in `hops-mcp` (2026-08-25)** →
       evidence §12. Commit `7f930e1` on #55, **unpushed**. `pull-requests: write` at job level
       (verified against upstream's own docs: job-level write is the documented shape and
@@ -372,7 +391,9 @@ the baseline is unrecoverable.
       Forced one restructure: the comparison exits non-zero on a gated regression, so the summary
       now goes to a file that two `always()` steps consume — the run summary page and the comment.
       Verified: prettier clean, workflow parses, inline script passes `node --check`, 23 Node tests.
-      **Open:** port to the other four once one real run shows it working.
+      **First run (32846478467) resolved three open questions green** — container action and
+      `actions/setup-node` both work on `hops-mcp`'s CodeBuild runners (W2.3g's assumption), and the
+      upserted comment lands. **Open:** port to the other four once W2.3j's fix rides along.
 - [x] **W2.3h — PR-gated, not push-gated; two checks leave the gated set (2026-08-25)** →
       evidence §11. Trigger is now `schedule` + `pull_request` + `workflow_dispatch`; **`push` to
       the default branch removed**. A run on main can only report a fait accompli — both real

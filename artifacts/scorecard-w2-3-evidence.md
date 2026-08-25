@@ -758,3 +758,89 @@ Verified: `prettier --check` clean, workflow parses with the expected eight step
 the inline `github-script` body passes `node --check`, and the 23 Node self-tests still pass.
 Commit `7f930e1` on #55, **unpushed**. Not yet ported to the other four — that waits on seeing it
 work once.
+
+## 13. The first PR run — the comment works, the report did not (2026-08-25)
+
+`hops-mcp` #55 pushed; run
+[32846478467](https://github.com/provectus-barhopping/hops-mcp/actions/runs/32846478467) posted its
+comment. **Three of §12's open questions resolved green in one run**: the container action works on
+`hops-mcp`'s CodeBuild runners, `actions/setup-node` works there (§10.5's unverified assumption —
+the indirect argument was right), and the upserted comment lands.
+
+Then the comment itself showed the report was wrong.
+
+### 13.1 `scorecard-action` runs in local directory mode on a pull request
+
+From the run log:
+
+```
+getting repo info from file: /github/workflow/event.json
+  Ref: HEAD
+  Local: .
+```
+
+and from the artifact: `"repo": {"name": "file://.", "commit": "unknown"}`, **11 checks, not 18**.
+The seven that need the GitHub API — `Code-Review`, `CI-Tests`, `Branch-Protection`, `Maintained`,
+`Contributors`, `CII-Best-Practices`, `Signed-Releases` — do not run at all in that mode.
+
+This is not a misconfiguration and not the "experimental trigger" caveat biting. Local mode is
+**correct** for a pull request: it measures the tree being proposed, not the state of the default
+branch. It is what makes the four gated checks meaningful on a PR at all.
+
+### 13.2 What the report got wrong, and the part that is a real defect
+
+| Symptom | Why it is wrong |
+|---|---|
+| Five tracked checks read `missing from results` | That string is the tool's language for *the measurement broke*. Nothing broke. |
+| Header read `` `file://.` @ `unknown` `` | A fake repository name and a non-existent commit, presented as provenance |
+| `Aggregate **3.4**` beside a baseline of 4.7 | 11 checks compared against 18 |
+| **The job passed** | ← the actual defect |
+
+**A run that measured 11 of 18 checks reported clean.** Fail-closed only ever covered *gated* checks
+going missing, and all seven API-backed checks are reported. §11 made that worse without anyone
+noticing: before it, `Code-Review` and `CI-Tests` were gated, so the first PR run would have failed
+loudly on exactly this. Moving them to reported-only was right for its own reasons and **widened a
+hole that already existed** — two changes, each defensible alone, combining into a silent
+half-measurement.
+
+That is the same failure shape this whole design was built against (barley's fail-open cassette
+scrubber, the gitleaks `regexTarget` defect), found this time in the tool built to avoid it.
+
+### 13.3 The fix: describe the mode, do not hide from it
+
+- Seven API-backed checks are named in an `API_ONLY` constant and, **in local mode only**, reported
+  as `not measurable in local mode` rather than `missing from results`.
+- The header reads `local working tree` instead of a fake repo and commit.
+- The aggregate is labelled: *"**not comparable** with the baseline: this run scored 11 of 18
+  checks."*
+- A note states the mode, what ran, and what did not.
+
+**Fail-closed is unchanged where it matters.** A *gated* check absent from a local run still fails.
+All four gated checks are file-based, so local mode is no excuse for one to be missing — and a gate
+that cannot be evaluated is not a gate. In a remote run, an absent API check is still
+`missing from results`, because there it genuinely means the measurement broke.
+
+Resulting comment body:
+
+> local working tree · Scorecard v5.5.0 · baseline `781336983`
+> Aggregate **3.4** — **not comparable** with the baseline: this run scored 11 of 18 checks.
+> … `Code-Review` reported — · `not measurable in local mode` …
+> No gated check regressed.
+
+### 13.4 Verification
+
+| Check | Result |
+|---|---|
+| Node self-tests | **27 pass** (23 → 27; four new local-mode cases) |
+| Python self-tests | **28 pass** |
+| Agreement, incl. the real local-mode artifact | **18 of 18 byte-identical**, exit codes equal |
+| `ruff` at 99 and 100 columns | clean, format-stable at both |
+| `prettier --check` (hops-mcp's gate) | clean |
+| Real local-mode result vs committed baseline | exit **0**, honest table |
+
+The four new tests are the point, not the count: API checks marked rather than failed; **a gated
+check absent from a local run still fails**; a remote run still calls an absent API check missing;
+and the markdown says the aggregate is not comparable.
+
+Commit `f3c3db4` on #55, **unpushed**. The other four repos still carry the pre-fix comparison and
+would produce the same misleading report on their first PR run.
