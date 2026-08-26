@@ -116,8 +116,8 @@ label-gating it — and produced output identical to the local run:
   advisory findings only.
 ```
 
-Self-test in CI: 22 tests, 20 pass, 2 skipped (the two needing this repo's `fixtures/real-hooks`),
-0 fail. Every other check on the PR passed too, including `Secret scan – gitleaks` — which settles
+Self-test in CI: 24 tests, 22 pass, 2 skipped (the two needing this repo's `fixtures/real-hooks`),
+0 fail — read off the job log of the final head `8aa9757a9`, the one that merged. Every other check on the PR passed too, including `Secret scan – gitleaks` — which settles
 the open question of whether the scanner's own pattern list would trip the repo's secret gate. It
 does not: the value patterns it carries are regex definitions, and the test file's synthetic
 credentials are assembled from fragments precisely so a literal never appears.
@@ -140,7 +140,7 @@ Same scanner, second repo, all five checks green. The gate output is the other h
 
 `0 file(s) scanned` with `2 registered hook(s)` is exactly the repo shape a directory-based check
 reads as "nothing to audit". Both hooks are inline `command` strings; there is no hooks directory to
-find. Self-test 22 tests / 20 pass / 2 skipped, as in hops.
+find. Self-test 24 tests / 22 pass / 2 skipped, as in hops.
 
 ## Review routing, as it stands today
 
@@ -148,7 +148,7 @@ Checked 2026-08-26. Only `hops` (this work) and `barley` have a `CODEOWNERS` at 
 
 | Repo | CODEOWNERS | Covers the agent-config surface |
 |---|---|---|
-| `hops` | ✅ added by PR #557 | ✅ `CLAUDE.md`, `.claude/`, `.mcp.json`, `scripts/claude-hooks/`, `scripts/pre-commit` |
+| `hops` | ✅ added by PR #557 | ✅ `CLAUDE.md`, `.claude/`, `.mcp.json`, `scripts/claude-hooks/`, `scripts/pre-commit`, **`scripts/check-agent-config.mjs*`, `.github/workflows/`** |
 | `barley` | ✅ pre-existing (Feb 2026) | ❌ `/terraform/` and `/.github/workflows/` only |
 | `hops-mcp` | ❌ | ❌ |
 | `sowinsights` | ❌ | ❌ |
@@ -172,3 +172,39 @@ argument the recommendation should lead with, rather than "you have no CODEOWNER
 - **The unpinned-marketplace rule is advisory, not blocking.** Claude Code has no documented `ref`
   field for a marketplace source, so the finding may have no remedy. A gate whose finding cannot be
   fixed is a gate that gets disabled. It is reported and counted; it does not fail a build.
+
+## Merged, and re-measured on `main` (2026-08-26)
+
+Both gates are standing controls now, not branches.
+
+| | PR | Merge commit | Merged | Post-merge checks |
+|---|---|---|---|---|
+| `hops` — scanner | #556 | `8039e6939` | 2026-08-26 10:52Z | `Build and Deploy Main`, `OpenSSF Scorecard` green on `main` |
+| `hops` — declaration + CODEOWNERS | #557 | `0be568719` | 2026-08-26 10:40Z | same, green |
+| `hops-mcp` — scanner | #56 | `c9449f8` | 2026-08-26 10:37Z | five checks green on the PR head |
+
+Re-run against each merged `main`, read-only, with the flag CI uses:
+
+```sh
+node scripts/check-agent-config.mjs --repo . --require-surface
+```
+
+`hops` — 4 hooks (2 script-referencing, 2 inline-only), 2 files scanned, 17 plugins, 1 advisory,
+exit 0. `hops-mcp` — 2 hooks (both inline-only), 0 files scanned, 0 plugins, 1 advisory, exit 0.
+Byte-for-byte the CI output. Self-test 24/24 in this repo (the two real-surface tests run here
+because `fixtures/real-hooks` is present).
+
+CODEOWNERS on merged `main` re-parsed clean: `gh api repos/…/codeowners/errors?ref=8039e6939` →
+`{"errors":[]}`, which is also the evidence that `@provectus-barhopping/hops-engineers` still
+resolves with repo access — an owner without access is dropped silently, so a clean parse is the only
+check that matters. (The endpoint 404s when `ref=` is the default branch *name*; ask it by SHA.)
+
+### What merging does not yet prove
+
+The gate has **not yet run on an unrelated pull request.** No PR run against `hops-mr-check.yml`
+exists after the 10:52Z merge; the runs on other people's branches earlier that day predate the job
+being on `main`. Until one of those lands, "standing control" is an argument from the workflow file,
+not from a run. Same for `hops-mcp`.
+
+`main` still requires **zero** passing status checks in both repos, so both gates are advisory at
+merge time. That is the open recommendation to the org, not a defect in the gate.

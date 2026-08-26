@@ -253,8 +253,10 @@ the baseline is unrecoverable.
       gitleaks is unconditional. The item is really "make the quality gates unconditional", not
       just the osv job. Combined with `main` requiring zero status checks, gates are both
       skippable by omission and non-binding at merge.
-- [x] **W1.3 — landed as a hops commit (2026-08-25), NOT pushed.** PRV-17: the agent-config
-      surface is now declared security-sensitive. Branch `HOP-0000/agent-config-surface-declaration`
+- [x] **W1.3 CLOSED — ✅ MERGED 2026-08-26 as hops PR #557** (merge commit `0be568719`, approved,
+      all checks green; `Build and Deploy Main` and `OpenSSF Scorecard` green on `main` after the
+      merge). PRV-17: the agent-config surface is declared security-sensitive on `main`.
+      Branch `HOP-0000/agent-config-surface-declaration`
       off `origin/main` @ `dca2ed7b0`, commit `941041dd6`, 8 files.
       The detector is `method: "judgment"` and its evidence field names three missing clauses —
       surface not declared security-sensitive, changes not requiring review, guards not protected —
@@ -277,8 +279,18 @@ the baseline is unrecoverable.
       Markdown-only edit and needs `pnpm`, which is absent here. Secrets stage passed; nothing staged
       was compilable. **Its content rules also flag prose about secrets** (`[Ss]ecret[" ,:=]`,
       `[Pp]assword[" ,:=]`) — the wording was changed rather than bypassed.
-      **PUSHED 2026-08-25 → hops PR #557, all checks green**, gitleaks included. Awaiting review
-      approval; merge is blocked on `REVIEW_REQUIRED`, not on any check.
+      **PUSHED 2026-08-25 → hops PR #557, all checks green**, gitleaks included.
+      **Review pass 2026-08-26 found a second silent control and fixed it before merge**
+      (commit `4dea7eae4`): CODEOWNERS routed review for `scripts/pre-commit` and
+      `scripts/claude-hooks/` — the guards the audit already knew about — but not for
+      `scripts/check-agent-config.mjs` or `.github/workflows/**`, the gate W2.2 had just added.
+      A control protecting the previous generation of controls but not itself. Both paths are on
+      `main` now (`.github/CODEOWNERS` lines 29–31, verified against `origin/main`).
+      CODEOWNERS re-validated on merged `main`: `gh api repos/…/codeowners/errors?ref=8039e6939`
+      → `{"errors":[]}`, so the added lines parse and `@provectus-barhopping/hops-engineers` still
+      resolves with access (an owner without access is silently ignored, so a clean parse is the
+      check that matters). Quirk worth recording: the endpoint 404s when `ref=` is the *default
+      branch name* — ask it by SHA.
       Portable version for the other repos: `tooling/configs/agent-config-surface-rule.md`.
 - [ ] **W1.4** Pin the github MCP image to a digest in hops `.mcp.json` (kills `:latest`).
       No audit delta — AIS-04 already PASSes the unpinned config; evidence is the diff plus
@@ -315,12 +327,15 @@ the baseline is unrecoverable.
 - [ ] **W2.1** MCP pinning check — flags `:latest`/`@canary`/ref-less git URLs in `.mcp.json`;
       fixture self-tests first; then hops CI job; read-only run across all four repos for the
       article table
-- [x] **W2.2 — built and landed as commits in two repos (2026-08-25), NEITHER pushed.**
-      Hook-content scan. Tool: `tooling/ci/agent-config-scan/` (scanner, 22 self-tests, real-hooks
-      fixture, two job templates). Design: `research/findings/agent-config-scan-design.md`.
+- [x] **W2.2 CLOSED — ✅ MERGED 2026-08-26 in both repos.** hops PR #556 (merge `8039e6939`) and
+      hops-mcp PR #56 (merge `c9449f8`), both approved, every check green.
+      Hook-content scan. Tool: `tooling/ci/agent-config-scan/` (scanner, 24 self-tests, real-hooks
+      fixture, two job templates) — **re-synced from merged `main` on 2026-08-26**, so this repo's
+      portable copy is byte-identical to what ships in both repos, job templates included.
+      Design: `research/findings/agent-config-scan-design.md`.
       Evidence: `artifacts/agent-config-surface-sweep.md`.
-      hops: branch `HOP-0000/agent-config-scan` off `dca2ed7b0`, commit `9b1b03838`.
-      hops-mcp: branch `chore/agent-config-scan` off `7ef818d`, commit `e01090d`.
+      hops: branch `HOP-0000/agent-config-scan` off `dca2ed7b0`, commits `9b1b03838` + `8aa9757a9`.
+      hops-mcp: branch `chore/agent-config-scan` off `7ef818d`, commits `e01090d` + `13d9268`.
       Resolves the surface from settings, never from a directory — that assumption is the AIS-03 bug
       itself and repeating it in a new shape would have been the whole failure mode. Reads inline
       `command` strings as content, referenced files, hooks-directory neighbours, permission
@@ -334,7 +349,16 @@ the baseline is unrecoverable.
       path-only `credential-read` 18 hits on `block-secrets.sh`, unanchored value patterns 7 on
       `pre-commit`, bare `SKIP_SECRETS=1` 4, any `.git/hooks` mention 1. Shipped rules: **0**. The one
       live false positive was a whole-line comment documenting the attack it blocks.
-      Verified: 22 tests (20 pass / 2 skip in the target repos, all 22 here); gate green on both real
+      **The review pass found the gate had the defect it was built to fix** (2026-08-26, before
+      merge): with `.claude/settings.json` absent, `scanRepo()` returned zero findings and `main()`
+      exited 0 — pointed at an empty directory it printed *"no agent hook surface in this repo — all
+      clear"*. A PR deleting or renaming the settings file would have turned the job **green**, which
+      is exactly AIS-03's skip-and-still-report-100% failure in a new shape. Fixed with
+      `--require-surface` (hops `8aa9757a9`, hops-mcp `13d9268`): an absent settings file is an
+      ordinary blocking `missing-surface` Finding, so it flows through the allowlist, `--json` and
+      the exit code like every other. Both workflow steps pass the flag; the default stays off so
+      ad-hoc local scans of an unrelated directory still exit 0. Two tests cover both directions.
+      Verified: 24 tests (22 pass / 2 skip in the target repos, all 24 here); gate green on both real
       trees; positive control on hops' real config plus two plants exits 1 while the other 124 lines
       of the guard stay silent; hops-mcp `make check` 0 and `npm test` 63 files / 1507 tests.
       **Drive-by, disclosed in the commit:** hops-mcp's `npm test` had been red on `main` since the
@@ -345,13 +369,14 @@ the baseline is unrecoverable.
       **PUSHED 2026-08-25 → hops PR #556, all checks green.** The acceptance gate is met: **Agent
       config scan passed in 12s with zero labels on the PR** — the proof it is not label-gated.
       CI output is identical to local (4 hooks, 2 scripts scanned, 17 plugins, 1 advisory, exit 0)
-      and the self-test reports 22 tests / 20 pass / 2 skipped exactly as designed. **`Secret scan
+      and the self-test reports 24 tests / 22 pass / 2 skipped exactly as designed. **`Secret scan
       – gitleaks` passed**, which closes the earlier caveat that gitleaks could not be run locally.
       Also green: New dependency check, OpenSSF Scorecard, CodeRabbit, check-hop-agent-docker.
-      Awaiting review approval; merge is blocked on `REVIEW_REQUIRED`, not on any check.
+      Final head `8aa9757a9` re-ran green after the `--require-surface` fix (Agent config scan 13s,
+      24 tests / 22 pass / 2 skipped) and **merged 2026-08-26**.
       **hops-mcp PUSHED 2026-08-26 → PR #56, all five checks green.** Agent config scan passed in
       11s; CI output identical to local (2 inline hooks, 0 script files, 0 enabled plugins, 1
-      advisory, exit 0), self-test 22 / 20 pass / 2 skipped. Also green: check-mcp-docker,
+      advisory, exit 0), self-test 24 / 22 pass / 2 skipped. Also green: check-mcp-docker,
       OpenSSF Scorecard, CodeRabbit, CodeBuild. That PR also carries the `vitest.config.ts` fix for
       the pre-existing red `npm test` (see the drive-by note above). hops-mcp has no PR template and
       no body-validating workflow, so the spec-link class of failure does not exist there.

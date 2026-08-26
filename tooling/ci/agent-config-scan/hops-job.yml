@@ -1,5 +1,8 @@
 # Job template for hops `.github/workflows/hops-mr-check.yml`.
 #
+# As merged: hops PR #556, merge commit `8039e6939` (2026-08-26). This file is the as-shipped
+# job, not a proposal — keep it in step with the workflow if that job changes.
+#
 # Ports into hops as:
 #   scripts/check-agent-config.mjs        <- tooling/ci/agent-config-scan/check-agent-config.mjs
 #   scripts/check-agent-config.test.mjs   <- tooling/ci/agent-config-scan/check-agent-config.test.mjs
@@ -12,11 +15,15 @@
 # indistinguishable from one that passed, and the agent-config surface can be edited by any PR —
 # there is no label that predicts it.
 #
-# Cheap unconditionally: it reads .claude/settings*.json and the files those settings actually
-# reference. No network, no install step, no dependency tree.
+# `--require-surface` is the same finding turned on the gate itself: without it, a PR that deletes
+# or renames `.claude/settings.json` leaves nothing to scan and the job reports success. Carry the
+# flag into any port; the default-off behaviour exists only for ad-hoc local scans.
 
   agent-config-scan:
     name: Agent config scan
+    # Not label-gated: the agent-config surface can be edited by any PR and no label predicts it.
+    # Cheap unconditionally — it reads .claude/settings*.json and the files those settings
+    # actually reference. No network, no install step.
     runs-on: codebuild-hops-regular-${{ github.run_id }}-${{ github.run_attempt }}
     permissions:
       contents: read
@@ -29,10 +36,18 @@
           node-version: '24'
 
       - name: Self-test the checker
+        # Two of the 24 tests need the research repo's copy of the real hook surface and report
+        # as SKIPPED here; the scan step below covers the same ground against this repo.
         run: node --test scripts/check-agent-config.test.mjs
 
       - name: Scan the agent configuration surface
-        # Blocking rules only: malicious hook content, credentials in permission patterns,
-        # tampering with a committed guard. The unpinned plugin marketplace is reported as an
-        # advisory and does not fail the job — see UNPINNED_ADVISORY in the scanner.
-        run: node scripts/check-agent-config.mjs --repo .
+        # Blocks on malicious hook content, credentials in permission patterns, and tampering
+        # with a committed guard. The unpinned plugin marketplace is advisory and does not fail
+        # the job — Claude Code has no documented ref field for a marketplace source, and a gate
+        # whose finding cannot be fixed is a gate that gets disabled.
+        #
+        # --require-surface: an absent .claude/settings.json fails rather than reporting
+        # "nothing to check, all clear". Without it, deleting or renaming the settings file
+        # turns this job green — the same skip-and-still-pass failure the gate was written
+        # to correct.
+        run: node scripts/check-agent-config.mjs --repo . --require-surface

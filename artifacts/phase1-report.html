@@ -157,11 +157,11 @@
   <p class="standfirst">How we secure AI-assisted development and CI/CD: industry best practices,
   what our projects already implement, what the AWOS audit measures, and the roadmap for the
   gaps. Phase 1 research — every claim traces to a verified file path, a scan, or a cited
-  source. <b>Phase 2 is delivering</b>: four roadmap items are merged, plus one fix the research
-  itself uncovered — five pull requests across two repositories, all shipped. The roadmap table
+  source. <b>Phase 2 is delivering</b>: seven roadmap items are merged, plus one fix the research
+  itself uncovered — sixteen pull requests across five repositories, all shipped. The roadmap table
   below is colour-coded by delivery state.</p>
   <div class="meta">
-    <span><b>Date</b> 2026-08-14 · <b>updated</b> 2026-08-21</span>
+    <span><b>Date</b> 2026-08-14 · <b>updated</b> 2026-08-26</span>
     <span><b>Researcher</b> Vladyslav Katrychenko</span>
     <span><b>Scope</b> code &amp; repo security in AI-assisted development</span>
     <span><span class="chip c-warn">INTERNAL EDITION</span> — names repos and findings; produce the client variant before external use</span>
@@ -307,14 +307,14 @@
         <td>Runs only on labeled frontend PRs, one module — must be unconditional, all modules, all repos</td></tr>
     <tr><td><b>Dependency cooldown / quarantine</b> — never install a version younger than N days</td>
         <td><a href="https://pnpm.io/supply-chain-security" target="_blank" rel="noopener">pnpm <code>minimumReleaseAge</code></a> (default-on since v11), npm <code>min-release-age</code></td>
-        <td class="center"><span class="chip c-fail">MISSING</span></td>
-        <td>—</td>
-        <td>One line of config for pnpm projects; closes the registry-compromise install window (audit check SCS-04)</td></tr>
+        <td class="center"><span class="chip c-pass">IMPLEMENTED</span></td>
+        <td>hops <code>hop-ui</code>: <code>minimumReleaseAge</code> set, with the pnpm toolchain pinned so the setting is not a no-op (2026-08-19)</td>
+        <td>The other repos; the audit's SCS-04 detector reads the manifest, not the setting</td></tr>
     <tr><td><b>Hallucinated-package defense</b> — new dependencies must exist, pre-date the PR, show real usage</td>
         <td><a href="https://www.usenix.org/conference/usenixsecurity25/presentation/spracklen" target="_blank" rel="noopener">USENIX 2025 slopsquatting study</a> (<a href="https://arxiv.org/abs/2406.10279" target="_blank" rel="noopener">arXiv</a>)</td>
-        <td class="center"><span class="chip c-info">PLANNED</span></td>
-        <td>—</td>
-        <td>CI check to build in Phase 2 — the AI-native supply-chain attack; nothing on the market gates it</td></tr>
+        <td class="center"><span class="chip c-pass">IMPLEMENTED</span></td>
+        <td>hops: unconditional CI job blocking any newly added package that npm has never heard of, with age and near-neighbour thresholds derived from the manifest (2026-08-21)</td>
+        <td>The other repos; npm only — no PyPI equivalent shipped yet</td></tr>
     <tr class="grouprow"><td colspan="5">AI toolchain</td></tr>
     <tr><td><b>Pinned, integrity-checked agent toolchain</b> — MCP servers version-pinned; tool-description changes alerted</td>
         <td><a href="https://labs.cloudsecurityalliance.org/agentic/agentic-mcp-security-best-practices-v1/" target="_blank" rel="noopener">CSA MCP best practices</a>; <a href="https://genai.owasp.org/" target="_blank" rel="noopener">OWASP Agentic Top 10</a> (ASI01 "rug pull")</td>
@@ -323,9 +323,9 @@
         <td>Every stdio MCP today runs a mutable version (<code>:latest</code> / <code>@canary</code> / unpinned git URL); pinning check planned for Phase 2</td></tr>
     <tr><td><b>Protected agent-config surface</b> — CLAUDE.md, hooks, skills, MCP config treated as security-sensitive</td>
         <td><a href="https://claude.com/blog/how-anthropic-secures-its-ai-native-software-development-lifecycle" target="_blank" rel="noopener">Anthropic protected zones</a>; audit check PRV-17</td>
-        <td class="center"><span class="chip c-warn">PARTIAL</span></td>
-        <td>Agent files and hooks tracked in git; process guard on docs</td>
-        <td>No rule declares the surface security-sensitive or requires review for changes to it</td></tr>
+        <td class="center"><span class="chip c-pass">IMPLEMENTED</span></td>
+        <td>hops: the surface is declared security-sensitive in six instruction files plus a path-scoped rule, <code>CODEOWNERS</code> routes review over it, and an unconditional CI job scans the hook content it resolves from <code>settings.json</code> (2026-08-26)</td>
+        <td>Org-wide rollout (1 of 4 repos); review is routed but not binding — <code>main</code> requires no passing check</td></tr>
     <tr class="grouprow"><td colspan="5">Governance</td></tr>
     <tr><td><b>Continuous audit with a working remediation loop</b> — findings become fixes on a measured cadence</td>
         <td><a href="https://csrc.nist.gov/projects/ssdf" target="_blank" rel="noopener">NIST SSDF</a> / <a href="https://csrc.nist.gov/pubs/sp/800/218/a/final" target="_blank" rel="noopener">SP 800-218A</a>; Anthropic audit-driven gates</td>
@@ -339,13 +339,14 @@
         <td>Short threat-model doc planned in Phase 2; doubles as publication material</td></tr>
     <tr><td><b>Third-party posture scoring</b> — an external number tracking repo security over time</td>
         <td><a href="https://github.com/ossf/scorecard" target="_blank" rel="noopener">OpenSSF Scorecard</a></td>
-        <td class="center"><span class="chip c-info">PLANNED</span></td>
-        <td>—</td>
-        <td>CI action per repo; the before/after metric for this capability</td></tr>
+        <td class="center"><span class="chip c-pass">IMPLEMENTED</span></td>
+        <td>Five repos, as a per-check ratchet against a committed baseline rather than a score threshold (2026-08-25)</td>
+        <td>The org's remaining repositories; the one check that measures enforcement cannot be read from CI</td></tr>
   </table>
   </div>
-  <p class="note">Status = strongest implementation in the org today, verified against live repos
-  2026-08-14. Sources: Anthropic AI-native SDLC security playbook · OWASP ASVS 5.0, CI/CD Top 10,
+  <p class="note">Status = strongest implementation in the org, verified against live repos
+  2026-08-14 and refreshed as Phase 2 items merge — per-item delivery state and evidence are in
+  <i>Gaps &amp; roadmap</i>. Sources: Anthropic AI-native SDLC security playbook · OWASP ASVS 5.0, CI/CD Top 10,
   LLM &amp; Agentic Top 10 · NIST SP 800-218 / 218A · CSA MCP guidance · USENIX 2025 · Veracode
   GenAI report · SLSA / OpenSSF.</p>
 </div>
@@ -397,7 +398,8 @@
     <tr><td>AS-13 <span class="chip c-fail">FAIL</span> "no .env.example found"</td>
         <td>Four exist — the detector checks the repo root only and misses per-module templates in a monorepo</td></tr>
     <tr><td>AIS-03 <span class="chip c-info">SKIP</span> "no .claude/hooks/ directory"</td>
-        <td>Hooks live in <code>scripts/claude-hooks/</code> — the malicious-hook scan never read them; the 100% ai-security score is overstated</td></tr>
+        <td>Hooks live in <code>scripts/claude-hooks/</code> — the malicious-hook scan never read them; the 100% ai-security score is overstated.
+        <span class="chip c-pass">COVERED 2026-08-26</span> our own job now scans the hook surface resolved from <code>settings.json</code>, so it cannot skip on a directory that was never there</td></tr>
     <tr><td>AS-01 <span class="chip c-fail">FAIL</span> every run</td>
         <td>A documented accepted risk (cluster-internal URLs, TLS at ALB) — no waiver mechanism, so a permanent 8-point FAIL trains readers to ignore FAILs</td></tr>
   </table></div>
@@ -425,7 +427,9 @@
   <p><code>PreToolUse</code> hook on every file/shell tool → <code>block-secrets.sh</code>: the
   agent cannot read or write secret material at all. <code>PostToolUse</code> re-installs the
   git pre-commit hook — closing the "hook never installed" hole for agent sessions. Note: hooks
-  live in <code>scripts/claude-hooks/</code>, which the audit's AIS-03 path assumption missed.</p>
+  live in <code>scripts/claude-hooks/</code>, which the audit's AIS-03 path assumption missed — and
+  which the <code>agent-config-scan</code> job below now reads on the path the settings actually
+  point at.</p>
 
   <h3>Layer 3 — CI (GitHub Actions, MR pipeline)</h3>
   <div class="tblwrap"><table>
@@ -434,6 +438,8 @@
         <td>gitleaks 8.24.3 pinned binary, full-history checkout; workflow comment: "a leaked token can land in any file of any PR"</td></tr>
     <tr><td><code>osv-audit-hop-ui</code></td><td><span class="chip c-warn">LABEL-GATED</span></td>
         <td>Runs only on PRs labeled <code>frontend</code>, covers hop-ui only — the gap is the trigger, not the tool</td></tr>
+    <tr><td><code>agent-config-scan</code></td><td><span class="chip c-pass">UNCONDITIONAL</span></td>
+        <td>Reads the hook surface from <code>.claude/settings*.json</code> — inline commands included — and blocks on download-and-execute, exfiltration, credential reads and guard tampering. Merged 2026-08-26; also live in hops-mcp</td></tr>
     <tr><td><code>sonarqube-check-mr</code></td><td>every MR</td><td>SAST + quality gate</td></tr>
     <tr><td>detekt</td><td>gradle build</td><td>Kotlin static analysis</td></tr>
   </table></div>
@@ -549,6 +555,17 @@
         prose where no field name exists. The enforcement is a test that reads all <b>73</b>
         cassettes as committed, so a future hole fails CI. Verified additive: 0 of 73 cassettes
         change. Their suite passes.</td></tr>
+    <tr class="row-done"><td><b>OpenSSF Scorecard posture gate</b><br><span class="note">roadmap item 10</span></td>
+        <td>all five: hops, hops-mcp, barley, sowinsights, wort</td>
+        <td><span class="chip c-pass">MERGED</span> <span class="note">8 PRs, 2026-08-25</span></td>
+        <td>Not a threshold on the published score — that score is unusable here, because four of
+        its checks grade a private repo against open-source norms and <code>SAST</code> reads 0 for
+        any self-hosted scanner. Instead a <b>per-check ratchet</b> against a committed baseline:
+        four checks fail a pull request if they drop, eight are reported, six are ignored with the
+        reason recorded next to each. One policy, two implementations — Node and standard-library
+        Python, picked per repo by what that repo's CI already runs — held to byte-identical output
+        by an agreement check. <b>Fails closed</b>: a gated check that goes missing or inconclusive
+        fails the run rather than passing quietly.</td></tr>
     <tr class="row-done"><td><b>Hallucinated-package check</b><br><span class="note">roadmap item 6</span></td>
         <td>hops</td>
         <td><span class="chip c-pass">MERGED</span> <span class="note">PR #528, 2026-08-21</span></td>
@@ -556,6 +573,26 @@
         across 21 packages added by 13 real <code>hop-ui</code> commits, each judged as of its own
         commit date. Two thresholds derived from the manifest itself; 20 self-tests run inside the
         job. Not label-gated.</td></tr>
+    <tr class="row-done"><td><b>Agent-config surface declared security-sensitive</b><br><span class="note">roadmap item 5 · audit check PRV-17</span></td>
+        <td>hops</td>
+        <td><span class="chip c-pass">MERGED</span> <span class="note">PR #557, 2026-08-26</span></td>
+        <td>The declaration is written into all six <code>CLAUDE.md</code> files plus a path-scoped
+        rule that loads only when the surface is being edited, and <code>CODEOWNERS</code> — the
+        repo's first — routes review for it. Two silent controls surfaced while writing it:
+        <code>.gitignore</code> denied <code>.github/*</code>, so the new CODEOWNERS was untracked
+        with no error, and <code>.claude/settings.local.json</code>, the file that holds permission
+        allow-patterns, was ignored only by a per-developer <i>global</i> gitignore — committable on
+        any machine without one.</td></tr>
+    <tr class="row-done"><td><b>Hook-content scan on the real path</b><br><span class="note">roadmap item 9 · audit check AIS-03</span></td>
+        <td>hops · hops-mcp</td>
+        <td><span class="chip c-pass">MERGED</span> <span class="note">PRs #556 · #56, 2026-08-26</span></td>
+        <td>Resolves the surface from <code>settings.json</code>, never from a directory — the
+        directory assumption <i>is</i> the audit bug, and repeating it in a new shape would have been
+        the whole failure. <b>Four of the six registered hooks in the org exist only as inline shell
+        strings</b> that no linter parses and no directory scan can find. Calibration is the
+        deliverable: naive rule forms produced 18, 7 and 4 hits on the repo's own secret-guard and
+        pre-commit script; the shipped rules produce <b>0</b>. Ran on its own PR with no labels, 13s,
+        24 self-tests inside the job.</td></tr>
   </table></div>
 
   <div class="call red">
@@ -578,12 +615,69 @@
     the suppressed contexts to prove the rule is narrow.
   </div>
 
+  <div class="call red">
+    <b>The gate we built to fix a skip-and-pass check shipped with the same defect</b>
+    <span class="chip c-pass">FOUND IN REVIEW · FIXED BEFORE MERGE 2026-08-26</span><br>
+    The whole point of roadmap item 9 is that AIS-03 found no <code>.claude/hooks/</code> directory,
+    skipped, and let the dimension report <b>100%</b>. Our replacement, run against a directory with
+    no <code>.claude/settings.json</code> in it, printed <i>"no agent hook surface in this repo — all
+    clear"</i> and exited <b>0</b>. A pull request that deleted or renamed the settings file would
+    have turned the gate green.
+    <br><br>
+    Knowing the failure mode did not prevent rebuilding it. <b>Skip-and-pass is not an upstream
+    defect — it is the default shape of a check</b>, and only running the tool against an empty
+    directory exposed it. The fix is deliberately not a special case: an absent surface is pushed as
+    an ordinary blocking finding, so it flows through the allowlist, the JSON output and the exit
+    code exactly like malicious hook content does.
+    <br><br>
+    The same review found the second-order version one level up. The new <code>CODEOWNERS</code>
+    routed review for <code>scripts/pre-commit</code> and <code>scripts/claude-hooks/</code> — the
+    guards the audit already knew about — but not for the scanner or the workflow that runs it: <b>a
+    control that protects the previous generation of controls and not itself.</b> Both paths added.
+    The generalizable rule for the blueprint: <b>every gate must be run against the input it is
+    supposed to fail on</b>, absence included, and its own source must sit inside the surface it
+    protects.
+  </div>
+
+  <div class="call">
+    <b>What the Scorecard work found once it was pointed at the whole organisation</b>
+    <span class="chip c-info">27 REPOS · READ-ONLY · 2026-08-23</span><br>
+    Adding the gate to five repositories cost a week. Running the same tool once across all
+    <b>27</b> repositories in the org cost an afternoon, and produced the more valuable result.
+    <div class="tblwrap"><table>
+      <tr><th>Measured</th><th>Result</th><th>Why it matters</th></tr>
+      <tr><td>Default branches requiring a passing status check</td>
+          <td><b>1 of 26</b></td>
+          <td>The enterprise-wide ruleset carries no <code>required_status_checks</code> rule at
+          all. Every gate in this report — gitleaks, the dependency check, this one — reports a
+          red cross that a merge may simply ignore. <b>One org-level settings change is worth more
+          than every gate we shipped.</b></td></tr>
+      <tr><td>Repositories with a dependency-update tool</td>
+          <td><b>1 of 26</b></td>
+          <td>The Phase 1 headline — that secret scanning existed in exactly one repo — has the
+          same shape one layer out. Security tooling here is a property of a repository, never of
+          the organisation.</td></tr>
+      <tr><td>A control switched on and routed around</td>
+          <td><code>wort</code></td>
+          <td><code>main</code> requires a pull request and one approving review, administrators
+          are exempt from that rule, and <b>1 of the last 30 changesets carried an approval</b>.
+          Every earlier version of this finding was about a control being <i>absent</i>. This one
+          is present, enabled, and not binding — the sharpest evidence in the whole project that
+          <b>declared and enforced are different measurements</b>.</td></tr>
+    </table></div>
+    <b>And what the gate does not do</b>, recorded so nobody reads more into it than it earns:
+    eight of the twenty gated check-instances across the five repositories currently sit at zero
+    and cannot fall, so those gates protect nothing until a baseline is raised. The one check that
+    measures enforcement rather than presence — <code>Branch-Protection</code>, the reason this
+    tool was chosen — needs repository-admin scope and cannot be read from CI at all. It runs by
+    hand, from a user token.
+  </div>
+
   <h3>The roadmap — ordered by impact ÷ effort</h3>
   <p class="note">Scope: changes land in hops (dev only) per the approved scope — items for other
-  repos are recommendations to their owners. Row colour is delivery state as of 2026-08-21.</p>
+  repos are recommendations to their owners. Row colour is delivery state as of 2026-08-26.</p>
   <div class="legend">
     <span><i class="k-done"></i>merged</span>
-    <span><i class="k-review"></i>in review</span>
     <span><i class="k-open"></i>not started</span>
   </div>
 </div>
@@ -606,10 +700,10 @@
         <td><span class="chip c-pass">SMALL SCRIPT</span></td><td>all repos</td>
         <td>MCP servers run with developer privileges; a mutable version means a compromised update executes on every session start — the "rug pull" (CSA / OWASP ASI01). All four repos are exposed today</td>
         <td>A CI/pre-commit script flags <code>:latest</code>, <code>@canary</code>, and ref-less git URLs in <code>.mcp.json</code>; servers get pinned to a digest, version, or commit</td></tr>
-    <tr><td class="num-cell">5</td><td><b>PRV-17 — protect the agent-config surface</b></td>
+    <tr class="row-done"><td class="num-cell">5</td><td><b>PRV-17 — protect the agent-config surface</b> <span class="chip c-pass">MERGED</span></td>
         <td><span class="chip c-pass">A PARAGRAPH</span></td><td>hops</td>
-        <td>CLAUDE.md, hooks, skills and MCP config steer everything agents do — tampering there hijacks every future session, and today no rule marks it sensitive (open audit WARN)</td>
-        <td>Add the rule to agent instruction files: the agent-config surface is security-sensitive, and changes to <code>.claude/</code>, hooks, or <code>.mcp.json</code> require human review</td></tr>
+        <td>CLAUDE.md, hooks, skills and MCP config steer everything agents do — tampering there hijacks every future session, and no rule marked it sensitive (audit WARN, 1 of 2)</td>
+        <td>Shipped as six instruction files plus a path-scoped rule that loads only when the surface is edited, and the repo's first <code>CODEOWNERS</code> routing review over <code>CLAUDE.md</code>, <code>.claude/</code>, <code>.mcp.json</code>, the guards, and the gate's own source</td></tr>
     <tr class="row-done"><td class="num-cell">6</td><td><b>Hallucinated-package CI check</b> <span class="chip c-pass">MERGED</span></td>
         <td><span class="chip c-warn">MEDIUM</span></td><td>hops → generalize</td>
         <td>19.7% of LLM-recommended packages don't exist (USENIX 2025); attackers pre-register the names and agents install their own suggestions — typosquatting defenses don't cover it</td>
@@ -622,14 +716,14 @@
         <td><span class="chip c-warn">MEDIUM</span></td><td>barley only — see note below</td>
         <td>Denylist scrubbers miss every API field they haven't seen — that is exactly how a live runner token reached HEAD despite scrubbing being in place</td>
         <td>Invert the design: allowlist the fields a cassette may keep (or apply entropy/format-based redaction at record time), then re-record the affected cassettes</td></tr>
-    <tr><td class="num-cell">9</td><td><b>Hook-content scan on the real path</b></td>
-        <td><span class="chip c-pass">LOW</span></td><td>hops</td>
+    <tr class="row-done"><td class="num-cell">9</td><td><b>Hook-content scan on the real path</b> <span class="chip c-pass">MERGED · 2 REPOS</span></td>
+        <td><span class="chip c-pass">LOW</span></td><td>hops, hops-mcp <b>done</b>; barley and sowinsights read-only</td>
         <td>Hooks execute arbitrary shell on every agent action, and the audit's malicious-hook check skipped them entirely over a path assumption (AIS-03)</td>
-        <td>Scan <code>scripts/claude-hooks/</code> — and any path referenced from <code>settings.json</code> — for exfiltration and download-and-execute patterns, locally and in CI</td></tr>
-    <tr><td class="num-cell">10</td><td><b>OpenSSF Scorecard</b></td>
-        <td><span class="chip c-pass">CI ACTION</span></td><td>all repos</td>
+        <td>Shipped as an unconditional CI job that resolves the surface from <code>settings.json</code> — inline commands, referenced scripts, permission patterns and plugin marketplaces — and fails when there is no surface to scan, so the file cannot be deleted into a green run</td></tr>
+    <tr class="row-done"><td class="num-cell">10</td><td><b>OpenSSF Scorecard</b> <span class="chip c-pass">MERGED · 5 REPOS</span></td>
+        <td><span class="chip c-pass">CI ACTION</span></td><td>all five repos <b>done</b></td>
         <td>Self-assessment persuades neither clients nor auditors; an independent, recognized score does — and tracks drift over time</td>
-        <td>Add the Scorecard action per repo; record the score each audit cycle as the before/after metric for this capability</td></tr>
+        <td>Shipped as a per-check ratchet, not a score threshold: four checks gate a pull request, eight are reported, six ignored with a recorded reason. Runs on every pull request in local mode against the tree being proposed, and on every default-branch merge in remote mode for the checks an API is needed to read</td></tr>
     <tr><td class="num-cell">11</td><td><b>Security-review at generation time + close the loop</b></td>
         <td><span class="chip c-warn">MEDIUM</span></td><td>all repos</td>
         <td>45% of AI-generated code is vulnerable and the rate isn't improving with newer models — the cheapest catch is before commit, and every finding should harden the instructions (Anthropic's shift-left)</td>
@@ -703,6 +797,15 @@
     <li><b>Resolve the real base ref before measuring.</b> Also added in Phase 2, twice earned:
     two measurements were taken against local clones 5 and 229 commits stale. Every number now
     states the ref it was measured at, by SHA.</li>
+    <li><b>Run every gate against the input it must fail on — absence included.</b> Added in
+    Phase 2, after our own hook scanner was found reporting "all clear" on a repo with no agent
+    settings file at all: the skip-and-pass failure it had been written to correct. A gate is now
+    proved with a planted positive, a negative control on real code, <i>and</i> an empty input, and
+    its own source is placed inside the surface it protects.</li>
+    <li><b>Close an item from the default branch, not from the branch that was reviewed.</b> Also
+    Phase 2: re-deriving the claims from <code>main</code> after merge is what showed the portable
+    copy of a shipped checker was two commits stale — it still carried the fail-open version any
+    second repo would have copied.</li>
     <li><b>Everything logged as it happens.</b> Method log, findings, corrections (two of our own
     claims were caught and fixed by later evidence), and lessons — in the research repo, each
     number backed by a committed file.</li>
@@ -716,7 +819,7 @@
 <div class="col">
 <footer>
   DevOps Capabilities Research — Phase 1 complete, Phase 2 in progress · 2026-08-14, updated
-  2026-08-21 · Vladyslav Katrychenko · advisors
+  2026-08-26 · Vladyslav Katrychenko · advisors
   R. Sadretdinov, R. Ugarov · internal edition, redacted: secret values never appear in this
   document or the underlying research files.
 </footer>

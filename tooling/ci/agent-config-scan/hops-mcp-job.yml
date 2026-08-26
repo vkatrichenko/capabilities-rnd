@@ -1,7 +1,8 @@
 # Job template for hops-mcp `.github/workflows/hops-mcp-mr-check.yml`.
 #
-# Same scanner as the hops job; hops-mcp gets a gate because it is the only other repo in the org
-# with hook content to scan (2 inline PostToolUse commands: `tsc --noEmit` and `npx eslint`).
+# As merged: hops-mcp PR #56, merge commit `c9449f8` (2026-08-26). Same scanner as the hops job,
+# byte-identical; hops-mcp gets a gate because it is the only other repo in the org with hook
+# content to scan (2 inline PostToolUse commands: `tsc --noEmit` and `npx eslint`).
 #
 # Ports into hops-mcp as:
 #   scripts/check-agent-config.mjs
@@ -10,26 +11,55 @@
 # Two repo-specific frictions, both handled:
 #   - `npm run lint` runs `prettier --check .` and `eslint .` over the whole repo, so both files
 #     must satisfy them. Verified before the PR, not assumed.
-#   - the test runner is vitest; the self-test stays on `node --test` so no vitest config changes.
+#   - the test runner is vitest; the self-test stays on `node --test`. `vitest.config.ts` excludes
+#     `scripts/**` (landed in the same PR) so vitest stops collecting these files and failing them.
 #
 # The existing job in this workflow runs on the CodeBuild runner because it builds a Docker image.
 # This one needs no Docker, but stays on the same runner label for consistency with the workflow.
 
   agent-config-scan:
     name: Agent config scan
+    # Not label-gated and not path-filtered: the agent-config surface can be
+    # edited by any pull request and no label predicts it. Cheap unconditionally
+    # — it reads .claude/settings*.json and the files those settings actually
+    # reference. No network, no install step, no dependency tree.
+    #
+    # Ported from the HOPS gate (hops/.github/workflows/hops-mr-check.yml). The
+    # checker is plain Node with no dependencies; scripts/ is already outside the
+    # eslint and prettier scopes, so it adds nothing to `npm run lint`.
+    #
+    # This repo's two hooks are inline `command` strings in .claude/settings.json
+    # rather than files, which is exactly the content a directory-based scan
+    # cannot see — the reason the upstream audit's hook check skips repos like
+    # this one entirely.
     runs-on: codebuild-hops-mcp-${{ github.run_id }}-${{ github.run_attempt }}
     permissions:
       contents: read
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: "22"
 
       - name: Self-test the checker
+        # Two of the 24 tests need the research repo's copy of the HOPS hook
+        # surface and report as SKIPPED here; the scan step below covers the
+        # same ground against this repo.
         run: node --test scripts/check-agent-config.test.mjs
 
       - name: Scan the agent configuration surface
-        run: node scripts/check-agent-config.mjs --repo .
+        # Blocks on malicious hook content, credentials in permission patterns,
+        # and tampering with a committed guard. The unpinned plugin marketplace
+        # is advisory and does not fail the job — Claude Code has no documented
+        # ref field for a marketplace source, and a gate whose finding cannot be
+        # fixed is a gate that gets disabled.
+        #
+        # --require-surface: an absent .claude/settings.json fails rather than
+        # reporting "nothing to check, all clear". Without it, deleting or
+        # renaming the settings file turns this job green — the same
+        # skip-and-still-pass failure this gate was written to correct.
+        run: node scripts/check-agent-config.mjs --repo . --require-surface

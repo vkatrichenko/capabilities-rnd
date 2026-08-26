@@ -10,8 +10,9 @@
  * So this scanner resolves the hook surface from settings, never from a directory convention:
  *
  *   1. `.claude/settings.json` and `.claude/settings.local.json` -> every registered
- *      `hooks.<event>[].hooks[].command`.
- *   2. Each command is scanned AS CONTENT (3 of hops' 4 hooks exist only as inline shell
+ *      `hooks.<event>[].hooks[].command`. With `--require-surface`, finding no settings file at
+ *      all is itself a blocking finding — see missing-surface below.
+ *   2. Each command is scanned AS CONTENT (2 of hops' 4 hooks exist only as inline shell
  *      strings, which no linter or reviewer diff-view treats as code), and any repo file the
  *      command references is resolved and scanned too.
  *   3. Every file in a discovered hook directory — whether `.claude/hooks/` or the directory a
@@ -29,7 +30,8 @@
  * reporting the same finding is how one of them gets deleted.
  *
  * Usage:
- *   check-agent-config.mjs [--repo <path>] [--allowlist <file>] [--advisory] [--json]
+ *   check-agent-config.mjs [--repo <path>] [--allowlist <file>] [--require-surface]
+ *                          [--advisory] [--json]
  *
  * Exit codes: 0 clean or advisory-only, 1 blocking findings, 2 usage/IO error.
  */
@@ -475,11 +477,18 @@ export function scanRepo(repoRootArg) {
 // ---------------------------------------------------------------------------
 
 function parseArgs(argv) {
-  const args = { repo: process.cwd(), allowlist: null, advisory: false, json: false };
+  const args = {
+    repo: process.cwd(),
+    allowlist: null,
+    advisory: false,
+    json: false,
+    requireSurface: false,
+  };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--repo") args.repo = argv[++i];
     else if (a === "--allowlist") args.allowlist = argv[++i];
+    else if (a === "--require-surface") args.requireSurface = true;
     else if (a === "--advisory") args.advisory = true;
     else if (a === "--json") args.json = true;
     else if (a === "--help" || a === "-h") args.help = true;
@@ -506,7 +515,8 @@ export function main(argv) {
   }
   if (args.help) {
     console.log(
-      "usage: check-agent-config.mjs [--repo <path>] [--allowlist <file>] [--advisory] [--json]",
+      "usage: check-agent-config.mjs [--repo <path>] [--allowlist <file>] [--require-surface] " +
+        "[--advisory] [--json]",
     );
     return 0;
   }
@@ -518,6 +528,25 @@ export function main(argv) {
   } catch (err) {
     console.error(`agent-config-scan: ${err.message}`);
     return 2;
+  }
+
+  // A gate that finds nothing to check must not report success. That is exactly the failure this
+  // scanner exists to correct — AIS-03 skipped on a missing `.claude/hooks/` directory and the
+  // dimension still reported 100%. Without this, deleting or renaming `.claude/settings.json`
+  // turns the job green. The absent surface is pushed as an ordinary Finding so it flows through
+  // the allowlist, the JSON output and the exit code like every other one.
+  if (args.requireSurface && result.summary.settingsFiles === 0) {
+    result.findings.push(
+      new Finding({
+        rule: "missing-surface",
+        severity: "block",
+        label: ".claude/settings.json",
+        why: "no agent settings file to scan — a gate must not pass by having nothing to check",
+        detail:
+          "--require-surface is set; without it a repo whose settings file was deleted, renamed " +
+          "or moved would report clean",
+      }),
+    );
   }
 
   const kept = [];
