@@ -1,0 +1,68 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^(Read|Glob|Grep|Bash|Edit|Write|MultiEdit|NotebookEdit)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/claude-hooks/block-secrets.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cp scripts/pre-commit .git/hooks/pre-commit 2>/dev/null && chmod +x .git/hooks/pre-commit 2>/dev/null; true"
+          },
+          {
+            "type": "command",
+            "command": "INPUT=$(cat); COMMAND=$(echo \"$INPUT\" | jq -r '.tool_input.command // empty'); if echo \"$COMMAND\" | grep -q 'worktree'; then echo '--- Worktree Validation ---'; git worktree list; LATEST=$(git worktree list | tail -1); echo \"Confirmed: Worktree operation completed. Latest worktree: $LATEST\"; fi"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "INPUT=$(cat); FILE=$(echo \"$INPUT\" | jq -r '.tool_input.file_path // empty'); if [ -z \"$FILE\" ]; then exit 0; fi; case \"$FILE\" in */hop-ui/*) cd \"${FILE%%/hop-ui/*}/hop-ui\" ;; esac; case \"$FILE\" in *.ts|*.tsx|*.js|*.jsx|*.json|*.css) npx prettier --write \"$FILE\" || echo \"prettier failed for $FILE\" ;; esac; case \"$FILE\" in *.ts|*.tsx|*.js|*.jsx) npx eslint --fix \"$FILE\" || echo \"eslint failed for $FILE\" ;; esac; case \"$FILE\" in *.py) (cd \"${FILE%%/hop-sowa/*}/hop-sowa\" 2>/dev/null && uv run ruff format \"$FILE\" 2>/dev/null && uv run ruff check --fix \"$FILE\" 2>/dev/null) || echo \"ruff failed for $FILE\" ;; esac; true"
+          }
+        ]
+      }
+    ]
+  },
+  "extraKnownMarketplaces": {
+    "awos-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "provectus/awos"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "code-review@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true,
+    "pr-review-toolkit@claude-plugins-official": true,
+    "typescript-lsp@claude-plugins-official": true,
+    "commit-commands@claude-plugins-official": false,
+    "context7@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true,
+    "code-simplifier@claude-plugins-official": true,
+    "hookify@claude-plugins-official": true,
+    "atlassian@claude-plugins-official": true,
+    "kotlin-lsp@claude-plugins-official": true,
+    "playwright@claude-plugins-official": true,
+    "plugin-dev@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true,
+    "awos@awos-marketplace": true,
+    "pyright-lsp@claude-plugins-official": true,
+    "github@claude-plugins-official": false,
+    "slack@claude-plugins-official": true,
+    "skill-creator@claude-plugins-official": true
+  }
+}

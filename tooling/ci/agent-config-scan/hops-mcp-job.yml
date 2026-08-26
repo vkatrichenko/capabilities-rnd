@@ -1,0 +1,35 @@
+# Job template for hops-mcp `.github/workflows/hops-mcp-mr-check.yml`.
+#
+# Same scanner as the hops job; hops-mcp gets a gate because it is the only other repo in the org
+# with hook content to scan (2 inline PostToolUse commands: `tsc --noEmit` and `npx eslint`).
+#
+# Ports into hops-mcp as:
+#   scripts/check-agent-config.mjs
+#   scripts/check-agent-config.test.mjs
+#
+# Two repo-specific frictions, both handled:
+#   - `npm run lint` runs `prettier --check .` and `eslint .` over the whole repo, so both files
+#     must satisfy them. Verified before the PR, not assumed.
+#   - the test runner is vitest; the self-test stays on `node --test` so no vitest config changes.
+#
+# The existing job in this workflow runs on the CodeBuild runner because it builds a Docker image.
+# This one needs no Docker, but stays on the same runner label for consistency with the workflow.
+
+  agent-config-scan:
+    name: Agent config scan
+    runs-on: codebuild-hops-mcp-${{ github.run_id }}-${{ github.run_attempt }}
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Self-test the checker
+        run: node --test scripts/check-agent-config.test.mjs
+
+      - name: Scan the agent configuration surface
+        run: node scripts/check-agent-config.mjs --repo .

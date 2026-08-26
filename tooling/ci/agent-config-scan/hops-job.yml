@@ -1,0 +1,38 @@
+# Job template for hops `.github/workflows/hops-mr-check.yml`.
+#
+# Ports into hops as:
+#   scripts/check-agent-config.mjs        <- tooling/ci/agent-config-scan/check-agent-config.mjs
+#   scripts/check-agent-config.test.mjs   <- tooling/ci/agent-config-scan/check-agent-config.test.mjs
+#
+# The test file is self-contained (temp-dir fixtures, credentials assembled from fragments so
+# hops' own gitleaks gate does not flag it). Its two real-surface tests report as SKIPPED here;
+# the scan step below covers the same ground against the actual repo.
+#
+# Deliberately NOT label-gated. W1.2's finding is that a gate which does not run is
+# indistinguishable from one that passed, and the agent-config surface can be edited by any PR —
+# there is no label that predicts it.
+#
+# Cheap unconditionally: it reads .claude/settings*.json and the files those settings actually
+# reference. No network, no install step, no dependency tree.
+
+  agent-config-scan:
+    name: Agent config scan
+    runs-on: codebuild-hops-regular-${{ github.run_id }}-${{ github.run_attempt }}
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Self-test the checker
+        run: node --test scripts/check-agent-config.test.mjs
+
+      - name: Scan the agent configuration surface
+        # Blocking rules only: malicious hook content, credentials in permission patterns,
+        # tampering with a committed guard. The unpinned plugin marketplace is reported as an
+        # advisory and does not fail the job — see UNPINNED_ADVISORY in the scanner.
+        run: node scripts/check-agent-config.mjs --repo .
