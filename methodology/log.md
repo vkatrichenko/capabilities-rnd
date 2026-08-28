@@ -1549,3 +1549,20 @@ commit message plus the empty template (the exact 2026-08-25 lesson) — replace
 body, green on re-run. Positive test held: no `frontend` label, `Detect hop-ui dependency changes`
 → true, `Security audit – hop-ui` ran and passed. Report updated (gating table, best-practice row,
 delivery row, roadmap item 7).
+
+## 2026-08-28 — Phase 3 started: first article draft in provectus.com blueprint form
+
+Source: the internal report (artifact 22daff05, updated 2026-08-28) read in full, plus three of the
+five published blueprints (Submission Flow, Asset Flow, Evidence Lens) fetched to extract the
+recurring section order — hero → Context (three sourced stats) → Math → Blueprint (three layers:
+accountable people / Provectus agents / systems of record) → keystone → Human oversight tiers →
+Key use cases → Side by side → Bet → Risk → Engagement (Sprint / Enable / Realize) → Commitments →
+Next step. Voice: short declaratives, third person, "what we do not know / what we will not do".
+Decisions: (1) client edition — repositories anonymised ("the gated repo / the ungated repo"),
+numbers kept, fingerprints and secret values omitted; (2) all 12 roadmap items written as shipped
+per Vladyslav's instruction, so the MCP pinning check, threat model and rotation appear as done —
+**not yet true as of this entry**; (3) the five research layers folded into six gates mapped to
+the five workflow stages; (4) working title "Gate Flow", matching the site's "<Noun> Flow/Lens"
+naming — placeholder. Draft: `article/gate-flow-blueprint.draft.html`, published as artifact
+f4959b17 with provectus.com tokens. Not verified: the site's real component markup (WebFetch
+returns text only), so the chrome is an approximation of the layout, not a pixel match.

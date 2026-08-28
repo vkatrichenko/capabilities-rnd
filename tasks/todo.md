@@ -335,7 +335,7 @@ the baseline is unrecoverable.
       bug report. Detail: `research/baseline/phase2-before-state.md`.
 
 ### Wave 2 — portable tools (build in `tooling/`, self-test, then port to hops)
-- [ ] **W2.1** MCP pinning check — **built + ported 2026-08-28, awaiting push/PR.**
+- [ ] **W2.1** MCP pinning check — **hops PR #567 IN REVIEW (2026-08-29): all checks green incl. `MCP pin check`, `REVIEW_REQUIRED`.** Report updated.
       Tool: `tooling/ci/mcp-pin-check/` (checker, 18 self-tests, hops job template).
       **Tiered by decision (Vladyslav, 2026-08-28 — ops must be able to maintain it):** *fail* =
       ref-less git URL, pre-release channel, `npx -y` (untrusted AND mutable); *warn* =
