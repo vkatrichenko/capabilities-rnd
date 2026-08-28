@@ -163,7 +163,9 @@ Gate 0 exists so the before/after evidence is captured **before** the first PR �
 the baseline is unrecoverable.
 
 - [ ] **G0.1 — rotation ask to barley owners** (via Ruslan / Rodion). Human action,
-      time-sensitive. **Triage completed 2026-08-18** — send the message below and attach
+      time-sensitive. **PENDING 2026-08-28:** owners confirm the production Slack tokens (#3/#4)
+      were removed from git 2026-07-22 but **not rotated** — rotation still open on their side;
+      #2 left HEAD 2026-08-17 (now history-only), #1 still in HEAD. Roadmap row 1 marked pending. **Triage completed 2026-08-18** — send the message below and attach
       `research/findings/barley-rotation-runbook.md`, which carries the per-credential inventory
       (fingerprints, exact file + line, exposure windows), the rotation steps per system, and the
       three prevention fixes. Corrections to the numbers below are in that file: **7** real-format

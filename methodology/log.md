@@ -1396,3 +1396,30 @@ headlessly. The nine-snippet interactive probe stays open as the last step, and 
 says "merged", not "verified", until it runs. The repository ruleset (required checks) is a
 separate row, unblocked by the team's answer, waiting on an admin.
 
+---
+
+## 2026-08-28 — rotation triage: re-validated, status pending
+
+**Trigger.** "Is roadmap item 1 still valid?" Runbook was cut at barley `2682dcb13`; ten days
+and a cassette rewrite later the in-HEAD inventory could have moved.
+
+**Method.** Re-fingerprinted every `xox[bpa]-`/`GR13` match on barley `origin/main` @
+`373bd5b9d` (sha256, first 12 hex, no values) and diffed against the runbook table. #1
+(`f62a79951399`, `reports/smoke.html`) unchanged. #2 gone from HEAD — cassettes re-recorded
+2026-08-17 (`15082ca2f`), scrubbing made fail-closed 2026-08-20 (`cbdcc799a`); still in history.
+Two new `xoxb-` matches are hand-typed test fixtures (`xoxb-secret…`, `xoxb-111111…`), not
+credentials. barley's own `.gitleaks.toml` leaves `smoke.html` deliberately unsuppressed, so
+their new gate flags #1 on every run.
+
+**What the owners confirmed.** #3/#4 — the production Slack app-level and bot tokens — were
+removed from git on 2026-07-22 and **not rotated**. That is the sequencing failure the runbook
+predicted (`5c571dcf1` announced the removal of a still-live credential) now confirmed as fact
+rather than inferred.
+
+**Decision.** Item stays valid; state changed from "not started" to **pending** — owner action
+identified and acknowledged, not executed. Report roadmap gained a third delivery state for
+exactly this case. Only #3/#4 decide urgency; #1/#5 likely die with the same app reinstall
+(#3 does not — app-level tokens survive reinstall and need explicit reissue).
+
+**Outputs.** `artifacts/phase1-report.html` row 1 + rotation callout; runbook status header;
+`tasks/todo.md` G0.1.

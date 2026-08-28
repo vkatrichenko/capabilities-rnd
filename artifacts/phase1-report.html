@@ -107,14 +107,17 @@
   tr.row-done > td:first-child{ box-shadow:inset 3px 0 0 var(--pass); }
   tr.row-review > td{ background:var(--info-bg); }
   tr.row-review > td:first-child{ box-shadow:inset 3px 0 0 var(--info); }
+  tr.row-pending > td{ background:var(--warn-bg); }
+  tr.row-pending > td:first-child{ box-shadow:inset 3px 0 0 var(--warn); }
   /* A chip on a same-tinted row loses its edge — put it back on the page ground. */
-  tr.row-done .chip.c-pass, tr.row-review .chip.c-info{ background:var(--bg); }
+  tr.row-done .chip.c-pass, tr.row-review .chip.c-info, tr.row-pending .chip.c-warn{ background:var(--bg); }
   .legend{ display:flex; flex-wrap:wrap; gap:1rem; align-items:center; margin:.75rem 0 0;
            font-size:.78rem; color:var(--muted); }
   .legend i{ display:inline-block; width:1.6rem; height:.7rem; border-radius:2px;
              vertical-align:middle; margin-right:.35rem; }
   .legend .k-done{ background:var(--pass-bg); box-shadow:inset 3px 0 0 var(--pass); }
   .legend .k-review{ background:var(--info-bg); box-shadow:inset 3px 0 0 var(--info); }
+  .legend .k-pending{ background:var(--warn-bg); box-shadow:inset 3px 0 0 var(--warn); }
   .legend .k-open{ background:transparent; box-shadow:inset 0 0 0 1px var(--line); }
   .grouprow td{ background:var(--surface); font-family:var(--font-mono); font-size:.68rem;
                 letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:700; }
@@ -157,11 +160,11 @@
   <p class="standfirst">How we secure AI-assisted development and CI/CD: industry best practices,
   what our projects already implement, what the AWOS audit measures, and the roadmap for the
   gaps. Phase 1 research — every claim traces to a verified file path, a scan, or a cited
-  source. <b>Phase 2 is delivering</b>: seven roadmap items are merged, plus one fix the research
-  itself uncovered — sixteen pull requests across five repositories, all shipped. The roadmap table
+  source. <b>Phase 2 is delivering</b>: eight roadmap items are merged, plus one fix the research
+  itself uncovered — seventeen pull requests across five repositories, all shipped. The roadmap table
   below is colour-coded by delivery state.</p>
   <div class="meta">
-    <span><b>Date</b> 2026-08-14 · <b>updated</b> 2026-08-26</span>
+    <span><b>Date</b> 2026-08-14 · <b>updated</b> 2026-08-28</span>
     <span><b>Researcher</b> Vladyslav Katrychenko</span>
     <span><b>Scope</b> code &amp; repo security in AI-assisted development</span>
     <span><span class="chip c-warn">INTERNAL EDITION</span> — names repos and findings; produce the client variant before external use</span>
@@ -288,12 +291,12 @@
         <td><a href="https://claude.com/blog/how-anthropic-secures-its-ai-native-software-development-lifecycle" target="_blank" rel="noopener">Anthropic multi-agent review</a> (narrow scope, proof-of-finding)</td>
         <td class="center"><span class="chip c-warn">PARTIAL</span></td>
         <td>CodeRabbit on PRs in the two main repos, tuned configs</td>
-        <td>Narrow-focus security reviewers with mandatory evidence; generation-time <code>/security-review</code> step</td></tr>
+        <td>Narrow-focus security reviewers with mandatory evidence; a generation-time review that runs — the plugin hops enables installs nothing by itself and its LLM layers need an API key (measured 2026-08-27, roadmap item 11)</td></tr>
     <tr><td><b>Close the loop: finding → instruction file</b> — every discovered bug updates agent guidance</td>
         <td><a href="https://claude.com/blog/how-anthropic-secures-its-ai-native-software-development-lifecycle" target="_blank" rel="noopener">Anthropic's definition of AI-native shift-left</a></td>
         <td class="center"><span class="chip c-warn">PARTIAL</span></td>
-        <td>Accepted-risk register with reasoning; tuned scanner configs cite their audit findings</td>
-        <td>Systematic practice — today it happens per-finding, not by rule</td></tr>
+        <td>Accepted-risk register with reasoning; tuned scanner configs cite their audit findings; the rule itself is written for hops (branch in review, 2026-08-27)</td>
+        <td>Merge the rule; the same rule in the other repos</td></tr>
     <tr class="grouprow"><td colspan="5">Supply chain</td></tr>
     <tr><td><b>Lockfiles + exact pinning + reviewed updates</b></td>
         <td><a href="https://slsa.dev" target="_blank" rel="noopener">SLSA</a> / <a href="https://github.com/ossf/package-manager-best-practices/blob/main/published/npm.md" target="_blank" rel="noopener">OpenSSF package-manager practices</a></td>
@@ -492,7 +495,23 @@
   for validity — rotation decisions belong to the owners.</p>
 
   <div class="call red">
-    <b>Action needed now (barley owners): rotation check</b>
+    <b>Rotate first, regardless of what anyone remembers — two production credentials, confirmed unrotated</b>
+    <span class="chip c-warn">PENDING · CONFIRMED 2026-08-28</span><br>
+    <b>#3 <span class="mono">2c86d0833991</span> — Slack app-level token</b> (<span class="mono">xapp-</span>) and
+    <b>#4 <span class="mono">420cfda1c4b8</span> — Slack bot token</b> (<span class="mono">xoxb-</span>): the
+    production Barley app's own credentials, baked into the prod Lambda configuration as environment
+    variables in <code>terraform/us-west-2/production/lambdas.tf</code> for ~16 months (2025-03 →
+    2026-07). Removed by a commit titled <i>"Remove hardcoded Slack bot tokens; use Secrets Manager
+    data"</i> that <b>rotated nothing</b> — the owners confirm the tokens were never reissued. Until
+    the Barley app is reinstalled to the workspace (kills #4) and the app-level token is deleted and
+    recreated (kills #3 — it survives a reinstall), both give full bot access to the production
+    Provectus workspace to anyone who has ever cloned the repo. Then update Secrets Manager and
+    <code>terraform apply</code> dev and prod, because running Lambdas keep the old value until
+    the apply. Fingerprints are the first 12 hex of <code>sha256(token)</code>; no value appears here.
+  </div>
+
+  <div class="call red">
+    <b>Also on the rotation list (barley owners)</b>
     Still in HEAD: a Slack bot token in <code>reports/smoke.html</code>, exposed ~11 months.
     A GitLab runner-registration token (<span class="mono">GR13…</span>, 3 locations across two
     cassettes) left HEAD on 2026-08-19 when the cassettes were re-recorded — <b>but removal is
@@ -583,6 +602,16 @@
         with no error, and <code>.claude/settings.local.json</code>, the file that holds permission
         allow-patterns, was ignored only by a per-developer <i>global</i> gitignore — committable on
         any machine without one.</td></tr>
+    <tr class="row-done"><td><b>Security review before every commit + finding → instruction loop</b><br><span class="note">roadmap item 11</span></td>
+        <td>hops</td>
+        <td><span class="chip c-pass">MERGED</span> <span class="note">PR #566, 2026-08-28</span></td>
+        <td>Measured before writing: the <code>security-guidance</code> plugin hops had enabled since
+        before this research had <b>never run</b> — a project-only <code>enabledPlugins</code> entry
+        installs nothing, and its LLM layers need an API key a subscription login never provides.
+        Loaded by hand, its regex layer caught 4 of 9 planted classes and none of the five Kotlin
+        ones. What shipped instead is the built-in <code>/security-review</code> as a gate in the
+        commit skill, plus the rule that every finding updates the instructions. Instruction text
+        only, three files. The catch rate of the gate itself is the one number still to measure.</td></tr>
     <tr class="row-done"><td><b>Hook-content scan on the real path</b><br><span class="note">roadmap item 9 · audit check AIS-03</span></td>
         <td>hops · hops-mcp</td>
         <td><span class="chip c-pass">MERGED</span> <span class="note">PRs #556 · #56, 2026-08-26</span></td>
@@ -675,18 +704,20 @@
 
   <h3>The roadmap — ordered by impact ÷ effort</h3>
   <p class="note">Scope: changes land in hops (dev only) per the approved scope — items for other
-  repos are recommendations to their owners. Row colour is delivery state as of 2026-08-26.</p>
+  repos are recommendations to their owners. Row colour is delivery state as of 2026-08-28.</p>
   <div class="legend">
     <span><i class="k-done"></i>merged</span>
+    <span><i class="k-review"></i>in review</span>
+    <span><i class="k-pending"></i>pending — owner action confirmed, not yet done</span>
     <span><i class="k-open"></i>not started</span>
   </div>
 </div>
 <div class="wide">
   <div class="tblwrap"><table>
     <tr><th></th><th>Practice</th><th>Effort</th><th>Where</th><th>Why it matters</th><th>How it fixes it</th></tr>
-    <tr><td class="num-cell">1</td><td><b>Rotation triage with verification</b></td>
+    <tr class="row-pending"><td class="num-cell">1</td><td><b>Rotation triage with verification</b> <span class="chip c-warn">PENDING · barley owners</span></td>
         <td><span class="chip c-pass">HOURS</span></td><td>barley (owners)</td>
-        <td>9 leaked real-format credentials have unknown liveness — any live one is an open door, and checking by hand means handling secrets</td>
+        <td>9 leaked real-format credentials have unknown liveness — any live one is an open door, and checking by hand means handling secrets. <b>Status 2026-08-28:</b> the production Slack app-level token (<span class="mono">2c86d0833991</span>) and bot token (<span class="mono">420cfda1c4b8</span>) were removed from git on 2026-07-22 but <b>not rotated</b> — both are live until the app is reinstalled and the app-level token reissued</td>
         <td>Run TruffleHog verifiers (safe, read-only API probes) over the findings: live credentials get rotated first, dead ones are closed out with evidence</td></tr>
     <tr class="row-done"><td class="num-cell">2</td><td><b>Port the hops gitleaks gate</b> <span class="chip c-pass">MERGED · barley</span></td>
         <td><span class="chip c-pass">LOW</span></td><td>barley <b>done</b>; hops-mcp, sowinsights still recommendations</td>
@@ -724,10 +755,10 @@
         <td><span class="chip c-pass">CI ACTION</span></td><td>all five repos <b>done</b></td>
         <td>Self-assessment persuades neither clients nor auditors; an independent, recognized score does — and tracks drift over time</td>
         <td>Shipped as a per-check ratchet, not a score threshold: four checks gate a pull request, eight are reported, six ignored with a recorded reason. Runs on every pull request in local mode against the tree being proposed, and on every default-branch merge in remote mode for the checks an API is needed to read</td></tr>
-    <tr><td class="num-cell">11</td><td><b>Security-review at generation time + close the loop</b></td>
-        <td><span class="chip c-warn">MEDIUM</span></td><td>all repos</td>
-        <td>45% of AI-generated code is vulnerable and the rate isn't improving with newer models — the cheapest catch is before commit, and every finding should harden the instructions (Anthropic's shift-left)</td>
-        <td>Reinstate <code>/security-review</code> as an org-wide skill (hops lost its command in a revert); adopt the rule that each finding lands as a CLAUDE.md/skill update, not just a fix</td></tr>
+    <tr class="row-done"><td class="num-cell">11</td><td><b>Generation-time review that actually runs + close the loop</b> <span class="chip c-pass">MERGED</span></td>
+        <td><span class="chip c-pass">A PARAGRAPH</span></td><td>hops <b>done</b> (PR #566, 2026-08-28); barley, hops-mcp as recommendations</td>
+        <td>45% of AI-generated code is vulnerable and the rate isn't improving with newer models — the cheapest catch is before commit, and every finding should harden the instructions (Anthropic's shift-left). <b>Measured first:</b> hops already enables the <code>security-guidance</code> plugin — regex warnings on edits, an LLM review on every turn, an agentic review on commit — and it had <b>never run</b>. A project-only <code>enabledPlugins</code> entry installs nothing, and the two LLM layers read an API key from the shell that an OAuth login never sets. Loaded by hand, the regex layer caught 4 of 9 planted classes and none of the five Kotlin ones</td>
+        <td>Not a new command — the reverted one was a full-repo grep checklist and Claude Code ships <code>/security-review</code>. Shipped: the built-in <code>/security-review</code> is a gate in <code>commit-validated</code> — it runs on the developer's subscription login, which the plugin cannot use — and the finding → instruction rule is written into <code>CLAUDE.md</code> and the <code>self-improvement</code> skill; the plugin is documented as a supplement (installs per machine, regex only). The team's answer to the independent-reviewer question: review goes through Claude Code skills, CodeRabbit stays on its plan, and the org ruleset is untouchable but a <b>repository ruleset</b> requiring the four security jobs is allowed — drafted, awaiting an admin</td></tr>
     <tr><td class="num-cell">12</td><td><b>Threat model + report detector bugs upstream</b></td>
         <td><span class="chip c-warn">MEDIUM</span></td><td>hops / AWOS owners</td>
         <td>Without a threat model, controls stay ad hoc (open audit WARN AS-11); and the audit's detector bugs (AS-13, AIS-03, SEC-04) mislead every team that runs it</td>
@@ -819,7 +850,7 @@
 <div class="col">
 <footer>
   DevOps Capabilities Research — Phase 1 complete, Phase 2 in progress · 2026-08-14, updated
-  2026-08-26 · Vladyslav Katrychenko · advisors
+  2026-08-28 · Vladyslav Katrychenko · advisors
   R. Sadretdinov, R. Ugarov · internal edition, redacted: secret values never appear in this
   document or the underlying research files.
 </footer>
@@ -848,3 +879,6 @@
   activate(initial, false);
 })();
 </script>
+
+
+

@@ -7,6 +7,11 @@ never printed: each credential is identified by a **fingerprint** = first 12 hex
 **Ownership.** `barley` is read-only for this research and out of our change scope. Everything
 below is for the `barley` owners to execute. Our part is the triage and this runbook.
 
+**Status 2026-08-28.** Owners confirm #3 and #4 (production Slack app-level + bot tokens) were
+removed from git on 2026-07-22 but **not rotated** — treat both as live; step 2a/2c is the open
+action. #2 left HEAD on 2026-08-17 (cassettes re-recorded, scrubbing fail-closed) and is now
+history-only; #1 is still in HEAD at `373bd5b9d`. Item is **pending** on the owners' rotation.
+
 **Not done, deliberately: no credential was tested for validity.** Testing means using it. Every
 "is it live?" question below is an owner-side check.
 
