@@ -1541,3 +1541,11 @@ workflow; `osv-audit-hop-ui` now `needs` it and runs on `label || changed == 'tr
 `hop-agent`/`e2e`/`hop-backend` deferred: `check-osv-results.sh` parses pnpm `importers`, so that is
 a script rewrite. Local pre-commit needed `pnpm` (absent) for a Markdown-only hop-ui change — committed
 `--no-verify` after the secret scan passed; disclosed in the PR body.
+
+## 2026-08-28 — W1.2: PR #568 verified in CI
+
+Vladyslav pushed and opened hops PR #568; first `Spec link` run failed because the body was the
+commit message plus the empty template (the exact 2026-08-25 lesson) — replaced with the pre-checked
+body, green on re-run. Positive test held: no `frontend` label, `Detect hop-ui dependency changes`
+→ true, `Security audit – hop-ui` ran and passed. Report updated (gating table, best-practice row,
+delivery row, roadmap item 7).

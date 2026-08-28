@@ -241,7 +241,7 @@ the baseline is unrecoverable.
       running the identical `pnpm run test:coverage`. That reclassifies the 4 local test
       failures as **local-machine only**, not a `main` defect. Awaiting review approval;
       merge is still blocked on `REVIEW_REQUIRED`, not on any check.
-- [ ] **W1.2** Path-gate the dependency audit. **2026-08-28: committed on hops branch `HOP-0000/osv-path-gate` (`e3a229202`, from `origin/main` `34fa5c978`) — NOT pushed, awaiting confirmation.** PR body drafted and passed the `spec-link-check` pipeline locally in both locales. hop-ui only; other modules deferred (post-process script is pnpm-specific). **Decision 2026-08-28 (Vladyslav):** keep the
+- [ ] **W1.2** Path-gate the dependency audit. **2026-08-28: hops PR #568 open** (`HOP-0000/osv-path-gate`, `e3a229202`, pushed by Vladyslav). Positive test passed: PR carries no `frontend` label and `Security audit – hop-ui` ran and passed on first run; `Spec link` green after the body was replaced with the template. Awaiting review. PR body drafted and passed the `spec-link-check` pipeline locally in both locales. hop-ui only; other modules deferred (post-process script is pnpm-specific). **Decision 2026-08-28 (Vladyslav):** keep the
       `frontend` label, add a path condition — the osv job runs when the label is present **or**
       `hop-ui/package.json` / `pnpm-lock.yaml` / `osv-scanner.toml` changed. No scheduled scan (a
       cron nobody owns fails unnoticed; PR-time failures have an owner). Same shape per module for
