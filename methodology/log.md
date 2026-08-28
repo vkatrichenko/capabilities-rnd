@@ -1462,3 +1462,34 @@ re-audit after the fixed release: AS-13 FAIL→PASS and AIS-03 SKIP→executed o
 
 **Not verified:** whether hops `main` has since gained a threat-model doc (W3.2 is still open);
 the gitleaks `regexTarget` defect still has no shareable reproducer and is not in this batch.
+
+## 2026-08-28 — W2.1: MCP pinning check, tiered instead of purist
+
+**Attempted.** Turn the Phase 1c finding (every stdio MCP launch in the org is a mutable third
+party; AIS-04 passes them all) into a CI gate, and pin hops's own `.mcp.json` (W1.4's MCP half).
+
+**Decision first, tool second.** Vladyslav's question was whether pinning creates a maintenance
+load ops will resent. It does, if pinning means digests: no Dependabot ecosystem reads
+`.mcp.json`, so a 64-char digest has no bump automation, rots, and gets replaced with `:latest`
+by the first person it blocks. So the gate is tiered — *fail* only where the launch is untrusted
+AND mutable (ref-less git URL, pre-release channel, `npx -y`); *warn* on `:latest` from a stable
+channel; a minor tag *passes*. This is the same split W1.4 already made for GitHub Actions
+(third-party pinned, GitHub-owned left alone), so the article tells one story about it.
+
+**Tool.** `tooling/ci/mcp-pin-check/check-mcp-pins.mjs`, same shape as the agent-config scanner
+(stdlib Node, temp-dir fixtures, `--require-surface`, `--allowlist`, `--json`, exit 0/1/2). Parses
+`docker run` (flag-aware, so `-e latest` is not read as the image), `npx`/`bunx`/`pnpm dlx`,
+`uvx`/`pipx`/`uv tool run`; `http`/`sse` and local launchers are skipped. The four real launches
+from 1c are the first four tests — if one changes verdict the design changed, not the code.
+
+**Came back.** 18/18. Read-only sweep reproduces the 1c table exactly (`artifacts/mcp-pin-sweep.md`):
+hops warn, hops-mcp fail, barley fail+warn, sowinsights no surface. `docker manifest inspect`
+confirmed `ghcr.io/github/github-mcp-server:1.11` exists (newest release v1.11.0, 08-25).
+
+**Landed (local only).** hops branch `HOP-0000/mcp-pin-check`: script + tests in `scripts/`,
+`mcp-pin-check` job beside `agent-config-scan`, `.mcp.json` `:latest` → `:1.11`, and a
+security-notes section that records *why a digest is deliberately not required* — so the next
+audit does not re-raise it. Real scan on the branch: `pass`, exit 0. Not pushed.
+
+**Not verified:** the job in CI (needs the push); whether `:1.11` pulls cleanly on the CodeBuild
+runner (it is the same registry and image as before, only the tag differs).

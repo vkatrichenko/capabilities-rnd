@@ -294,7 +294,11 @@ the baseline is unrecoverable.
       check that matters). Quirk worth recording: the endpoint 404s when `ref=` is the *default
       branch name* — ask it by SHA.
       Portable version for the other repos: `tooling/configs/agent-config-surface-rule.md`.
-- [ ] **W1.4** Pin the github MCP image to a digest in hops `.mcp.json` (kills `:latest`).
+- [ ] **W1.4** Pin the github MCP image in hops `.mcp.json` (kills `:latest`).
+      **MCP half DONE 2026-08-28 in W2.1's branch** — pinned to the minor tag `:1.11`, not a
+      digest: no Dependabot ecosystem covers `.mcp.json`, so a digest is a chore nobody owns and
+      rots. Recorded in hops `docs/processes/security-notes.md`. The 17 third-party actions
+      half stays open (Dependabot does keep those fresh, so SHA pins cost nothing there).
       No audit delta — AIS-04 already PASSes the unpinned config; evidence is the diff plus
       W2.1's checker output. **Widen it (2026-08-18):** Scorecard found **17 unpinned third-party
       GitHub Actions** (`hops-dev.yml` ×5, `hops-main.yml` ×5, `hops-mr-check.yml` ×5,
@@ -326,9 +330,19 @@ the baseline is unrecoverable.
       bug report. Detail: `research/baseline/phase2-before-state.md`.
 
 ### Wave 2 — portable tools (build in `tooling/`, self-test, then port to hops)
-- [ ] **W2.1** MCP pinning check — flags `:latest`/`@canary`/ref-less git URLs in `.mcp.json`;
-      fixture self-tests first; then hops CI job; read-only run across all four repos for the
-      article table
+- [ ] **W2.1** MCP pinning check — **built + ported 2026-08-28, awaiting push/PR.**
+      Tool: `tooling/ci/mcp-pin-check/` (checker, 18 self-tests, hops job template).
+      **Tiered by decision (Vladyslav, 2026-08-28 — ops must be able to maintain it):** *fail* =
+      ref-less git URL, pre-release channel, `npx -y` (untrusted AND mutable); *warn* =
+      `:latest`/`@latest` from a stable channel, never blocks; *pass* = tag / exact version /
+      digest — a minor tag is enough, a digest is never required. Same split as W1.4's
+      third-party-vs-GitHub-owned actions.
+      Evidence: `artifacts/mcp-pin-sweep.md` — 4 stdio launches org-wide, 0 pinned, 2 in the fail
+      tier (hops-mcp `serena`, barley `prompt-kit`), both in repos with no CI check on the file.
+      hops: branch `HOP-0000/mcp-pin-check` off `origin/main` — `scripts/check-mcp-pins{,.test}.mjs`,
+      `mcp-pin-check` job beside `agent-config-scan`, `.mcp.json` → `:1.11`, security-notes entry.
+      Local: 18/18, real scan `pass`, exit 0. **Not pushed.** Recommendations for the other two
+      repos are in the evidence file; not implemented (scope).
 - [x] **W2.2 CLOSED — ✅ MERGED 2026-08-26 in both repos.** hops PR #556 (merge `8039e6939`) and
       hops-mcp PR #56 (merge `c9449f8`), both approved, every check green.
       Hook-content scan. Tool: `tooling/ci/agent-config-scan/` (scanner, 24 self-tests, real-hooks
