@@ -241,9 +241,14 @@ the baseline is unrecoverable.
       running the identical `pnpm run test:coverage`. That reclassifies the 4 local test
       failures as **local-machine only**, not a `main` defect. Awaiting review approval;
       merge is still blocked on `REVIEW_REQUIRED`, not on any check.
-- [ ] **W1.2** Un-gate dependency audit: drop the `frontend`-label condition on the osv job in
-      `.github/workflows/hops-mr-check.yml`; extend to `hop-agent/`, `e2e/` (npm) and
-      `hop-backend` (gradle); verify: osv runs on an unlabeled PR.
+- [ ] **W1.2** Path-gate the dependency audit. **2026-08-28: committed on hops branch `HOP-0000/osv-path-gate` (`e3a229202`, from `origin/main` `34fa5c978`) — NOT pushed, awaiting confirmation.** PR body drafted and passed the `spec-link-check` pipeline locally in both locales. hop-ui only; other modules deferred (post-process script is pnpm-specific). **Decision 2026-08-28 (Vladyslav):** keep the
+      `frontend` label, add a path condition — the osv job runs when the label is present **or**
+      `hop-ui/package.json` / `pnpm-lock.yaml` / `osv-scanner.toml` changed. No scheduled scan (a
+      cron nobody owns fails unnoticed; PR-time failures have an owner). Same shape per module for
+      `hop-agent/`, `e2e/` (npm) and `hop-backend` (gradle). The defect is the key, not the gate:
+      the label is hand-applied (no `labeler.yml` in hops), so an unlabelled lockfile change and
+      every Dependabot PR skip the audit silently. Verify: osv runs on an unlabelled PR that touches
+      only `hop-ui/pnpm-lock.yaml`, and does not run on a backend-only PR.
       **Now has a number (2026-08-18):** Scorecard's OSV pass reports **65 open advisories** on the
       repo while the audit is label-gated to `hop-ui`. Triage them with `osv-scanner` directly —
       Scorecard gives IDs only, no severity or reachability, so "65" is not "65 exploitable".
