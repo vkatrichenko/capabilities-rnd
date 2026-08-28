@@ -341,8 +341,14 @@ the baseline is unrecoverable.
       tier (hops-mcp `serena`, barley `prompt-kit`), both in repos with no CI check on the file.
       hops: branch `HOP-0000/mcp-pin-check` off `origin/main` — `scripts/check-mcp-pins{,.test}.mjs`,
       `mcp-pin-check` job beside `agent-config-scan`, `.mcp.json` → `:1.11`, security-notes entry.
-      Local: 18/18, real scan `pass`, exit 0. **Not pushed.** Recommendations for the other two
-      repos are in the evidence file; not implemented (scope).
+      **hops PR #567 open, all checks green incl. `MCP pin check`.**
+      **Extended to the other repos 2026-08-28 (Vladyslav approved):** hops-mcp branch
+      `chore/mcp-pin-check` `fb046d2` — Node checker + job, serena → `@v1.7.0`. barley branch
+      `chore/mcp-pin-check` `6d91cd1d5` off `develop` — **Python twin** `check_mcp_pins.py`
+      (ruff-clean, agreement-checked against the Node one: 20/20 cases byte-identical) as a
+      reusable workflow in `ci.yml` + CI gate; shadcn `-y @canary` → `@4.19.0`, bedrock
+      `@latest` → `@0.2.0`. All three pins verified to start locally. **Neither pushed.**
+      sowinsights: no `.mcp.json`, nothing to port.
 - [x] **W2.2 CLOSED — ✅ MERGED 2026-08-26 in both repos.** hops PR #556 (merge `8039e6939`) and
       hops-mcp PR #56 (merge `c9449f8`), both approved, every check green.
       Hook-content scan. Tool: `tooling/ci/agent-config-scan/` (scanner, 24 self-tests, real-hooks

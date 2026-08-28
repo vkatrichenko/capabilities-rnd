@@ -1493,3 +1493,29 @@ audit does not re-raise it. Real scan on the branch: `pass`, exit 0. Not pushed.
 
 **Not verified:** the job in CI (needs the push); whether `:1.11` pulls cleanly on the CodeBuild
 runner (it is the same registry and image as before, only the tag differs).
+
+## 2026-08-28 — W2.1 extended: the fail-tier launches were in the repos without the check
+
+**Attempted.** With hops PR #567 green, port the check to hops-mcp and barley and fix their
+configs — approved by Vladyslav after the case was put that the two *fail*-tier launches (serena
+ref-less git URL; `npx -y shadcn@canary`) both sit in repos with no CI reading `.mcp.json`.
+
+**Method.** barley's CI is Python, so the precedent from the Scorecard port applies: a stdlib
+Python twin, held byte-identical to the Node checker by an agreement script over real inputs
+(all four repos + a mixed fixture, text and `--json`, with and without `--require-surface`,
+20 cases). Key-order and `ensure_ascii=False` were the only places the twin had to be deliberate
+to match `JSON.stringify`. Ruff-formatted under barley's `pyproject.toml` *before* copying, so
+the research copy and the shipped copy stay `cmp`-identical.
+
+**Versions chosen by checking, not guessing.** `gh api` for serena's latest release (v1.7.0);
+`npm view shadcn dist-tags` — which surfaced that `canary` = `4.2.0-canary.0` is *older* than
+`latest` = `4.19.0`; `npx shadcn@4.19.0 --help` to confirm the `mcp` subcommand exists there;
+PyPI JSON for bedrock-agentcore (0.2.0). Each pinned launch was then actually started locally
+from the scratchpad. That last step is what makes the pin a change rather than a hope.
+
+**Landed (local only).** hops-mcp `chore/mcp-pin-check` `fb046d2`; barley `chore/mcp-pin-check`
+`6d91cd1d5` off `develop` (this repo integrates on `develop`; `main` PRs would miss the gate).
+Evidence in `artifacts/mcp-pin-sweep.md`.
+
+**Not verified:** the jobs in CI on either repo (needs the push); whether barley's first-session
+`npx` install prompt for shadcn without `-y` bothers anyone — it is one prompt, once per machine.

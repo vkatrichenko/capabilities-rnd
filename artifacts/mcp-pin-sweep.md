@@ -82,9 +82,23 @@ After: `ghcr.io/github/github-mcp-server:1.11` — `pass`, exit 0. Tags `1`, `1.
 all exist on ghcr (`docker manifest inspect`, 2026-08-28; newest release v1.11.0, 2026-08-25).
 The minor tag was chosen over the digest for the maintenance reason above.
 
-## Recommendations (not implemented — outside the approved change scope)
+## What changed in hops-mcp and barley (2026-08-28, approved by Vladyslav; branches, not pushed)
 
-- **hops-mcp `serena`**: add `@<tag>` to the git URL. One token; the only launch in the org
-  running an arbitrary default branch.
-- **barley `prompt-kit`**: drop `-y`, replace `@canary` with a released version.
-- **barley `bedrock-agentcore`**: pin or accept in writing; publisher is awslabs.
+| Repo | Branch | Before | After | Verified |
+|---|---|---|---|---|
+| hops-mcp | `chore/mcp-pin-check` `fb046d2` off `origin/main` | `git+https://github.com/oraios/serena` (no ref) | `…serena@v1.7.0` | `uvx --from …@v1.7.0 serena --version` → `Serena 1.7.0` |
+| barley | `chore/mcp-pin-check` `6d91cd1d5` off `origin/develop` | `npx -y shadcn@canary mcp` | `npx shadcn@4.19.0 mcp` | `npx shadcn@4.19.0 mcp --help` prints the subcommand |
+| barley | same | `uvx awslabs.…@latest` | `…@0.2.0` | starts, registers 35 tools |
+
+Both branches also carry the check: hops-mcp gets the Node checker as a job beside
+`agent-config-scan`; barley gets `scripts/check_mcp_pins.py` — the **Python twin** — as a
+reusable workflow wired into `ci.yml` and the CI gate, ruff-clean under barley's config. The
+twins are held byte-identical by `tooling/ci/mcp-pin-check/agreement-check.sh`: 5 inputs × 4
+modes, all agree. Real scans on both branches: every server `pass` or `skip`, exit 0.
+
+**Side finding worth the article:** npm's `canary` dist-tag for `shadcn` resolves to
+`4.2.0-canary.0` — *older* than the `4.19.0` stable release. barley's "bleeding edge" config was
+running stale code. A pre-release channel is not just riskier; it is not even newer.
+
+sowinsights: no `.mcp.json`, nothing to port — a check with `--require-surface` would fail an
+empty repo.
