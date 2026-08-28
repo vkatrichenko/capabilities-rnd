@@ -698,8 +698,16 @@ the baseline is unrecoverable.
 - [ ] **W3.2** Threat-model doc for hops (closes AS-11); doubles as publication material
 - [ ] **W3.3** Reinstate `/security-review` as a hops skill + the finding→instruction-file loop
       rule
-- [ ] **W3.4** File AWOS detector bugs upstream (AS-13 root-only `.env.example`, AIS-03
-      `.claude/hooks/` path, barley SEC-04 tests-exclusion) → issues on `provectus/awos`.
+- [ ] **W3.4** File AWOS detector bugs upstream → issues on `provectus/awos`.
+      **2026-08-28: FILED — provectus/awos #190 (AIS-03), #191 (AS-05), #192 (AS-13), all
+      labelled `bug`; bodies kept in `artifacts/awos-issues/`. Awaiting maintainer triage.**
+      (1) AS-13 root-only `.env.example` — `security.ts:172-182`; cross-ref #159.
+      (2) AIS-03 `.claude/hooks/` path — `prompt_agent_integrity.ts:313-322`; `has_hooks` is true
+      yet the scan SKIPs; inline commands never scanned; AIS-07 shares the assumption. **False
+      PASS — high.** (3) AS-05 (SEC-04 in barley's old schema) prunes `tests/` etc. —
+      `application_security.ts:464-472`, placeholder regex `:461` has bare `test`. **False PASS —
+      high.** Nothing upstream covers them: #159/#158 touch AS-13 via a different mechanism.
+      Closure gate: re-audit hops on the fixed release — AS-13 FAIL→PASS, AIS-03 SKIP→executed.
       **Add (2026-08-19):** the gitleaks `regexTarget = "line"` defect →
       `gitleaks/gitleaks`. Blocked on a shareable reproducer — it reproduces only on the two
       private repos, not on synthetic fixtures. Do not file without one.

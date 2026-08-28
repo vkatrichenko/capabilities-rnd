@@ -1423,3 +1423,42 @@ exactly this case. Only #3/#4 decide urgency; #1/#5 likely die with the same app
 
 **Outputs.** `artifacts/phase1-report.html` row 1 + rotation callout; runbook status header;
 `tasks/todo.md` G0.1.
+
+## 2026-08-28 — W3.4: detector bugs verified against source before filing upstream
+
+**Attempted:** turn the three audit blind spots (hops AS-13, hops AIS-03, barley SEC-04) into
+upstream issues on `provectus/awos`.
+
+**Method.** (1) `gh issue list --search` on `provectus/awos` for `AS-13 OR AIS-03 OR SEC-04 OR
+env.example OR hooks OR gitleaks OR threat` — nothing filed for any of the three; #159 names AS-13
+only as collateral of the `uses_env_vars` regex, #158 as an over-firing case. Different failure
+modes from ours, so three new issues, cross-referenced to #159. (2) Read the engine, not the
+report: the local marketplace checkout (`~/.claude/plugins/marketplaces/awos-marketplace`,
+`aa12836`, v2.4.4) then `git fetch` and `git diff --stat HEAD origin/main` on the four detector
+files — `origin/main` is v2.4.5, two commits ahead, zero diff in the files, so line numbers quoted
+from the checkout hold on `main`. (3) Pulled the raw check records from hops's 08-03 JSON
+(engine 2.4.3) and barley's 06-03 `security.md` for the evidence strings verbatim.
+
+**What came back.** All three are live in v2.4.5. AS-13: `security.ts:172-182`, six literal
+names joined to `repoPath` — root only. AIS-03: `prompt_agent_integrity.ts:313-322` hard-codes
+`.claude/hooks/`, while `topology.ts:164-166` sets `has_hooks` from the `"hooks"` key in
+`settings.json` — the engine knows hooks exist, then SKIPs their scan; inline `command` strings
+are never scanned at all; AIS-07 (`security.ts:74-78`) shares the assumption. SEC-04 is the old
+markdown-schema ID; the current check is AS-05, `application_security.ts:464-472` prunes
+`test`/`tests`/`__tests__`/`fixtures`/`testdata`, and the placeholder regex at `:461` contains a
+bare `test`. The barley cassette token sat in `tests/integration/fixtures/` — exactly the pruned
+subtree.
+
+**Decided.** Severity ordering for filing is AIS-03 ≈ AS-05 (false negatives reported as PASS —
+the audit says "secure" about content it never read) ≫ AS-13 (false FAIL, score noise). Drafts in
+`scratch/awos-issues/` follow the shape #172 used (file:line, reproducer, measured impact, fix,
+DoD) because that is the shape the maintainer answered within a day. Redaction: no repo names, no
+token prefixes beyond the public format identifiers, no internal hostnames; grep-checked. Filed
+2026-08-28 after Vladyslav's read, as #190 (AIS-03), #191 (AS-05), #192 (AS-13), label `bug`;
+the repo is public, so hops module names were genericised before posting. Drafts moved to
+`artifacts/awos-issues/`. Closure evidence is the
+re-audit after the fixed release: AS-13 FAIL→PASS and AIS-03 SKIP→executed over
+`scripts/claude-hooks/`; we do not control that cadence (#159 has had no reply since 07-24).
+
+**Not verified:** whether hops `main` has since gained a threat-model doc (W3.2 is still open);
+the gitleaks `regexTarget` defect still has no shareable reproducer and is not in this batch.
