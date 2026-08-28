@@ -1304,3 +1304,95 @@ earlier that day predate the job reaching `main`. Until one lands, "standing con
 workflow file, not on a run. And `main` in both repos still requires zero passing status checks
 (`rules/branches/main` carries only `deletion`, `non_fast_forward`, `pull_request`), so both gates
 are advisory at merge time — the org-level recommendation, not a defect in the gate.
+
+## 2026-08-27 — roadmap item 11: the control existed, so the work was to find out whether it ran
+
+**What was attempted.** Item 11 asked to "reinstate `/security-review`" and codify a
+finding → instruction loop. Before building anything: read what `hops` already had, then measure
+it.
+
+**What tool or source.** `git show` on the reverted command (`4f9a02c31`); the
+`security-guidance` plugin source in the local plugin cache (`hooks/hooks.json`, `patterns.py`,
+`llm.py`, `security_reminder_hook.py`); a detached throwaway worktree of `hops` `main`
+@ `8039e6939`; the hook invoked directly with hand-built `PostToolUse`/`Stop` JSON and
+`SECURITY_WARNINGS_STATE_DIR` pointed at scratch; then `claude -p --plugin-dir …` for the real
+path, once with the plugin and once without; `claude plugin list`; the `claude-code-guide` agent
+for the documented plugin-install and hook-credential semantics.
+
+**What came back.** The reverted command was a grep checklist, and Claude Code has a built-in
+`/security-review` — nothing to reinstate. The plugin is enabled in hops's `settings.json` but
+`~/.claude/security/` (created on the plugin's first run) did not exist: it had never executed on
+this machine. Cause, confirmed two ways: a project-only `enabledPlugins` entry does not install
+(headless run without `--plugin-dir` wrote `dangerouslySetInnerHTML` with no warning; docs for
+2.1.195+ say the same). With the plugin loaded, layer 1 hit 4/9 planted classes and 0/5 Kotlin;
+layers 2 and 3 skipped with `no API credentials` — `HAS_API_CREDENTIALS` reads env vars only, and
+an OAuth login keeps its token in the keychain. Two incidental catches by hops's own
+`scripts/pre-commit`: the planted `sk-ant-` key, and — on the real commit — the prose "pre-commit
+secret scan, gitleaks" in the new `CLAUDE.md` section, a false positive on the word `secret`
+followed by a separator. Reworded rather than `SKIP_SECRETS=1`.
+
+**What was decided.** Do not build a reviewer; write the loop as a rule and write down the two
+prerequisites, in one instruction-only PR on `HOP-0000/security-finding-loop` (committed, not
+pushed). Recommend the one-line enable for `barley` and `hops-mcp`; state that without an API
+path the plugin is a regex linter. Reword item 11 on the roadmap.
+
+**Follow-up the same day.** Asked whether the API key is needed in CI or locally, and what a
+subscription-only team can do. Locally, and the plugin cannot use a subscription at all — the
+hooks are separate processes reading env vars, and the session's OAuth token never reaches
+them. Weighed four options (built-in `/security-review` in-session; Anthropic's CI action with
+one secret; per-developer keys; Bedrock/Vertex flags) and chose the first for the hops branch:
+`/security-review` becomes a gate in `commit-validated`, the plugin a supplement. Commit amended
+to `58f52ff50`, gate re-run exit 0. The CI action goes to the org as a recommendation. The
+lesson generalises: a control shipped for API-key setups reads as "enabled" in a subscription
+shop and does nothing — check the auth path a hook actually has before crediting it.
+
+**Per-repo recommendations (same day).** Read each satellite repo's `CLAUDE.md` and
+`.claude/` before writing a line, rather than porting the hops section. That changed all three:
+hops-mcp already runs a path-scoped `security-reviewer` agent with proof-of-finding invariants
+— stronger than hops — so its gap is the generic diff, two edits; barley's `CLAUDE.md` carries an
+explicit "do not rely on meta-reviewer sub-agents" lesson, so the recommendation had to place
+`/security-review` inside its existing self-review section and argue why it is not a
+meta-reviewer; sowinsights has no instruction file at all, so the recommendation is the
+prerequisite, not the rule. Written to `research/findings/generation-time-review.md`.
+
+**CodeRabbit, re-measured (same day).** Asked whether the CI action is needed given
+CodeRabbit. Counted CodeRabbit line comments on the last 15 PRs in hops and barley from the
+GitHub API: 3/15 and 5/15 reviewed, the rest "Review limit reached". First read of the pattern —
+per-author seats, since only one hops author was reviewed — was wrong; barley disproved it (same
+author reviewed on one PR, limited on the next) and the notice text gave the mechanism: a shared
+allowance of 3 reviews per hour derived from the past week's usage, on-demand reviews priced per
+file after a trial window. Correction recorded in the todo. Rule that would have prevented it:
+read the tool's own notice before inferring a licensing model from a correlation on one repo.
+
+**Team answers (2026-08-28).** Three decisions came back: CodeRabbit stays as is (they read
+the limit as free-tier rate-limiting of outside contributors; our barley sample says their own
+authors are limited too, recorded without re-arguing — the decision is theirs); security review
+is done through Claude Code skills, so the CI-action proposal is dropped; and the org ruleset is
+untouchable but a repository ruleset is allowed. The third is the one that changes something:
+the required-status-checks ask, blocked since 2026-08-18 as an org-admin change, is now a
+repo-level JSON that any hops admin can apply. Drafted with the four unconditional jobs only —
+requiring a label-gated job would block every PR it skips on.
+
+**Method note.** Two shell traps cost a probe run each and are worth writing down: a `for`
+variable named `path` clobbers `PATH` in zsh (it is the array alias), and a failed glob in one
+clause aborts the whole zsh command line, so a `grep` after `ls nonexistent*` never runs. Both
+looked like tool failures until the loop variable was renamed.
+
+## 2026-08-28 — item 11 closed from `main`
+
+**What was attempted.** Close roadmap item 11 after hops PR #566 merged, from `origin/main`
+rather than from the branch.
+
+**What came back.** Squash merge `34fa5c978` at 12:01Z, 3 files, +42 −5 — the second commit
+(dropping the API-key wording, requested by the team because everyone logs in with a
+subscription) is in the merged tree. On `main`: the new `CLAUDE.md` section at line 148, the
+`/security-review` gate in `commit-validated` at line 47, zero mentions of `ANTHROPIC_API_KEY`
+anywhere in the instruction surface, and `check-agent-config --require-surface` exits 0 on a
+fresh detached worktree of `main`. Worktrees and the local branch removed.
+
+**What was decided.** The item is merged, not yet proven: every measurement so far was of the
+plugin, and the control that shipped is the built-in `/security-review`, which cannot be driven
+headlessly. The nine-snippet interactive probe stays open as the last step, and the roadmap row
+says "merged", not "verified", until it runs. The repository ruleset (required checks) is a
+separate row, unblocked by the team's answer, waiting on an admin.
+

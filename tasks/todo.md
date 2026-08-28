@@ -702,11 +702,68 @@ the baseline is unrecoverable.
       `gitleaks/gitleaks`. Blocked on a shareable reproducer — it reproduces only on the two
       private repos, not on synthetic fixtures. Do not file without one.
 
-- [ ] **NEW (2026-08-19) — CodeRabbit is degraded to summary-only.** On PR #515 it produced a
-      walkthrough but **no line-by-line review**: "your organization has reached its limit of
-      developer seats". `.coderabbit.yaml` also carries an unrecognized `version` key, silently
-      ignored. The report credits AI code review as an implemented control; on current licensing
-      it is not performing one. Raise as a question about seats, not a code change.
+- [ ] **NEW (2026-08-19, re-measured 2026-08-27) — CodeRabbit is mostly not reviewing.** On PR
+      #515 it produced a walkthrough but **no line-by-line review**. Re-measured on the last 15
+      PRs per repo: line comments on **3/15 hops, 5/15 barley**; the rest carry "Review limit
+      reached". The notice states the mechanism — a shared allowance of **3 included reviews
+      per hour**, set by the past 7 days' usage (47 attempts), on-demand reviews free for 24
+      more days then $0.25 per reviewed file. Not seats, not per-author: barley's #1744 got 16
+      comments and #1748 by the same author got 0. `.coderabbit.yaml` also carries an
+      unrecognized `version` key, silently ignored; neither repo's config enables security
+      tooling; barley sets `request_changes_workflow: false`. The report credits AI code review
+      as an implemented control; on the current plan it performs one for roughly a quarter of
+      PRs. Raise as a plan/quota question, with the security-action alternative.
+
+- [x] **Roadmap item 11: security review at generation time + close the loop — ✅ MERGED 2026-08-28 as hops PR #566 → `34fa5c978`** (2 commits squashed; second one dropped the API-key wording at the team's request). Re-verified on `origin/main`: section at `CLAUDE.md:148`, gate at `commit-validated:47`, zero `ANTHROPIC_API_KEY` mentions, `check-agent-config --require-surface` exit 0. Still open below: the interactive `/security-review` probe (the "actually runs" number).
+      Measured first (`artifacts/generation-time-review-hops.md`): hops already enables the
+      `security-guidance` plugin (regex on edit, LLM review on Stop, agentic review on commit) —
+      but it has **never run on this machine**: enabling in `settings.json` installs nothing, and
+      the two LLM layers require `ANTHROPIC_API_KEY` in the hook's env, which an OAuth login does
+      not provide. Layer 1 fires on 4/9 planted classes and is blind to Kotlin. The reverted
+      `/security-review` command was a full-codebase grep checklist, not worth reinstating.
+      - [x] Evidence: three layers probed directly and through a real `claude -p` session in a
+            throwaway worktree; hops's own `scripts/pre-commit` caught the planted key.
+      - [x] Codify the loop in hops: `CLAUDE.md` rule "every security finding updates the
+            instructions", `self-improvement` trigger, `commit-validated` note, plus the two
+            plugin prerequisites written down. **Amended 2026-08-27** after the subscription
+            question: generation-time review is now the built-in `/security-review` as a gate
+            in `commit-validated` (runs on the session login, no key); the plugin is demoted
+            to a supplement. Branch `HOP-0000/security-finding-loop`, commit `58f52ff50`
+            (amended from `253aad0a6`) off `main` @ `8039e6939`, **opened as hops PR #566** (2026-08-27; first run failed only on `Spec link – PR template`, empty Spec field — body rewritten with `n/a — <reason>`) — gate
+            `check-agent-config --require-surface` exit 0; hops pre-commit first refused the
+            prose "secret scan," (false positive), reworded. PR body:
+            `scratchpad/pr-body-hops-loop.md`.
+      - [x] `research/findings/generation-time-review.md` — recommendation for barley and
+            hops-mcp, the four options for a subscription-only team with the verdicts, roadmap
+            rewording.
+      - [ ] **Raise with the org:** Anthropic's `claude-code-security-review` GitHub Action with
+            one CI secret — the independent-context review that covers every developer regardless
+            of login. Goes with the require-status-checks ask below.
+      - [x] Per-repo recommendations for barley, hops-mcp, sowinsights (2026-08-27) →
+            `research/findings/generation-time-review.md`. hops-mcp already has a path-scoped
+            `security-reviewer` agent — two edits close it; barley's rule must sit inside its
+            existing "Self-Review After Edits" section and respect its no-meta-reviewer lesson;
+            sowinsights needs a `CLAUDE.md` first. **Slack message drafted 2026-08-27**
+            (`scratchpad/slack-generation-time-review.md`) for the "DevOps Capabilities
+            Research" channel — bundles the CI-action + status-check asks and the per-repo
+            recommendations. Posted; **team answers 2026-08-28:** (1) CodeRabbit plan stays
+            as-is — their reading is that team members get reviewed and outside contributors
+            hit the free-tier limit (our data: barley's own authors were limited on 10/15 PRs;
+            not re-argued, decision recorded); (2) security review is done through Claude
+            Code skills, not CodeRabbit — barley's `self-review` carries one security
+            question (item 7 of its correctness checklist); the CI-action option is **dropped**;
+            (3) the org ruleset cannot be changed, but a **repo-level ruleset can** —
+            drafted `scratchpad/hops-ruleset-required-checks.json` + apply notes; needs
+            repo admin (ours is `write`).
+      - [x] **Approved and committed 2026-08-28** (Vladyslav pulled `develop`/`main`, will push):
+            hops-mcp `docs/security-review-before-commit` @ `4d4952a` (2 files, +12 −6, gate
+            exit 0) — `/security-review` gate in `commit-validated`, `security-reviewer` agent on
+            the invariant paths, finding→invariant rule; barley
+            `chore/security-review-before-commit` @ `fb5156a91` (1 file, +2 −1) — one sentence
+            in Self-Review After Edits, one Key Guideline. PR bodies:
+            `scratchpad/pr-body-hops-mcp.md`, `scratchpad/pr-body-barley.md`.
+      - [x] Reword item 11 on the roadmap artifact (same URL, version `item-11-measured`,
+            2026-08-27) — row now `in review`, matrix rows for reviewer and close-the-loop updated.
 
 ### Recommendations to owners (not our changes)
 - [ ] **NEW, highest value (2026-08-18, widened 2026-08-23) — require passing status checks at the
@@ -717,7 +774,13 @@ the baseline is unrecoverable.
       settings change at the `provectus-global` ruleset, not a per-repo ask, and it is what makes
       every gate this project shipped actually binding. Detail: `artifacts/scorecard-org-sweep.md`.
       Original hops-only framing below.
-- [ ] **(2026-08-18) — require `secret-scan` as a status check on `hops` `main`.**
+- [ ] **(2026-08-18, unblocked 2026-08-28) — require the security gates as status checks on
+      `hops` `main`, via a repository ruleset.** Team confirmed the org ruleset is off-limits but
+      a repo ruleset is allowed. Draft ready: four checks (`Secret scan – gitleaks`, `Agent config
+      scan`, `New dependency check`, `OpenSSF Scorecard`), no bypass actors, non-strict; the
+      label-gated SonarQube/osv jobs deliberately excluded until item 7 un-gates them. hops
+      already carries a leftover repo ruleset `test` (deletion only). Apply needs admin.
+      Original note below.
       Verified from two GitHub endpoints: `main` requires a PR + 1 approval and **zero passing
       checks** (`enforcement_level: "off"`, enterprise ruleset carries only `deletion`,
       `non_fast_forward`, `pull_request`). The gitleaks gate, SonarQube and osv are all advisory at
