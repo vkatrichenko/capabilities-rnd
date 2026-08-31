@@ -160,11 +160,12 @@
   <p class="standfirst">How we secure AI-assisted development and CI/CD: industry best practices,
   what our projects already implement, what the AWOS audit measures, and the roadmap for the
   gaps. Phase 1 research — every claim traces to a verified file path, a scan, or a cited
-  source. <b>Phase 2 is delivering</b>: eight roadmap items are merged, plus one fix the research
-  itself uncovered — seventeen pull requests across five repositories, all shipped. The roadmap table
-  below is colour-coded by delivery state.</p>
+  source. <b>Phase 2 is delivering</b>: ten roadmap items are merged, plus one fix the research
+  itself uncovered — twenty-three pull requests across five repositories, all shipped — and the three
+  audit-detector bugs the research found are now filed with the AWOS maintainers, each verified against
+  the engine's source first. The roadmap table below is colour-coded by delivery state.</p>
   <div class="meta">
-    <span><b>Date</b> 2026-08-14 · <b>updated</b> 2026-08-28</span>
+    <span><b>Date</b> 2026-08-14 · <b>updated</b> 2026-08-31</span>
     <span><b>Researcher</b> Vladyslav Katrychenko</span>
     <span><b>Scope</b> code &amp; repo security in AI-assisted development</span>
     <span><span class="chip c-warn">INTERNAL EDITION</span> — names repos and findings; produce the client variant before external use</span>
@@ -200,10 +201,11 @@
     <div class="kpi"><div class="n">13 <small>days</small></div><div class="l">audit-fail → gate live → re-audit pass: our remediation loop, measured</div></div>
   </div>
 
-  <p><b>For engineers:</b> the working stack today is a three-layer secrets defense (advisory
-  pre-commit → agent-time hook → unconditional CI gitleaks with a tuned allowlist), SAST on every
-  MR, pinned dependencies with reviewed updates, and a recurring 12-dimension audit whose
-  findings demonstrably become fixes:</p>
+  <p><b>For engineers:</b> the working stack today is a three-step secrets defense — a warning
+  scan at commit time on the developer's machine, a guard on the coding agent itself, and a
+  blocking gitleaks scan in the pipeline with a hand-tuned ignore-list — plus static analysis on
+  every merge request, dependencies locked to exact versions with reviewed updates, and a
+  recurring 12-dimension audit whose findings demonstrably become fixes:</p>
 
   <div class="timeline">
     <div class="tl"><div class="d">2026-07-17</div><div class="t">AWOS audit fails <b>PRV-01</b> — no secret-scanning gate.</div></div>
@@ -214,10 +216,10 @@
   <div class="call">
     <b>The thesis</b>
     At ~80% AI-authored code the industry answer (Anthropic) is not more human review — it is
-    deterministic gates, narrow-scope review agents with mandatory evidence, and logged
-    accountability. Our own repos prove both sides: with the first layer installed, leaks stop;
-    without it, they accumulate — one is sitting in HEAD right now, and six more remain readable in history. The gap is the capability
-    story.
+    automatic checks that give the same verdict every time, review agents with one narrow job and
+    mandatory evidence, and logged accountability. Our own repos prove both sides: with the first layer installed, leaks stop;
+    without it, they accumulate — one is sitting in the current code right now, and six more
+    remain readable in git history. The gap is the capability story.
   </div>
 
   <h3>Where to go in this report</h3>
@@ -242,15 +244,18 @@
   <h3>Why these five groups</h3>
   <ul>
     <li><b>Secrets</b> — LLM-generated code and AI workflows move credentials into places code
-    review never looks: recorded test fixtures, committed reports, agent config. Every leak we
-    found was in one of those, none in application source.</li>
+    review never looks: recorded test data (saved API responses that tests replay), committed
+    reports, the coding agent's own configuration. Every leak we found was in one of those, none
+    in application source.</li>
     <li><b>AI-generated code</b> — 45% of AI-generated code contains vulnerabilities and the rate
     has not improved across model generations (Veracode). Deterministic gates, not better models,
     are the control.</li>
     <li><b>Supply chain</b> — 19.7% of packages recommended by LLMs don't exist; attackers
     pre-register the names (USENIX 2025). Classic typosquatting defenses don't cover this.</li>
-    <li><b>AI toolchain</b> — MCP servers and agent hooks run with developer privileges. An
-    unpinned one is <code>curl | bash</code> at every session start (CSA, OWASP Agentic ASI01).</li>
+    <li><b>AI toolchain</b> — the agent's plug-ins (MCP servers) and the small scripts that run
+    around its every action (hooks) execute with the developer's own privileges. One left at
+    "whatever version is newest" is the same as downloading and running unreviewed code at every
+    session start (CSA, OWASP Agentic ASI01).</li>
     <li><b>Governance</b> — controls decay without a loop: recurring audits, accepted-risk
     registers, and findings that become instruction-file updates (NIST SSDF, Anthropic).</li>
   </ul>
@@ -264,7 +269,7 @@
     <tr><td><b>Layered secret scanning</b> — fast local pre-commit + CI gate with tuned config + server-side backstop</td>
         <td><a href="https://github.com/gitleaks/gitleaks" target="_blank" rel="noopener">gitleaks</a> / <a href="https://github.com/trufflesecurity/trufflehog" target="_blank" rel="noopener">TruffleHog</a> tooling consensus; <a href="https://claude.com/blog/how-anthropic-secures-its-ai-native-software-development-lifecycle" target="_blank" rel="noopener">Anthropic "deterministic scanners"</a></td>
         <td class="center"><span class="chip c-pass">IMPLEMENTED</span></td>
-        <td>Three layers in hops: advisory pre-commit, agent-time hook, unconditional CI gitleaks with false-positives-only allowlist — history verifiably clean since the gate</td>
+        <td>Three layers in hops: a commit-time warning, a guard on the agent, and a blocking CI scan whose ignore-list holds verified false alarms only — history verifiably clean since the gate</td>
         <td>Org-wide rollout (1 of 4 repos); GitHub push protection; TruffleHog liveness verification for rotation triage</td></tr>
     <tr><td><b>Agent-time secret guard</b> — the coding agent itself cannot read or write secret material</td>
         <td><a href="https://claude.com/blog/how-anthropic-secures-its-ai-native-software-development-lifecycle" target="_blank" rel="noopener">Anthropic containment model</a>; <a href="https://labs.cloudsecurityalliance.org/agentic/agentic-mcp-security-best-practices-v1/" target="_blank" rel="noopener">CSA agentic guidance</a></td>
@@ -276,13 +281,13 @@
         <td class="center"><span class="chip c-pass">IMPLEMENTED</span></td>
         <td>Per-module <code>.env.example</code>; Secrets-Manager <i>names</i> in config, values at runtime</td>
         <td>Sensitive-filetype gitignore coverage uneven across repos</td></tr>
-    <tr><td><b>Test-data hygiene</b> — recorded HTTP fixtures and datasets scrubbed before commit</td>
+    <tr><td><b>Test-data hygiene</b> — recorded API responses and datasets cleaned before commit</td>
         <td>fail-closed redaction; <a href="https://vcrpy.readthedocs.io/en/latest/advanced.html#filter-sensitive-data-from-the-request" target="_blank" rel="noopener">VCR filtering practice</a></td>
         <td class="center"><span class="chip c-warn">PARTIAL</span></td>
-        <td>Header filtering (auth, cookies, API keys) + custom PII scanner for eval datasets</td>
-        <td>Body scrubbing is a fail-open denylist — needs allowlist/entropy-based redaction (real leak traced to this)</td></tr>
+        <td>Sensitive headers (logins, cookies, API keys) are stripped; a custom personal-data scanner covers the evaluation datasets</td>
+        <td>The response-body cleaner removes only fields it has been told about, so any new field slips through — one real leak traced to exactly this</td></tr>
     <tr class="grouprow"><td colspan="5">AI-generated code</td></tr>
-    <tr><td><b>Deterministic SAST gate on every PR</b> — AI-authored code never merges on review alone</td>
+    <tr><td><b>Static-analysis (SAST) gate on every PR</b> — AI-authored code never merges on human review alone</td>
         <td><a href="https://www.veracode.com/resources/analyst-reports/2025-genai-code-security-report/" target="_blank" rel="noopener">Veracode 45%-vulnerable data</a>; <a href="https://claude.com/blog/how-anthropic-secures-its-ai-native-software-development-lifecycle" target="_blank" rel="noopener">Anthropic SAST-on-PR</a></td>
         <td class="center"><span class="chip c-pass">IMPLEMENTED</span></td>
         <td>SonarQube MR gate + detekt (Kotlin); unconditional secret scan</td>
@@ -291,12 +296,12 @@
         <td><a href="https://claude.com/blog/how-anthropic-secures-its-ai-native-software-development-lifecycle" target="_blank" rel="noopener">Anthropic multi-agent review</a> (narrow scope, proof-of-finding)</td>
         <td class="center"><span class="chip c-warn">PARTIAL</span></td>
         <td>CodeRabbit on PRs in the two main repos, tuned configs</td>
-        <td>Narrow-focus security reviewers with mandatory evidence; a generation-time review that runs — the plugin hops enables installs nothing by itself and its LLM layers need an API key (measured 2026-08-27, roadmap item 11)</td></tr>
+        <td>Narrow-focus security reviewers with mandatory evidence; the generation-time gate merged in three repos (roadmap item 11), but its own catch rate is still unmeasured</td></tr>
     <tr><td><b>Close the loop: finding → instruction file</b> — every discovered bug updates agent guidance</td>
         <td><a href="https://claude.com/blog/how-anthropic-secures-its-ai-native-software-development-lifecycle" target="_blank" rel="noopener">Anthropic's definition of AI-native shift-left</a></td>
-        <td class="center"><span class="chip c-warn">PARTIAL</span></td>
-        <td>Accepted-risk register with reasoning; tuned scanner configs cite their audit findings; the rule itself is written for hops (branch in review, 2026-08-27)</td>
-        <td>Merge the rule; the same rule in the other repos</td></tr>
+        <td class="center"><span class="chip c-pass">IMPLEMENTED</span></td>
+        <td>Accepted-risk register with reasoning; tuned scanner configs cite their audit findings; the finding&nbsp;→&nbsp;instruction rule merged in hops (PR #566), hops-mcp (PR #58) and barley (PR #1778)</td>
+        <td>sowinsights (no <code>CLAUDE.md</code> to carry it yet); the loop's effect not yet measured</td></tr>
     <tr class="grouprow"><td colspan="5">Supply chain</td></tr>
     <tr><td><b>Lockfiles + exact pinning + reviewed updates</b></td>
         <td><a href="https://slsa.dev" target="_blank" rel="noopener">SLSA</a> / <a href="https://github.com/ossf/package-manager-best-practices/blob/main/published/npm.md" target="_blank" rel="noopener">OpenSSF package-manager practices</a></td>
@@ -306,8 +311,8 @@
     <tr><td><b>Dependency vulnerability audit in CI</b> — unconditional, all modules</td>
         <td><a href="https://owasp.org/www-project-top-10-ci-cd-security-risks/" target="_blank" rel="noopener">OWASP CI/CD Top 10</a></td>
         <td class="center"><span class="chip c-warn">PARTIAL</span></td>
-        <td>osv audit exists in the MR pipeline</td>
-        <td>Runs only on labeled frontend PRs, one module — must be unconditional, all modules, all repos</td></tr>
+        <td>osv audit in the MR pipeline; since PR #568 (merged 2026-08-31) it runs on the <code>frontend</code> label <i>or</i> any change to hop-ui's dependency inputs — an unlabelled or Dependabot bump can no longer skip it</td>
+        <td>Still one module — <code>hop-agent</code>, <code>e2e</code> (npm) and <code>hop-backend</code> (gradle) have no audit; the post-process script is pnpm-specific, so that is a script rewrite. Other repos: none</td></tr>
     <tr><td><b>Dependency cooldown / quarantine</b> — never install a version younger than N days</td>
         <td><a href="https://pnpm.io/supply-chain-security" target="_blank" rel="noopener">pnpm <code>minimumReleaseAge</code></a> (default-on since v11), npm <code>min-release-age</code></td>
         <td class="center"><span class="chip c-pass">IMPLEMENTED</span></td>
@@ -321,9 +326,9 @@
     <tr class="grouprow"><td colspan="5">AI toolchain</td></tr>
     <tr><td><b>Pinned, integrity-checked agent toolchain</b> — MCP servers version-pinned; tool-description changes alerted</td>
         <td><a href="https://labs.cloudsecurityalliance.org/agentic/agentic-mcp-security-best-practices-v1/" target="_blank" rel="noopener">CSA MCP best practices</a>; <a href="https://genai.owasp.org/" target="_blank" rel="noopener">OWASP Agentic Top 10</a> (ASI01 "rug pull")</td>
-        <td class="center"><span class="chip c-fail">MISSING</span></td>
-        <td>—</td>
-        <td>Every stdio MCP today runs a mutable version (<code>:latest</code> / <code>@canary</code> / unpinned git URL); pinning check planned for Phase 2</td></tr>
+        <td class="center"><span class="chip c-pass">IMPLEMENTED</span></td>
+        <td>Unconditional <code>mcp-pin-check</code> CI job over <code>.mcp.json</code>, merged in three repos (hops PR #567, hops-mcp #59, barley #1783); every locally-launched server pinned: <code>github</code> <code>:latest</code>→<code>:1.11</code>, <code>serena</code> →<code>@v1.7.0</code>, <code>shadcn</code> <code>@canary</code>→<code>4.19.0</code>, <code>bedrock-agentcore</code> <code>@latest</code>→<code>0.2.0</code></td>
+        <td>Tool-description change alerting not covered; sowinsights has no <code>.mcp.json</code> (nothing to check)</td></tr>
     <tr><td><b>Protected agent-config surface</b> — CLAUDE.md, hooks, skills, MCP config treated as security-sensitive</td>
         <td><a href="https://claude.com/blog/how-anthropic-secures-its-ai-native-software-development-lifecycle" target="_blank" rel="noopener">Anthropic protected zones</a>; audit check PRV-17</td>
         <td class="center"><span class="chip c-pass">IMPLEMENTED</span></td>
@@ -334,7 +339,7 @@
         <td><a href="https://csrc.nist.gov/projects/ssdf" target="_blank" rel="noopener">NIST SSDF</a> / <a href="https://csrc.nist.gov/pubs/sp/800/218/a/final" target="_blank" rel="noopener">SP 800-218A</a>; Anthropic audit-driven gates</td>
         <td class="center"><span class="chip c-pass">IMPLEMENTED</span></td>
         <td>Recurring 12-dimension audits; measured fail→fix→pass loop of 13 days; accepted-risk register</td>
-        <td>Audits cover 2 of 4 repos; no waiver mechanism; detector scoping bugs found — reported upstream</td></tr>
+        <td>Audits cover 2 of 4 repos; no waiver mechanism; three detector bugs filed upstream 2026-08-28 (<a href="https://github.com/provectus/awos/issues/190" target="_blank" rel="noopener">#190</a>, <a href="https://github.com/provectus/awos/issues/191" target="_blank" rel="noopener">#191</a>, <a href="https://github.com/provectus/awos/issues/192" target="_blank" rel="noopener">#192</a>) — awaiting a fixed release</td></tr>
     <tr><td><b>Threat model / security requirements document</b></td>
         <td><a href="https://owasp.org/www-project-application-security-verification-standard/" target="_blank" rel="noopener">OWASP ASVS 5.0</a> (design) + <a href="https://owasp.org/www-community/Threat_Modeling" target="_blank" rel="noopener">OWASP Threat Modeling</a>; audit check AS-11</td>
         <td class="center"><span class="chip c-fail">MISSING</span></td>
@@ -395,20 +400,37 @@
   limiting), AS-10 (authz), SCS-03 (pinning) all went FAIL→PASS, with the fixes' commits citing
   the audit finding IDs. Two dimensions gained 14–16 points in 17 days.</p>
 
-  <h3>Blind spots we found (reported upstream)</h3>
+  <h3>Blind spots we found — filed upstream 2026-08-28</h3>
+  <p>Each verdict below was first re-checked by hand against the repo, then traced to the line
+  in the audit engine that produces it (<code>ai-readiness-audit</code> plugin, current
+  <code>main</code>, plugin 2.4.5 / release v1.4.0 — none of the detector files changed between
+  the version that ran and the version filed against). Ordered by what they cost, not by score:
+  the first two are <b>false negatives that report as green</b> — the audit says "secure" about
+  content it never read.</p>
   <div class="tblwrap"><table>
-    <tr><th>Audit verdict</th><th>Reality (verified by hand)</th></tr>
-    <tr><td>AS-13 <span class="chip c-fail">FAIL</span> "no .env.example found"</td>
-        <td>Four exist — the detector checks the repo root only and misses per-module templates in a monorepo</td></tr>
+    <tr><th>Audit verdict</th><th>Reality (verified by hand, then in the engine)</th><th>Upstream</th></tr>
     <tr><td>AIS-03 <span class="chip c-info">SKIP</span> "no .claude/hooks/ directory"</td>
         <td>Hooks live in <code>scripts/claude-hooks/</code> — the malicious-hook scan never read them; the 100% ai-security score is overstated.
-        <span class="chip c-pass">COVERED 2026-08-26</span> our own job now scans the hook surface resolved from <code>settings.json</code>, so it cannot skip on a directory that was never there</td></tr>
+        In the engine: the hook path is hard-coded, yet the very same run sets <code>has_hooks</code> from <code>settings.json</code> — it knows hooks exist, then skips them. Inline <code>command</code> strings are never scanned at all; AIS-07 shares the assumption.
+        <span class="chip c-pass">COVERED 2026-08-26</span> our own job scans the hook surface resolved from <code>settings.json</code>, so it cannot skip on a directory that was never there</td>
+        <td><a href="https://github.com/provectus/awos/issues/190" target="_blank" rel="noopener">#190</a> <span class="chip c-fail">HIGH</span></td></tr>
+    <tr><td>AS-05 <span class="chip c-pass">PASS</span> "no hardcoded secrets" (SEC-04 in barley's older schema)</td>
+        <td>The detector prunes <code>test</code>, <code>tests</code>, <code>__tests__</code>, <code>fixtures</code>, <code>testdata</code> — and its placeholder filter skips any line containing the word "test". Barley's live runner token sat in <code>tests/integration/fixtures/</code> for six months under a PASS. Recorded test data is a known leak location; a credential is committed whichever directory holds it.
+        <span class="chip c-pass">COVERED 2026-08-20</span> the ported gitleaks gate deliberately does not exempt <code>tests/</code></td>
+        <td><a href="https://github.com/provectus/awos/issues/191" target="_blank" rel="noopener">#191</a> <span class="chip c-fail">HIGH</span></td></tr>
+    <tr><td>AS-13 <span class="chip c-fail">FAIL</span> "no .env.example found"</td>
+        <td>Four exist — the detector joins six literal names to the repo root and misses per-module templates in a monorepo. Score noise, not a blind spot; filed as the concrete case for the maintainers' own root-only-scan issue #159</td>
+        <td><a href="https://github.com/provectus/awos/issues/192" target="_blank" rel="noopener">#192</a> <span class="chip c-warn">LOW</span></td></tr>
     <tr><td>AS-01 <span class="chip c-fail">FAIL</span> every run</td>
-        <td>A documented accepted risk (cluster-internal URLs, TLS at ALB) — no waiver mechanism, so a permanent 8-point FAIL trains readers to ignore FAILs</td></tr>
+        <td>A documented accepted risk (cluster-internal URLs, TLS at ALB) — no waiver mechanism, so a permanent 8-point FAIL trains readers to ignore FAILs</td>
+        <td>covered by the maintainers' #158</td></tr>
   </table></div>
-  <p class="note">Same class of issue in the older-format barley audit (its committed-secrets
-  grep excluded <code>tests/</code> — where the secrets were). Lesson for the blueprint: audits
-  need path-layout awareness and a waiver mechanism; audit verdicts get spot-verified by hand.</p>
+  <p class="note">Each issue carries file and line references, a reproducer layout, the measured
+  impact, a proposed fix and the tests that would prove it — the shape the maintainers answered
+  within a day on a comparable report. Closure evidence is a re-audit of hops on the fixed release:
+  AS-13 flips to PASS and AIS-03 actually executes over <code>scripts/claude-hooks/</code>.
+  Lesson for the blueprint: audits need path-layout awareness and a waiver mechanism, and every
+  audit verdict — green ones most of all — gets spot-verified by hand.</p>
 </div>
 </section>
 
@@ -422,35 +444,39 @@
   <h3>Layer 1 — local (developer machine)</h3>
   <p><code>scripts/pre-commit</code>: two-step scan of staged files — suspicious filename
   patterns (<code>.env</code>, <code>.pem</code>, keystores, <code>credentials.json</code>…)
-  then content regexes. <b>Advisory by design</b> (<code>SKIP_SECRETS=1</code> bypass); the CI
-  gate is documented as the enforcement layer behind it. Known limit: filename pattern is
-  anchored to <code>.env</code> exactly.</p>
+  then content patterns. <b>It warns but does not block, by design</b> (a developer can bypass it
+  with <code>SKIP_SECRETS=1</code>); the CI gate is documented as the enforcement layer behind
+  it. Known limit: the filename pattern matches <code>.env</code> exactly and nothing else.</p>
 
   <h3>Layer 2 — agent-time (Claude Code)</h3>
-  <p><code>PreToolUse</code> hook on every file/shell tool → <code>block-secrets.sh</code>: the
-  agent cannot read or write secret material at all. <code>PostToolUse</code> re-installs the
-  git pre-commit hook — closing the "hook never installed" hole for agent sessions. Note: hooks
-  live in <code>scripts/claude-hooks/</code>, which the audit's AIS-03 path assumption missed — and
-  which the <code>agent-config-scan</code> job below now reads on the path the settings actually
-  point at.</p>
+  <p>A guard script runs before every file or shell action the coding agent takes
+  (<code>block-secrets.sh</code>): the agent cannot read or write secret material at all. A second
+  script runs after each action and re-installs the commit-time check — closing the "the check was
+  never installed on this machine" hole for agent sessions. Note: these guard scripts live in
+  <code>scripts/claude-hooks/</code> — the folder the audit's AIS-03 check never looked in, and
+  the one the <code>agent-config-scan</code> job below now reads from the settings that actually
+  point at it.</p>
 
   <h3>Layer 3 — CI (GitHub Actions, MR pipeline)</h3>
   <div class="tblwrap"><table>
     <tr><th>Job</th><th>Gating</th><th>Detail</th></tr>
     <tr><td><code>secret-scan</code></td><td><span class="chip c-pass">UNCONDITIONAL</span></td>
         <td>gitleaks 8.24.3 pinned binary, full-history checkout; workflow comment: "a leaked token can land in any file of any PR"</td></tr>
-    <tr><td><code>osv-audit-hop-ui</code></td><td><span class="chip c-warn">LABEL-GATED</span></td>
-        <td>Runs only on PRs labeled <code>frontend</code>, covers hop-ui only — the gap is the trigger, not the tool</td></tr>
+    <tr><td><code>osv-audit-hop-ui</code></td><td><span class="chip c-pass">LABEL OR PATH</span></td>
+        <td>Was label-only — the label is applied by hand, so the gap was the trigger, not the tool. PR #568 (merged 2026-08-31) added a paths-filter job on <code>package.json</code>, <code>pnpm-lock.yaml</code>, <code>osv-scanner.toml</code>, the post-process script and the workflow; unrelated PRs still skip the scan. Covers hop-ui only</td></tr>
     <tr><td><code>agent-config-scan</code></td><td><span class="chip c-pass">UNCONDITIONAL</span></td>
         <td>Reads the hook surface from <code>.claude/settings*.json</code> — inline commands included — and blocks on download-and-execute, exfiltration, credential reads and guard tampering. Merged 2026-08-26; also live in hops-mcp</td></tr>
+    <tr><td><code>mcp-pin-check</code></td><td><span class="chip c-pass">UNCONDITIONAL</span></td>
+        <td>Every locally-launched MCP plug-in in <code>.mcp.json</code> must state a fixed version — version-less git links, pre-release channels and auto-approved installs block the merge; and the check fails if the file disappears. Merged 2026-08-31; also live in hops-mcp and barley</td></tr>
     <tr><td><code>sonarqube-check-mr</code></td><td>every MR</td><td>SAST + quality gate</td></tr>
     <tr><td>detekt</td><td>gradle build</td><td>Kotlin static analysis</td></tr>
   </table></div>
-  <p><b>The tuned config is the craft:</b> <code>.gitleaks.toml</code> extends the default
-  ruleset with a verified-false-positives-only allowlist — value-level stopwords rather than
-  path rules, so a real token in an allowlisted file still flags. <code>.env.example</code> is
-  deliberately <i>not</i> path-allowlisted. Worktree scans clean under this config; untuned, the
-  same scanner produces 99.4% noise on a sibling repo.</p>
+  <p><b>The tuned config is the craft:</b> <code>.gitleaks.toml</code> extends the default rules
+  with an ignore-list of verified false alarms only — each entry excuses one specific harmless
+  value, never a whole file or folder, so a real token in that same file still flags. The
+  <code>.env.example</code> templates are deliberately not exempted. The current tree scans clean
+  under this config; at factory settings, the same scanner produces 99.4% noise on a sibling
+  repo.</p>
 
   <h3>Layer 4 — dependencies</h3>
   <p>Lockfiles for all npm/pnpm modules; gradle version catalog pins directs (no transitive lock
@@ -481,8 +507,8 @@
   <p>Full-history secret scan, same tool, same ruleset, all four repos. Distinct real-format
   credentials (Slack tokens, GitLab runner tokens, private keys, AWS keys — formats that cannot
   match by accident):</p>
-  <div class="bars" role="img" aria-label="Distinct real-format credentials ever committed: barley 7 of which 1 still in HEAD, hops 2 both pre-gate, hops-mcp 0, sowinsights 0">
-    <div class="barrow"><span class="label">barley</span><div class="track"><div class="fill" style="width:100%"></div></div><span class="barval"><b>7</b> · <span style="color:var(--fail);font-weight:700">1 still in HEAD</span></span></div>
+  <div class="bars" role="img" aria-label="Distinct real-format credentials ever committed: barley 7 of which 1 still in the current code, hops 2 both pre-gate, hops-mcp 0, sowinsights 0">
+    <div class="barrow"><span class="label">barley</span><div class="track"><div class="fill" style="width:100%"></div></div><span class="barval"><b>7</b> · <span style="color:var(--fail);font-weight:700">1 still in the current code</span></span></div>
     <div class="barrow"><span class="label">hops</span><div class="track"><div class="fill" style="width:28.6%"></div></div><span class="barval"><b>2</b> · pre-gate, removed</span></div>
     <div class="barrow"><span class="label">hops-mcp</span><div class="track"><div class="fill zero"></div></div><span class="barval">0</span></div>
     <div class="barrow"><span class="label">sowinsights</span><div class="track"><div class="fill zero"></div></div><span class="barval">0</span></div>
@@ -490,9 +516,9 @@
   <p class="viz-cap"><b>Distinct credential values</b>, high-confidence-format rules only, full
   git history, identified by <code>sha256</code> fingerprint. Corrected 2026-08-18: an earlier
   count of 22 for barley counted <i>occurrences across commits</i>, not distinct values — the
-  ratio holds, the magnitude was overstated. barley's second in-HEAD credential left HEAD on
-  2026-08-19 when the cassettes were re-recorded; it remains in history. No credential was tested
-  for validity — rotation decisions belong to the owners.</p>
+  ratio holds, the magnitude was overstated. barley's second still-present credential left the
+  current code on 2026-08-19 when the test recordings were re-recorded; it remains readable in
+  git history. No credential was tested for validity — rotation decisions belong to the owners.</p>
 
   <div class="call red">
     <b>Rotate first, regardless of what anyone remembers — two production credentials, confirmed unrotated</b>
@@ -512,10 +538,10 @@
 
   <div class="call red">
     <b>Also on the rotation list (barley owners)</b>
-    Still in HEAD: a Slack bot token in <code>reports/smoke.html</code>, exposed ~11 months.
-    A GitLab runner-registration token (<span class="mono">GR13…</span>, 3 locations across two
-    cassettes) left HEAD on 2026-08-19 when the cassettes were re-recorded — <b>but removal is
-    not revocation</b>, and it stays readable in history.
+    Still in the current code: a Slack bot token in <code>reports/smoke.html</code>, exposed ~11
+    months. A GitLab runner-registration token (<span class="mono">GR13…</span>, 3 places across
+    two test recordings) left the current code on 2026-08-19 when the recordings were re-made —
+    <b>but removing a credential does not cancel it</b>, and it stays readable in history.
     In history (removal ≠ revocation): 13 Slack tokens in Terraform across dev <i>and</i> prod
     (2024-12 → 2025-07), one full service-account private key. barley's own June audit
     additionally found a <b>production RDS password</b>, a LangSmith key and an OAuth secret in
@@ -524,24 +550,30 @@
 
   <h3>How the leaks happen — the vectors are AI-SDLC-shaped</h3>
   <ul>
-    <li><b>Recorded test cassettes.</b> Headers were filtered correctly; body scrubbing is a key
-    denylist and GitLab's <code>runners_token</code> field wasn't on it. Denylists fail open on
-    every new API field.</li>
-    <li><b>Committed artifacts.</b> A test report embedding a live bot token.</li>
-    <li><b>IaC values pasted inline.</b> Slack tokens in Terraform locals for 8 months.</li>
-    <li><b>Agent permission allow-patterns as a secrets store.</b> Live credentials inside Claude
-    settings allow-lists — an AI-native vector no code scanner sees.</li>
+    <li><b>Recorded test data.</b> Tests replay saved copies of real API responses. The cleaning
+    step removed only the fields it had been told about, and GitLab's <code>runners_token</code>
+    field was not on its list — so a live token was saved verbatim. A cleaner built as a list of
+    known fields misses every field it has not seen yet.</li>
+    <li><b>Committed output files.</b> A generated test report with a live bot token embedded in
+    it.</li>
+    <li><b>Infrastructure config.</b> Slack tokens typed straight into Terraform files, for 8
+    months.</li>
+    <li><b>The agent's own permission settings used as a secrets store.</b> Live credentials
+    pasted into Claude settings files — an AI-native vector no code scanner watches.</li>
   </ul>
   <p>None of the 9 real-format leaks was in application source code. Defense-in-depth turns
   "the scrubber has a hole" into a non-event — hops has the backstop, barley does not.</p>
 
-  <h3>The AI toolchain is unpinned</h3>
+  <h3>The AI toolchain was unpinned — closed 2026-08-31</h3>
+  <p class="note">As measured 2026-08-14: all four locally-launched MCP plug-ins org-wide ran at
+  "whatever version is newest". All four are now pinned, with a CI check on every pull request
+  guarding each file (roadmap item 4).</p>
   <div class="tblwrap"><table>
-    <tr><th>Repo</th><th>MCP server</th><th>Launch</th><th>Pin state</th></tr>
-    <tr><td>hops</td><td>github</td><td class="mono">docker run …github-mcp-server:latest (+ PAT)</td><td><span class="chip c-warn">:LATEST</span></td></tr>
-    <tr><td>hops-mcp</td><td>serena (3rd-party)</td><td class="mono">uvx --from git+https://…/serena</td><td><span class="chip c-fail">NO REF AT ALL</span></td></tr>
-    <tr><td>barley</td><td>bedrock-agentcore</td><td class="mono">uvx awslabs.…@latest</td><td><span class="chip c-warn">@LATEST</span></td></tr>
-    <tr><td>barley</td><td>prompt-kit</td><td class="mono">npx -y shadcn@canary mcp</td><td><span class="chip c-fail">@CANARY, AUTO-YES</span></td></tr>
+    <tr><th>Repo</th><th>MCP server</th><th>Launch (as found)</th><th>Was</th><th>Now</th></tr>
+    <tr><td>hops</td><td>github</td><td class="mono">docker run …github-mcp-server:latest (+ PAT)</td><td><span class="chip c-warn">:LATEST</span></td><td><span class="chip c-pass">:1.11</span> PR #567</td></tr>
+    <tr><td>hops-mcp</td><td>serena (3rd-party)</td><td class="mono">uvx --from git+https://…/serena</td><td><span class="chip c-fail">NO REF AT ALL</span></td><td><span class="chip c-pass">@v1.7.0</span> PR #59</td></tr>
+    <tr><td>barley</td><td>bedrock-agentcore</td><td class="mono">uvx awslabs.…@latest</td><td><span class="chip c-warn">@LATEST</span></td><td><span class="chip c-pass">0.2.0</span> PR #1783</td></tr>
+    <tr><td>barley</td><td>prompt-kit</td><td class="mono">npx -y shadcn@canary mcp</td><td><span class="chip c-fail">@CANARY, AUTO-YES</span></td><td><span class="chip c-pass">4.19.0</span> PR #1783</td></tr>
   </table></div>
 
   <h3>Phase 2 delivery — what has shipped</h3>
@@ -550,41 +582,41 @@
     <tr class="row-done"><td><b>Dependency cooldown + pnpm toolchain pin</b><br><span class="note">roadmap item 3</span></td>
         <td>hops <span class="mono">hop-ui</span></td>
         <td><span class="chip c-pass">MERGED</span> <span class="note">PR #515, 2026-08-19</span></td>
-        <td>Grew on contact: CI installed pnpm unpinned while the Dockerfile pinned pnpm 9, so the
-        cooldown would have been a no-op. Two controls were already silently dead —
-        <code>.npmrc save-prefix</code> and <code>onlyBuiltDependencies</code>, both removed by
-        pnpm 11. All six gates green.</td></tr>
+        <td>The task grew on contact: CI was installing the package manager itself at "whatever is
+        newest" while the Dockerfile pinned version 9 — so the new waiting period would have
+        silently done nothing. Two other protections were already silently dead, dropped by a
+        major pnpm upgrade nobody re-checked. All six checks green.</td></tr>
     <tr class="row-done"><td><b>Port the gitleaks gate</b><br><span class="note">roadmap item 2</span></td>
         <td>barley</td>
         <td><span class="chip c-pass">MERGED</span> <span class="note">PR #1636, 2026-08-20</span></td>
-        <td>An untuned gate reports <b>89 findings day one</b> — 86 verified false positives, 3
-        real. <code>tests/</code> is deliberately not path-allowlisted: barley's own audit passed
-        SEC-04 with a grep that skipped <code>tests/</code>, which is exactly where the real
-        credentials were. Gate green in their CI.</td></tr>
-    <tr class="row-done"><td><b>Gitleaks allowlist scope</b><br><span class="note">new — found while porting</span></td>
+        <td>At factory settings the scanner reported <b>89 findings on day one</b> — 86 verified
+        false alarms, 3 real. The tests folder is deliberately not exempt: barley's own audit had
+        reported "no hardcoded secrets" using a search that skipped <code>tests/</code> — exactly
+        where the real credentials sat. Gate green in their CI.</td></tr>
+    <tr class="row-done"><td><b>Gitleaks ignore-list drawn too wide</b><br><span class="note">new — found while porting</span></td>
         <td>hops</td>
         <td><span class="chip c-pass">MERGED</span> <span class="note">PR #518, 2026-08-20</span></td>
         <td>See below — the gate had been suppressing real findings. Fixed.</td></tr>
-    <tr class="row-done"><td><b>Fail-closed cassette scrubbing</b><br><span class="note">roadmap item 8</span></td>
+    <tr class="row-done"><td><b>Test-recording cleaner that cannot miss new fields</b><br><span class="note">roadmap item 8</span></td>
         <td>barley</td>
         <td><span class="chip c-pass">MERGED</span> <span class="note">PR #1652, 2026-08-21</span></td>
-        <td>The scrubber named each field it redacted, so it failed open on every new API field —
-        which is how a runner token reached a cassette. Two generic passes added: redact by
-        <b>key shape</b> and by <b>value shape</b>, the second catching credentials in HTML and
-        prose where no field name exists. The enforcement is a test that reads all <b>73</b>
-        cassettes as committed, so a future hole fails CI. Verified additive: 0 of 73 cassettes
-        change. Their suite passes.</td></tr>
+        <td>Tests replay saved API responses ("recordings"). The cleaner removed only the fields
+        it had been told about, so every new field slipped through — which is how a live token
+        ended up in a recording. It now also removes anything that <i>looks like</i> a credential,
+        by field name and by value shape — the second pass catches tokens sitting in HTML or prose
+        where no field name exists. And a test re-reads all <b>73</b> committed recordings, so a
+        future gap fails the pipeline instead of shipping. Verified safe to add: 0 of the 73
+        existing recordings changed. Their test suite passes.</td></tr>
     <tr class="row-done"><td><b>OpenSSF Scorecard posture gate</b><br><span class="note">roadmap item 10</span></td>
         <td>all five: hops, hops-mcp, barley, sowinsights, wort</td>
         <td><span class="chip c-pass">MERGED</span> <span class="note">8 PRs, 2026-08-25</span></td>
-        <td>Not a threshold on the published score — that score is unusable here, because four of
-        its checks grade a private repo against open-source norms and <code>SAST</code> reads 0 for
-        any self-hosted scanner. Instead a <b>per-check ratchet</b> against a committed baseline:
-        four checks fail a pull request if they drop, eight are reported, six are ignored with the
-        reason recorded next to each. One policy, two implementations — Node and standard-library
-        Python, picked per repo by what that repo's CI already runs — held to byte-identical output
-        by an agreement check. <b>Fails closed</b>: a gated check that goes missing or inconclusive
-        fails the run rather than passing quietly.</td></tr>
+        <td>Not "fail below score X" — the headline score is meaningless here, because several of
+        its checks grade a private repo against open-source norms. Instead a <b>ratchet</b>: the
+        current state of every check is saved as a baseline, four checks fail a pull request if
+        they ever drop below it, eight are reported, six are ignored with the reason written next
+        to each. One policy, two implementations (Node and plain Python, chosen per repo by what
+        its pipeline already runs), verified to give byte-identical answers. And a gated check
+        that goes missing or cannot be read <b>fails the run instead of passing quietly</b>.</td></tr>
     <tr class="row-done"><td><b>Hallucinated-package check</b><br><span class="note">roadmap item 6</span></td>
         <td>hops</td>
         <td><span class="chip c-pass">MERGED</span> <span class="note">PR #528, 2026-08-21</span></td>
@@ -595,74 +627,108 @@
     <tr class="row-done"><td><b>Agent-config surface declared security-sensitive</b><br><span class="note">roadmap item 5 · audit check PRV-17</span></td>
         <td>hops</td>
         <td><span class="chip c-pass">MERGED</span> <span class="note">PR #557, 2026-08-26</span></td>
-        <td>The declaration is written into all six <code>CLAUDE.md</code> files plus a path-scoped
-        rule that loads only when the surface is being edited, and <code>CODEOWNERS</code> — the
-        repo's first — routes review for it. Two silent controls surfaced while writing it:
-        <code>.gitignore</code> denied <code>.github/*</code>, so the new CODEOWNERS was untracked
-        with no error, and <code>.claude/settings.local.json</code>, the file that holds permission
-        allow-patterns, was ignored only by a per-developer <i>global</i> gitignore — committable on
-        any machine without one.</td></tr>
+        <td>The "this is security-sensitive" declaration is written into all six agent instruction
+        files, plus a rule that loads whenever that surface is edited, plus the repo's first
+        <code>CODEOWNERS</code> — the GitHub file that names who must review changes to listed
+        paths. Writing it surfaced two silently broken settings. First, the repo's
+        <code>.gitignore</code> excluded the whole <code>.github/</code> folder — harmless for the
+        CI files already in it (ignore rules never touch files git already tracks), but the
+        brand-new CODEOWNERS file was being silently left out of version control, with no error
+        shown. Second, the local settings file that holds the agent's permission patterns was
+        ignored only by each developer's <i>personal</i> global config — on any machine without
+        one, it could be committed.</td></tr>
     <tr class="row-done"><td><b>Security review before every commit + finding → instruction loop</b><br><span class="note">roadmap item 11</span></td>
-        <td>hops</td>
-        <td><span class="chip c-pass">MERGED</span> <span class="note">PR #566, 2026-08-28</span></td>
-        <td>Measured before writing: the <code>security-guidance</code> plugin hops had enabled since
-        before this research had <b>never run</b> — a project-only <code>enabledPlugins</code> entry
-        installs nothing, and its LLM layers need an API key a subscription login never provides.
-        Loaded by hand, its regex layer caught 4 of 9 planted classes and none of the five Kotlin
-        ones. What shipped instead is the built-in <code>/security-review</code> as a gate in the
-        commit skill, plus the rule that every finding updates the instructions. Instruction text
-        only, three files. The catch rate of the gate itself is the one number still to measure.</td></tr>
+        <td>hops · hops-mcp · barley</td>
+        <td><span class="chip c-pass">MERGED</span> <span class="note">PRs #566 · #58 · #1778, 2026-08-28→31</span></td>
+        <td>Measured before writing: the security plugin hops thought it had enabled had <b>never
+        run</b> — the settings entry that names it does not actually install it, and its AI layers
+        need an API key that a subscription login never provides. Loaded by hand, its simple
+        pattern-matching layer caught 4 of 9 planted vulnerabilities and none of the five Kotlin
+        ones. What shipped instead: the built-in <code>/security-review</code> now runs as a
+        required step of the commit workflow, plus the rule that every confirmed finding becomes a
+        line in the agent's instructions. Three files changed, instruction text only. The catch
+        rate of the new gate itself is the one number still to measure.</td></tr>
     <tr class="row-done"><td><b>Hook-content scan on the real path</b><br><span class="note">roadmap item 9 · audit check AIS-03</span></td>
         <td>hops · hops-mcp</td>
         <td><span class="chip c-pass">MERGED</span> <span class="note">PRs #556 · #56, 2026-08-26</span></td>
-        <td>Resolves the surface from <code>settings.json</code>, never from a directory — the
-        directory assumption <i>is</i> the audit bug, and repeating it in a new shape would have been
-        the whole failure. <b>Four of the six registered hooks in the org exist only as inline shell
-        strings</b> that no linter parses and no directory scan can find. Calibration is the
-        deliverable: naive rule forms produced 18, 7 and 4 hits on the repo's own secret-guard and
-        pre-commit script; the shipped rules produce <b>0</b>. Ran on its own PR with no labels, 13s,
-        24 self-tests inside the job.</td></tr>
+        <td>Hooks are small scripts the agent runs automatically around every action. The new
+        check reads the list of them from the settings file itself, never from a folder — the
+        audit's bug was assuming a folder, and <b>four of the six hooks in the org exist only as
+        command strings inside a settings file</b>, where no folder scan can find them. The tuning
+        was the real work: first-draft rules flagged the repo's own legitimate guard scripts 18, 7
+        and 4 times; the shipped rules flag them <b>0</b> times. Runs on every pull request, 13
+        seconds, 24 self-tests inside the job.</td></tr>
+    <tr class="row-done"><td><b>MCP pinning check</b><br><span class="note">roadmap item 4</span></td>
+        <td>hops · hops-mcp · barley</td>
+        <td><span class="chip c-pass">MERGED</span> <span class="note">PRs #567 · #59 · #1783, by 2026-08-31</span></td>
+        <td>A pipeline check on every pull request: each agent plug-in named in
+        <code>.mcp.json</code> must state a fixed version, and if the file disappears the check
+        fails rather than passing quietly. The verdict is tiered on purpose, so the team can live
+        with it: a launch that is both untrusted and self-updating blocks the merge; a stable
+        "newest" tag only warns; a normal version tag passes. It understands every launcher
+        command the repos actually use. Pinned the <code>github</code> server to
+        <code>:1.11</code>; 18 self-tests; all checks green. The two ports (one Node, one plain
+        Python, verified to give byte-identical answers on 20 of 20 test cases) pinned the org's
+        three remaining self-updating plug-ins.</td></tr>
+    <tr class="row-done"><td><b>Path-gate the hop-ui dependency audit</b><br><span class="note">roadmap item 7</span></td>
+        <td>hops <span class="mono">.github/workflows</span></td>
+        <td><span class="chip c-pass">MERGED</span> <span class="note">PR #568, 2026-08-31</span></td>
+        <td>Scoped down on review with the owner: keep the <code>frontend</code> label, add a path
+        condition, no scheduled scan — a cron nobody owns fails unnoticed, a PR failure has an
+        author. Uses the <code>dorny/paths-filter</code> action the repo already runs, so no new
+        dependency. The PR is its own positive test: no label, and <code>Security audit – hop-ui</code>
+        ran and passed on its first run. Other modules deferred — the post-process script parses a
+        pnpm lockfile.</td></tr>
+    <tr class="row-review"><td><b>Audit detector bugs filed upstream</b><br><span class="note">roadmap item 12, first half · audit checks AIS-03, AS-05, AS-13</span></td>
+        <td>provectus/awos</td>
+        <td><span class="chip c-info">FILED</span> <span class="note">#190 · #191 · #192, 2026-08-28</span></td>
+        <td>Not filed from the report — filed from the engine. Each verdict was traced to the detector
+        line that produces it and confirmed unchanged on the maintainers' current <code>main</code>
+        before writing a word. The search for prior reports found the maintainers' own root-only-scan
+        issue (#159), which names AS-13 for a different reason — so that one is cross-referenced rather
+        than duplicated. Repo names and module paths genericised: the tracker is public. What we do
+        not control is the release; the closure step is a re-audit of hops on the fixed version.</td></tr>
   </table></div>
 
   <div class="call red">
     <b>The finding that came out of shipping item 2: the hops gate was hiding secrets</b>
     <span class="chip c-pass">FIXED — PR #518 MERGED 2026-08-20</span><br>
-    <code>.gitleaks.toml</code> used <code>regexTarget = "line"</code>, which allowlists the
-    <i>entire line</i> — so any real credential sharing a line with an allowlisted value was
-    dropped. A synthetic HubSpot key planted on an allowlisted correlation-id line in
+    The scanner's ignore-list was set to excuse the <i>entire line</i> a false alarm sits on, not
+    just the false alarm itself — so a real credential sharing a line with a known-harmless value
+    was silently skipped. Proof: a fake key planted on exactly such a line in
     <code>hop-sync/Hubspot_data_sync.ipynb</code> was reported <b>0 times</b> under the shipped
-    config and <b>1 time</b> after the fix. The same setting was separately observed dropping
-    findings when the allowlist regex matches <i>nothing at all</i>, costing 3 genuine GitLab
-    runner-token detections on barley. Root cause unconfirmed upstream; not reproducible on
-    synthetic fixtures.
+    settings and <b>1 time</b> after the fix. The same setting was separately seen dropping 3
+    genuine runner-token detections on barley even where the ignore rule matched nothing on the
+    line at all — that second behaviour we could not reproduce in a clean test, so its root cause
+    remains unconfirmed with the tool's maintainers.
     <br><br>
     This is the fourth variant of the pattern this capability keeps finding: a control can exist,
     be enforced, be wired up, be licensed — and still be <b>scoped away by its own
-    configuration</b>, with no signal anywhere that detection was lost. The generalizable defence
-    is procedural: diff every suppression config against a no-allowlist baseline, require each
-    suppressed finding to be attributable to a named entry, and plant synthetic positives inside
-    the suppressed contexts to prove the rule is narrow.
+    configuration</b>, with no signal anywhere that detection was lost. The defence that
+    generalises is procedural: compare what the scanner reports with and without its ignore-list,
+    require every ignored finding to be explained by a named entry, and plant fake secrets in the
+    ignored spots to prove the scanner still catches a real one there.
   </div>
 
   <div class="call red">
-    <b>The gate we built to fix a skip-and-pass check shipped with the same defect</b>
+    <b>The gate we built to fix a "found nothing to check, so pass" bug shipped with the same bug</b>
     <span class="chip c-pass">FOUND IN REVIEW · FIXED BEFORE MERGE 2026-08-26</span><br>
-    The whole point of roadmap item 9 is that AIS-03 found no <code>.claude/hooks/</code> directory,
-    skipped, and let the dimension report <b>100%</b>. Our replacement, run against a directory with
-    no <code>.claude/settings.json</code> in it, printed <i>"no agent hook surface in this repo — all
-    clear"</i> and exited <b>0</b>. A pull request that deleted or renamed the settings file would
-    have turned the gate green.
+    The whole point of roadmap item 9 is that the audit looked for a hooks folder that did not
+    exist, skipped the check, and counted the skip as a pass — reporting <b>100%</b>. Our
+    replacement, pointed at a project with no agent settings file at all, printed <i>"no agent
+    hook surface in this repo — all clear"</i> and reported success. A pull request that simply
+    deleted or renamed the settings file would have turned the gate green.
     <br><br>
-    Knowing the failure mode did not prevent rebuilding it. <b>Skip-and-pass is not an upstream
-    defect — it is the default shape of a check</b>, and only running the tool against an empty
-    directory exposed it. The fix is deliberately not a special case: an absent surface is pushed as
-    an ordinary blocking finding, so it flows through the allowlist, the JSON output and the exit
-    code exactly like malicious hook content does.
+    Knowing the failure mode did not stop us rebuilding it. <b>"Nothing to check" quietly becoming
+    "pass" is not one tool's defect — it is the default shape of any check</b>, and only running
+    ours against an empty project exposed it. The fix is deliberately not a special case: "the
+    thing I am supposed to scan is missing" is raised as an ordinary blocking finding, handled
+    exactly like malicious hook content would be.
     <br><br>
-    The same review found the second-order version one level up. The new <code>CODEOWNERS</code>
-    routed review for <code>scripts/pre-commit</code> and <code>scripts/claude-hooks/</code> — the
-    guards the audit already knew about — but not for the scanner or the workflow that runs it: <b>a
-    control that protects the previous generation of controls and not itself.</b> Both paths added.
+    The same review found the next level of the same pattern. The new reviewer-assignment file
+    covered the older guard scripts — the ones the audit already knew about — but not the new
+    scanner itself or the pipeline job that runs it: <b>a control that protected the previous
+    generation of controls and not itself.</b> Both paths added.
     The generalizable rule for the blueprint: <b>every gate must be run against the input it is
     supposed to fail on</b>, absence included, and its own source must sit inside the surface it
     protects.
@@ -677,8 +743,8 @@
       <tr><th>Measured</th><th>Result</th><th>Why it matters</th></tr>
       <tr><td>Default branches requiring a passing status check</td>
           <td><b>1 of 26</b></td>
-          <td>The enterprise-wide ruleset carries no <code>required_status_checks</code> rule at
-          all. Every gate in this report — gitleaks, the dependency check, this one — reports a
+          <td>The org-wide GitHub configuration never says "a failing check blocks the merge". So
+          every gate in this report — the secret scan, the dependency check, this one — reports a
           red cross that a merge may simply ignore. <b>One org-level settings change is worth more
           than every gate we shipped.</b></td></tr>
       <tr><td>Repositories with a dependency-update tool</td>
@@ -696,18 +762,18 @@
     </table></div>
     <b>And what the gate does not do</b>, recorded so nobody reads more into it than it earns:
     eight of the twenty gated check-instances across the five repositories currently sit at zero
-    and cannot fall, so those gates protect nothing until a baseline is raised. The one check that
-    measures enforcement rather than presence — <code>Branch-Protection</code>, the reason this
-    tool was chosen — needs repository-admin scope and cannot be read from CI at all. It runs by
-    hand, from a user token.
+    and cannot fall, so those gates protect nothing until a baseline is raised. And the one check
+    that measures enforcement rather than presence — <code>Branch-Protection</code>, the reason
+    this tool was chosen — needs repository-admin access and cannot run from the pipeline at all;
+    it runs by hand, from a user's own login.
   </div>
 
   <h3>The roadmap — ordered by impact ÷ effort</h3>
   <p class="note">Scope: changes land in hops (dev only) per the approved scope — items for other
-  repos are recommendations to their owners. Row colour is delivery state as of 2026-08-28.</p>
+  repos are recommendations to their owners. Row colour is delivery state as of 2026-08-31.</p>
   <div class="legend">
     <span><i class="k-done"></i>merged</span>
-    <span><i class="k-review"></i>in review</span>
+    <span><i class="k-review"></i>in review / filed upstream</span>
     <span><i class="k-pending"></i>pending — owner action confirmed, not yet done</span>
     <span><i class="k-open"></i>not started</span>
   </div>
@@ -727,26 +793,26 @@
         <td><span class="chip c-pass">ONE LINE</span></td><td>hops (hop-ui)</td>
         <td>Compromised package versions are usually detected and pulled within ~24h — installing day-zero releases inherits exactly that window (audit check SCS-04, currently unmet)</td>
         <td>Set pnpm <code>minimumReleaseAge: 1440</code> in hop-ui; trusted internal packages go on the exclude list</td></tr>
-    <tr><td class="num-cell">4</td><td><b>MCP pinning check</b></td>
-        <td><span class="chip c-pass">SMALL SCRIPT</span></td><td>all repos</td>
-        <td>MCP servers run with developer privileges; a mutable version means a compromised update executes on every session start — the "rug pull" (CSA / OWASP ASI01). All four repos are exposed today</td>
-        <td>A CI/pre-commit script flags <code>:latest</code>, <code>@canary</code>, and ref-less git URLs in <code>.mcp.json</code>; servers get pinned to a digest, version, or commit</td></tr>
+    <tr class="row-done"><td class="num-cell">4</td><td><b>MCP pinning check</b> <span class="chip c-pass">MERGED · 3 REPOS</span></td>
+        <td><span class="chip c-pass">SMALL SCRIPT</span></td><td>hops <b>PR #567</b> · hops-mcp <b>#59</b> · barley <b>#1783</b>, all merged by 2026-08-31</td>
+        <td>MCP servers run with developer privileges; a mutable version means a compromised update executes on every session start — the "rug pull" (CSA / OWASP ASI01). All four repos were exposed at measurement</td>
+        <td>Shipped as a CI job on every pull request with a tiered verdict (block / warn / pass) in all three repos with an <code>.mcp.json</code>; every plug-in launch pinned — <code>github</code> <code>:1.11</code>, <code>serena</code> <code>@v1.7.0</code>, <code>shadcn</code> <code>4.19.0</code>, <code>bedrock-agentcore</code> <code>0.2.0</code></td></tr>
     <tr class="row-done"><td class="num-cell">5</td><td><b>PRV-17 — protect the agent-config surface</b> <span class="chip c-pass">MERGED</span></td>
         <td><span class="chip c-pass">A PARAGRAPH</span></td><td>hops</td>
         <td>CLAUDE.md, hooks, skills and MCP config steer everything agents do — tampering there hijacks every future session, and no rule marked it sensitive (audit WARN, 1 of 2)</td>
-        <td>Shipped as six instruction files plus a path-scoped rule that loads only when the surface is edited, and the repo's first <code>CODEOWNERS</code> routing review over <code>CLAUDE.md</code>, <code>.claude/</code>, <code>.mcp.json</code>, the guards, and the gate's own source</td></tr>
+        <td>Shipped as six instruction files plus a rule that loads only when the surface is edited, and the repo's first <code>CODEOWNERS</code> file requiring a named reviewer for <code>CLAUDE.md</code>, <code>.claude/</code>, <code>.mcp.json</code>, the guards, and the gate's own source</td></tr>
     <tr class="row-done"><td class="num-cell">6</td><td><b>Hallucinated-package CI check</b> <span class="chip c-pass">MERGED</span></td>
         <td><span class="chip c-warn">MEDIUM</span></td><td>hops → generalize</td>
         <td>19.7% of LLM-recommended packages don't exist (USENIX 2025); attackers pre-register the names and agents install their own suggestions — typosquatting defenses don't cover it</td>
         <td>CI job on every dependency diff: each newly added package must exist on the registry, pre-date the PR, and show real usage/downloads — else the PR blocks</td></tr>
-    <tr><td class="num-cell">7</td><td><b>Un-gate the dependency audit</b></td>
-        <td><span class="chip c-pass">LOW</span></td><td>hops</td>
+    <tr class="row-done"><td class="num-cell">7</td><td><b>Path-gate the dependency audit</b> <span class="chip c-pass">MERGED · hop-ui</span></td>
+        <td><span class="chip c-pass">LOW</span></td><td>hops <b>PR #568</b> (merged 2026-08-31); other modules open</td>
         <td>Vulnerable dependencies land in unlabeled PRs and backend modules exactly as often — today the osv audit simply doesn't run there</td>
-        <td>Remove the <code>frontend</code>-label condition and extend the job to all modules (npm and gradle)</td></tr>
-    <tr class="row-done"><td class="num-cell">8</td><td><b>Fail-closed cassette scrubbing</b> <span class="chip c-pass">MERGED</span></td>
+        <td>Keep the <code>frontend</code> label, add a lockfile/manifest path condition (label <i>or</i> paths changed) so unlabelled and Dependabot PRs are scanned — <b>shipped for hop-ui</b>, audit ran green on the unlabelled PR. No scheduled scan — a cron nobody owns fails unnoticed. Per-module extension (npm, gradle) still open</td></tr>
+    <tr class="row-done"><td class="num-cell">8</td><td><b>Test-recording cleaner that cannot miss new fields</b> <span class="chip c-pass">MERGED</span></td>
         <td><span class="chip c-warn">MEDIUM</span></td><td>barley only — see note below</td>
-        <td>Denylist scrubbers miss every API field they haven't seen — that is exactly how a live runner token reached HEAD despite scrubbing being in place</td>
-        <td>Invert the design: allowlist the fields a cassette may keep (or apply entropy/format-based redaction at record time), then re-record the affected cassettes</td></tr>
+        <td>A cleaner that removes only known fields misses every field it has not seen — exactly how a live token landed in committed test data even with cleaning in place</td>
+        <td>Invert the design: keep only the fields a test recording is allowed to keep and remove anything credential-shaped, then re-record the affected test data</td></tr>
     <tr class="row-done"><td class="num-cell">9</td><td><b>Hook-content scan on the real path</b> <span class="chip c-pass">MERGED · 2 REPOS</span></td>
         <td><span class="chip c-pass">LOW</span></td><td>hops, hops-mcp <b>done</b>; barley and sowinsights read-only</td>
         <td>Hooks execute arbitrary shell on every agent action, and the audit's malicious-hook check skipped them entirely over a path assumption (AIS-03)</td>
@@ -755,45 +821,46 @@
         <td><span class="chip c-pass">CI ACTION</span></td><td>all five repos <b>done</b></td>
         <td>Self-assessment persuades neither clients nor auditors; an independent, recognized score does — and tracks drift over time</td>
         <td>Shipped as a per-check ratchet, not a score threshold: four checks gate a pull request, eight are reported, six ignored with a recorded reason. Runs on every pull request in local mode against the tree being proposed, and on every default-branch merge in remote mode for the checks an API is needed to read</td></tr>
-    <tr class="row-done"><td class="num-cell">11</td><td><b>Generation-time review that actually runs + close the loop</b> <span class="chip c-pass">MERGED</span></td>
-        <td><span class="chip c-pass">A PARAGRAPH</span></td><td>hops <b>done</b> (PR #566, 2026-08-28); barley, hops-mcp as recommendations</td>
-        <td>45% of AI-generated code is vulnerable and the rate isn't improving with newer models — the cheapest catch is before commit, and every finding should harden the instructions (Anthropic's shift-left). <b>Measured first:</b> hops already enables the <code>security-guidance</code> plugin — regex warnings on edits, an LLM review on every turn, an agentic review on commit — and it had <b>never run</b>. A project-only <code>enabledPlugins</code> entry installs nothing, and the two LLM layers read an API key from the shell that an OAuth login never sets. Loaded by hand, the regex layer caught 4 of 9 planted classes and none of the five Kotlin ones</td>
-        <td>Not a new command — the reverted one was a full-repo grep checklist and Claude Code ships <code>/security-review</code>. Shipped: the built-in <code>/security-review</code> is a gate in <code>commit-validated</code> — it runs on the developer's subscription login, which the plugin cannot use — and the finding → instruction rule is written into <code>CLAUDE.md</code> and the <code>self-improvement</code> skill; the plugin is documented as a supplement (installs per machine, regex only). The team's answer to the independent-reviewer question: review goes through Claude Code skills, CodeRabbit stays on its plan, and the org ruleset is untouchable but a <b>repository ruleset</b> requiring the four security jobs is allowed — drafted, awaiting an admin</td></tr>
-    <tr><td class="num-cell">12</td><td><b>Threat model + report detector bugs upstream</b></td>
-        <td><span class="chip c-warn">MEDIUM</span></td><td>hops / AWOS owners</td>
-        <td>Without a threat model, controls stay ad hoc (open audit WARN AS-11); and the audit's detector bugs (AS-13, AIS-03, SEC-04) mislead every team that runs it</td>
-        <td>Write a short threat-model doc for hops (doubles as publication material); file the three detector issues with the AWOS owners</td></tr>
+    <tr class="row-done"><td class="num-cell">11</td><td><b>Generation-time review that actually runs + close the loop</b> <span class="chip c-pass">MERGED · 3 REPOS</span></td>
+        <td><span class="chip c-pass">A PARAGRAPH</span></td><td>hops <b>PR #566</b> · hops-mcp <b>#58</b> · barley <b>#1778</b>, all merged by 2026-08-31</td>
+        <td>45% of AI-generated code is vulnerable and the rate isn't improving with newer models — the cheapest catch is before commit, and every finding should harden the instructions (Anthropic's shift-left). <b>Measured first:</b> the security plugin hops thought it had enabled had <b>never run</b> — naming a plugin in the project settings does not actually install it, and its two AI layers need an API key that a subscription login never provides. Loaded by hand, its simple pattern-matching layer caught 4 of 9 planted vulnerabilities and none of the five Kotlin ones</td>
+        <td>Shipped: Claude Code's built-in <code>/security-review</code> now runs as a required step of the commit workflow — it works on the developer's normal subscription login, which the plugin cannot use — and the "every finding becomes an instruction" rule is written into the agent's instruction files; the plugin stays documented as a supplement only. Review stays inside Claude Code and CodeRabbit stays on its plan; the org-level GitHub settings cannot be changed from here, but a <b>repository-level rule</b> requiring the four security jobs is allowed — drafted, awaiting an admin</td></tr>
+    <tr class="row-review"><td class="num-cell">12</td><td><b>Threat model + report detector bugs upstream</b> <span class="chip c-info">BUGS FILED · THREAT MODEL OPEN</span></td>
+        <td><span class="chip c-warn">MEDIUM</span></td><td>AWOS owners <b>filed</b> (#190–#192, 2026-08-28); hops threat model not started</td>
+        <td>Without a threat model, controls stay ad hoc (open audit WARN AS-11); and the audit's detector bugs mislead every team that runs it — two of the three are false passes, so a team reading the audit believes the area is covered</td>
+        <td>Filed: AIS-03 hook path (#190), AS-05 <code>tests/</code> exclusion (#191), AS-13 root-only (#192), each with file:line, reproducer, fix and tests. Remaining: a short threat-model doc for hops, scoped to the three in-scope vectors and mapped to the controls now shipped — doubles as publication material</td></tr>
   </table></div>
   <div class="col">
     <h3>Not every control is universal — item 8 is conditional on a practice</h3>
     <p>Item 8 applies to <b>barley alone</b>, and the reason generalises further than the fix does.
-    Checked rather than assumed: <b>hops records no API traffic at all</b> — no VCR, no cassettes,
-    no <code>nock</code> recorder, and WireMock is, in their own test comment, <i>"deliberately not
-    on the classpath."</i> hops stubs at the repository interface, so no response body is ever
-    written to disk. Running barley's own credential patterns across <b>2,537</b> hops test and
-    fixture files returns <b>zero</b> credential-shaped values. <code>sowinsights</code> and
-    <code>hops-mcp</code> record nothing either.</p>
+    Checked rather than assumed: <b>hops saves no real API responses at all</b> — none of the
+    recording tools appear anywhere in it, and one is, in the team's own test comment,
+    <i>"deliberately not on the classpath."</i> hops fakes its external services in code, so no
+    response is ever written to disk. Running barley's own credential patterns across
+    <b>2,537</b> hops test and fixture files returns <b>zero</b> credential-shaped values.
+    <code>sowinsights</code> and <code>hops-mcp</code> record nothing either.</p>
     <p>So this control attaches to a <b>testing practice</b>, not to a repository. The two projects
     made the same trade differently and neither is wrong:</p>
     <ul>
-      <li><b>barley records real traffic</b> — fixtures stay faithful to the live API, and every
-      recorded byte is potential credential material. It leaked exactly once, through the one field
-      nobody had listed.</li>
-      <li><b>hops hand-stubs at an interface</b> — structurally immune to this leak, at the cost of
-      fixtures that can drift from the real API with no test noticing.</li>
+      <li><b>barley saves real responses</b> — its test data stays faithful to the live API, and
+      every saved byte is potential credential material. It leaked exactly once, through the one
+      field nobody had listed.</li>
+      <li><b>hops fakes the external service in code</b> — structurally immune to this leak, at
+      the cost of test data that can drift from the real API with no test noticing.</li>
     </ul>
     <p>The blueprint should therefore carry this as a <b>conditional</b> control: the question a new
-    project must answer is not "which language is this?" but "does this project record real
-    responses into committed files?" Copying barley's scrubber into hops would add maintained code
+    project must answer is not "which language is this?" but "does this project save real API
+    responses into committed files?" Copying barley's cleaner into hops would add maintained code
     that can never fire.</p>
 
     <h3>Two of our own controls collided — and the fix is the pattern</h3>
-    <p>The fail-closed tests need credentials that are genuinely issuer-shaped, or they cannot prove
-    the value patterns work. The secret-scan gate merged four days earlier flagged them, correctly.
-    Resolved by weaving a <code>NOTAREALTOKEN</code> marker <i>inside</i> the span each rule captures
-    and stopwording that one string — suppressed <b>by value, never by path</b>, so a real token in
-    that same test file still fires. Path-allowlisting the test directory would have been faster and
-    would have re-created the exact blind spot that made barley's own audit report a false PASS.</p>
+    <p>The new cleaning tests need fake credentials that look exactly like real ones, or they prove
+    nothing — and the secret-scan gate merged four days earlier flagged them, correctly. Resolved
+    by writing the marker <code>NOTAREALTOKEN</code> into the middle of each fake value and
+    teaching the scanner to ignore that one string — ignored <b>by value, never by folder</b>, so
+    a real token in that same test file still fires. Exempting the whole test folder would have
+    been faster, and would have re-created the exact blind spot that made barley's own audit
+    report a false "no secrets".</p>
   </div>
 </div>
 </section>
@@ -808,35 +875,39 @@
     <li><b>Same tool, same ruleset, same day.</b> Cross-repo numbers are only comparable when the
     instrument is held constant — gitleaks 8.24.3 (the exact version the hops CI gate pins),
     default config for comparison, tuned config as a separate measurement.</li>
-    <li><b>Full history, not working tree.</b> A committed-then-deleted secret is still in every
-    clone. Findings classified in-HEAD vs history-only — remediation differs (rotate + remove vs
-    rotate).</li>
+    <li><b>Full history, not just the current files.</b> A committed-then-deleted secret is still
+    in every clone. Findings classified as still-present vs history-only — the remedy differs
+    (rotate + remove vs rotate).</li>
     <li><b>Triage by format confidence.</b> High-confidence token formats (provider prefixes, PEM
     blocks) can't match by accident; loose regexes require manual review. Every reviewed with
     values masked; no credential tested for validity.</li>
-    <li><b>Audit the audit.</b> Every surprising audit verdict re-verified against the repo by
-    hand — which is how three detector blind spots were found.</li>
-    <li><b>Root-cause the control, not the leak.</b> The cassette tokens were traced to the
-    specific scrubber design (fail-open denylist), producing a transferable pattern, not a
-    one-off fix.</li>
-    <li><b>Prove a suppression is narrow before trusting it.</b> Added in Phase 2, after a
-    tuned scanner config was found suppressing real credentials. Any allowlist is diffed against
-    a no-allowlist baseline, every suppressed finding must be attributable to a named entry,
-    entries that match nothing are deleted rather than shipped, and synthetic positives are
-    planted inside each suppressed context to confirm they are still detected. An untested
-    suppression rule is indistinguishable from a disabled check.</li>
+    <li><b>Audit the audit — then read the auditor.</b> Every surprising audit verdict
+    re-verified against the repo by hand, which is how three detector blind spots were found; and
+    before reporting one, traced to the line in the audit engine that produces it, confirmed on the
+    maintainers' current default branch, and searched against their tracker for an existing report.
+    A bug report that quotes the detector's own code is acted on; one that quotes the symptom is
+    triaged.</li>
+    <li><b>Root-cause the control, not the leak.</b> The test-recording tokens were traced to the
+    specific cleaner design (it removed only fields it already knew), producing a transferable
+    pattern, not a one-off fix.</li>
+    <li><b>Prove an ignore rule is narrow before trusting it.</b> Added in Phase 2, after a tuned
+    scanner config was found hiding real credentials. Every ignore-list is checked by re-running
+    the scan without it; every ignored finding must be explained by a named entry; entries that
+    match nothing are deleted rather than shipped; and fake secrets are planted inside each
+    ignored spot to confirm a real one is still detected. An untested ignore rule is
+    indistinguishable from a disabled check.</li>
     <li><b>Resolve the real base ref before measuring.</b> Also added in Phase 2, twice earned:
     two measurements were taken against local clones 5 and 229 commits stale. Every number now
     states the ref it was measured at, by SHA.</li>
     <li><b>Run every gate against the input it must fail on — absence included.</b> Added in
     Phase 2, after our own hook scanner was found reporting "all clear" on a repo with no agent
-    settings file at all: the skip-and-pass failure it had been written to correct. A gate is now
+    settings file at all: the "nothing to check, so pass" failure it had been written to correct. A gate is now
     proved with a planted positive, a negative control on real code, <i>and</i> an empty input, and
     its own source is placed inside the surface it protects.</li>
     <li><b>Close an item from the default branch, not from the branch that was reviewed.</b> Also
     Phase 2: re-deriving the claims from <code>main</code> after merge is what showed the portable
-    copy of a shipped checker was two commits stale — it still carried the fail-open version any
-    second repo would have copied.</li>
+    copy of a shipped checker was two commits stale — it still carried the pass-when-broken
+    version any second repo would have copied.</li>
     <li><b>Everything logged as it happens.</b> Method log, findings, corrections (two of our own
     claims were caught and fixed by later evidence), and lessons — in the research repo, each
     number backed by a committed file.</li>
@@ -850,7 +921,7 @@
 <div class="col">
 <footer>
   DevOps Capabilities Research — Phase 1 complete, Phase 2 in progress · 2026-08-14, updated
-  2026-08-28 · Vladyslav Katrychenko · advisors
+  2026-08-31 · Vladyslav Katrychenko · advisors
   R. Sadretdinov, R. Ugarov · internal edition, redacted: secret values never appear in this
   document or the underlying research files.
 </footer>
@@ -879,6 +950,3 @@
   activate(initial, false);
 })();
 </script>
-
-
-

@@ -241,7 +241,10 @@ the baseline is unrecoverable.
       running the identical `pnpm run test:coverage`. That reclassifies the 4 local test
       failures as **local-machine only**, not a `main` defect. Awaiting review approval;
       merge is still blocked on `REVIEW_REQUIRED`, not on any check.
-- [ ] **W1.2** Path-gate the dependency audit. **2026-08-28: hops PR #568 open** (`HOP-0000/osv-path-gate`, `e3a229202`, pushed by Vladyslav). Positive test passed: PR carries no `frontend` label and `Security audit – hop-ui` ran and passed on first run; `Spec link` green after the body was replaced with the template. Awaiting review. PR body drafted and passed the `spec-link-check` pipeline locally in both locales. hop-ui only; other modules deferred (post-process script is pnpm-specific). **Decision 2026-08-28 (Vladyslav):** keep the
+- [x] **W1.2** Path-gate the dependency audit — ✅ **MERGED 2026-08-31T08:28Z as hops PR #568**
+      (`HOP-0000/osv-path-gate`, `e3a229202`, pushed by Vladyslav). Post-merge negative signal:
+      `Security audit – hop-ui` skipped on #569 (Dependabot, workflows-only, `dependencies` label
+      only) — consistent with the gate, though that run may predate the merge on the base side. Positive test passed: PR carries no `frontend` label and `Security audit – hop-ui` ran and passed on first run; `Spec link` green after the body was replaced with the template. Awaiting review. PR body drafted and passed the `spec-link-check` pipeline locally in both locales. hop-ui only; other modules deferred (post-process script is pnpm-specific). **Decision 2026-08-28 (Vladyslav):** keep the
       `frontend` label, add a path condition — the osv job runs when the label is present **or**
       `hop-ui/package.json` / `pnpm-lock.yaml` / `osv-scanner.toml` changed. No scheduled scan (a
       cron nobody owns fails unnoticed; PR-time failures have an owner). Same shape per module for
@@ -335,7 +338,9 @@ the baseline is unrecoverable.
       bug report. Detail: `research/baseline/phase2-before-state.md`.
 
 ### Wave 2 — portable tools (build in `tooling/`, self-test, then port to hops)
-- [ ] **W2.1** MCP pinning check — **hops PR #567 IN REVIEW (2026-08-29): all checks green incl. `MCP pin check`, `REVIEW_REQUIRED`.** Report updated.
+- [x] **W2.1** MCP pinning check — ✅ **MERGED 2026-08-31T09:55Z as hops PR #567.** Sibling ports
+      also landed: **hops-mcp PR #59 MERGED** (serena → `@v1.7.0`), **barley PR #1783 MERGED**
+      (shadcn → `4.19.0`, bedrock-agentcore → `0.2.0`). Report needs the merged-state sync.
       Tool: `tooling/ci/mcp-pin-check/` (checker, 18 self-tests, hops job template).
       **Tiered by decision (Vladyslav, 2026-08-28 — ops must be able to maintain it):** *fail* =
       ref-less git URL, pre-release channel, `npx -y` (untrusted AND mutable); *warn* =
@@ -790,7 +795,8 @@ the baseline is unrecoverable.
             (3) the org ruleset cannot be changed, but a **repo-level ruleset can** —
             drafted `scratchpad/hops-ruleset-required-checks.json` + apply notes; needs
             repo admin (ours is `write`).
-      - [x] **Approved and committed 2026-08-28** (Vladyslav pulled `develop`/`main`, will push):
+      - [x] **Approved and committed 2026-08-28, both MERGED by 2026-08-31** — hops-mcp PR #58,
+            barley PR #1778 (verified via `gh pr list` on each repo):
             hops-mcp `docs/security-review-before-commit` @ `4d4952a` (2 files, +12 −6, gate
             exit 0) — `/security-review` gate in `commit-validated`, `security-reviewer` agent on
             the invariant paths, finding→invariant rule; barley

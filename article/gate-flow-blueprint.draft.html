@@ -64,10 +64,12 @@
 
   /* sections */
   section{padding:4.5rem 0;border-bottom:1px solid var(--line)}
-  section.dark{background:var(--ink);color:#F3EFE8;border-color:var(--ink)}
-  section.dark .eyebrow{color:var(--sage-200)}
-  section.dark a{color:var(--sage-200)}
-  section.dark code{background:rgba(255,255,255,.08);color:#F3EFE8}
+  /* Formerly ink-on-dark; retired after review feedback — an auto-darkening browser dropped the
+     dark ground and left light text on white. The page is single-theme light everywhere now. */
+  section.dark{background:var(--sage-100);color:var(--ink);border-color:var(--sage-200)}
+  section.dark .eyebrow{color:var(--sage-800)}
+  section.dark a{color:var(--sage-800)}
+  section.dark code{background:#fff;color:var(--ink)}
   section.tint{background:var(--cream-2)}
   .sec-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:2rem 4rem;margin-bottom:2.4rem}
   @media (max-width:900px){.sec-head{grid-template-columns:1fr;gap:1rem}}
@@ -75,7 +77,7 @@
   h2{font-size:clamp(1.7rem,3.2vw,2.35rem);line-height:1.12;font-weight:800;letter-spacing:-.025em;text-wrap:balance}
   h3{font-size:1.12rem;font-weight:700;letter-spacing:-.01em;margin-bottom:.4rem}
   .sub{color:var(--muted);font-size:.95rem}
-  section.dark .sub{color:#B9C4BE}
+  section.dark .sub{color:var(--muted)}
 
   .cols3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2.5rem}
   .cols2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2.5rem}
@@ -126,8 +128,8 @@
   td{padding:.9rem .7rem;border-bottom:1px solid var(--line);vertical-align:top}
   td:first-child{font-weight:700;white-space:nowrap}
   .tbl{overflow-x:auto}
-  section.dark th{color:var(--sage-200);border-color:#F3EFE8}
-  section.dark td{border-color:rgba(255,255,255,.14)}
+  section.dark th{color:var(--sage-700);border-color:var(--ink)}
+  section.dark td{border-color:var(--sage-200)}
 
   /* use cases */
   .uc{border-top:1px solid var(--line);padding:1.5rem 0;display:grid;grid-template-columns:5rem minmax(0,1fr) minmax(0,1fr);gap:1.5rem}
@@ -136,6 +138,16 @@
   .uc h3{margin-bottom:.3rem}
   .uc .outcome{font-size:.92rem}
   .uc .outcome b{display:block;font-family:var(--font-mono);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--sage-700);margin-bottom:.3rem}
+
+  /* dimensions: one security front per row — what it is, the repair, the prevention */
+  .dim{border-top:1px solid var(--line);padding:1.6rem 0;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) minmax(0,1fr);gap:1.5rem}
+  @media (max-width:760px){.dim{grid-template-columns:1fr;gap:.9rem}}
+  .dim h3{margin-bottom:.3rem}
+  .dim .what{font-size:.92rem;color:var(--muted)}
+  .dim .fx{font-size:.92rem}
+  .dim .fx b{display:block;font-family:var(--font-mono);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;margin-bottom:.3rem}
+  .dim .now b{color:var(--sienna-600)}
+  .dim .later b{color:var(--sage-700)}
 
   /* side by side */
   .sbs{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
@@ -171,9 +183,9 @@
   .next .card dt:first-child{margin-top:0}
   .next .card dd{font-size:.92rem}
 
-  footer{background:var(--ink);color:#B9C4BE;font-size:.85rem;padding:2.5rem 0}
+  footer{background:var(--cream-2);color:var(--muted);font-size:.85rem;padding:2.5rem 0;border-top:1px solid var(--line)}
   footer .wrap{display:flex;justify-content:space-between;gap:2rem;flex-wrap:wrap}
-  footer a{color:#F3EFE8}
+  footer a{color:var(--sage-700)}
   .draft{position:sticky;top:0;z-index:5;background:var(--sienna-surface);color:var(--sienna-600);font-family:var(--font-mono);font-size:.72rem;letter-spacing:.08em;text-align:center;padding:.45rem 1rem;border-bottom:1px solid #F0D9CF}
 </style>
 
@@ -271,7 +283,7 @@
       <div class="stat">
         <div class="n">0 <small>of 9</small></div>
         <div class="l">Real leaks found in application source</div>
-        <div class="s">Every one was in a place review never reads: recorded HTTP test cassettes, a committed test report, Terraform locals, and — the AI-native vector — live credentials pasted into an agent's permission allow-list. A scrubber that lists what to redact fails open on every field it has not seen.</div>
+        <div class="s">Every one was in a place code review never reads: recorded test fixtures (saved API responses that tests replay), a committed test report, infrastructure configuration, and — the AI-native vector — live credentials pasted into the coding agent's own permission settings.</div>
         <div class="src">Nine distinct high-confidence formats; none tested for validity</div>
       </div>
       <div class="stat">
@@ -284,12 +296,59 @@
     <div class="cols2" style="margin-top:3rem">
       <div>
         <h3>What the untuned scanner costs</h3>
-        <p class="sub">Point a secret scanner at a real repository with its default ruleset and 99.4% of what it reports is noise. Teams turn it off within a week. The craft is the tuned allowlist — verified false positives only, suppressed by <em>value</em> never by <em>path</em>, so a real token in an allowlisted file still fires. That tuning is a deliverable, not a setting.</p>
+        <p class="sub">Point a secret scanner at a real repository with its factory settings and 99.4% of what it reports is noise. Teams turn it off within a week. The craft is the tuned ignore-list — each entry a verified false alarm, and each ignoring one specific value rather than a whole file, so a real token in that same file still triggers. That tuning is a deliverable, not a setting.</p>
       </div>
       <div>
         <h3>What “declared” costs versus “enforced”</h3>
         <p class="sub">Across 26 repositories in one organisation, exactly one default branch required a passing status check before merge. Every gate that ever ran there reported a red cross that a merge could simply ignore. One org-level ruleset change is worth more than every individual gate — and it is where Gate Flow starts.</p>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- THE FIVE FRONTS -->
+<section id="fronts">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">The five fronts</div>
+      <h2>Find it. Fix it today. Make it stay fixed.</h2>
+    </div>
+    <p class="sub text" style="margin-bottom:1.4rem">Security in AI-assisted delivery is not one problem — it is five separate fronts, and every finding on every front needs two different answers: the repair you make today, and the change that stops the same problem from ever coming back. The gates further down are the machinery of that second answer; this is the map they serve.</p>
+
+    <div class="dim">
+      <div><h3>Secrets</h3><p class="what">Passwords, tokens and keys that end up written into code or its history. Every leak we found lived here — and none of them was in application code. They hid in test recordings, generated reports and tool configuration, the places code review never reads.</p></div>
+      <div class="fx now"><b>Fix it today</b>Rotate every exposed credential with its owner. Deleting it from the code does not cancel it — anyone who ever copied the repository can still read the old value.</div>
+      <div class="fx later"><b>Make it stay fixed</b>Scanners refuse the commit and the merge, and secrets move into a managed vault — AWS Secrets Manager or HashiCorp Vault are the common choices — with automatic rotation, so a credential never has a reason to appear in code at all.</div>
+    </div>
+    <div class="dim">
+      <div><h3>AI-written code</h3><p class="what">Nearly half of what the models write contains a vulnerability, and newer models are not writing safer code — only more fluent code.</p></div>
+      <div class="fx now"><b>Fix it today</b>Run static analysis and a security review on the change in front of you, before it merges — not on the whole codebase, on the change.</div>
+      <div class="fx later"><b>Make it stay fixed</b>Every confirmed finding becomes a line in the agent's own instruction files, so that class of bug stops being generated. And the review runs in the pipeline, where it cannot be forgotten — not on someone's laptop, where it can.</div>
+    </div>
+    <div class="dim">
+      <div><h3>Dependencies</h3><p class="what">The open-source packages a project installs — plus a new, AI-specific risk: models recommend packages that do not exist, and attackers register those names first.</p></div>
+      <div class="fx now"><b>Fix it today</b>Audit what is already installed against the public vulnerability databases; upgrade or remove what they flag.</div>
+      <div class="fx later"><b>Make it stay fixed</b>A new package must exist, must be older than a waiting period, and must pass the audit before it can merge; installed versions are locked in place so nothing updates silently.</div>
+    </div>
+    <div class="dim">
+      <div><h3>The AI toolchain itself</h3><p class="what">The agent's own configuration: its instruction files, the small scripts that run automatically around every action (“hooks”), and the plug-in servers that give it extra abilities (MCP). All of it executes with the developer's own privileges — tamper with it, and every future session is compromised.</p></div>
+      <div class="fx now"><b>Fix it today</b>Pin every plug-in to a fixed version instead of “whatever is newest”, and read what the hooks actually do.</div>
+      <div class="fx later"><b>Make it stay fixed</b>The whole surface is declared security-sensitive: changing it requires a named reviewer, and a pipeline check re-verifies the version pins and scans the hook content on every change.</div>
+    </div>
+    <div class="dim">
+      <div><h3>Process &amp; governance</h3><p class="what">The human side: who owns each risk, which risks were accepted on purpose, and whether any of this is still true a quarter later. Controls that nobody re-measures decay quietly.</p></div>
+      <div class="fx now"><b>Fix it today</b>Write accepted risks down with their reasoning, so audits stop re-flagging decisions that were made deliberately — and people stop learning to ignore red flags.</div>
+      <div class="fx later"><b>Make it stay fixed</b>A recurring audit re-measures everything on a cadence, scores are only allowed to move up, and major tool upgrades get a periodic human review: a short report, a decision, a roadmap entry.</div>
+    </div>
+
+    <h3 style="margin-top:3rem">Where the controls run</h3>
+    <p class="sub text" style="margin:.4rem 0 1rem">Each front is covered from five directions — four of them automatic, one deliberately human.</p>
+    <div class="chips">
+      <div class="chip">Set once<small>version pins, waiting periods, locked dependency lists</small></div>
+      <div class="chip">On the developer's machine<small>checks at commit time, guard rails on the agent</small></div>
+      <div class="chip">In the pipeline, deterministic<small>secret scan, static analysis — the same verdict every time</small></div>
+      <div class="chip">In the pipeline, AI-driven<small>a security review on every pull request, in a fresh context</small></div>
+      <div class="chip">On a human cadence<small>recurring audits, upgrade reviews, the accepted-risk register</small></div>
     </div>
   </div>
 </section>
@@ -301,6 +360,7 @@
       <div class="eyebrow">The blueprint</div>
       <h2>Six gates, three layers, one workflow. The engineer stays in the driver's seat.</h2>
     </div>
+    <p class="sub text" style="margin:-1.2rem 0 2.2rem">The five fronts above say <em>what</em> is protected. The gates below say <em>where</em> in the daily workflow the protection sits — every stage of a change's life has one.</p>
 
     <div class="layer">
       <div class="lbl">Layer 01<b>Accountable people</b></div>
@@ -323,8 +383,8 @@
             <div class="no">GATE 01 · SECRETS</div>
             <h4>Layered secret gate</h4>
             <div class="when">commit → merge · unconditional</div>
-            <p>A fast advisory pre-commit scan on the developer machine, then a full-history scan in CI on every pull request with a tuned, value-level allowlist. Recorded test fixtures are deliberately <em>not</em> path-excluded — that is where the real credentials were.</p>
-            <dl><dt>Reads &amp; writes</dt><dd>Staged files; full git history; allowlist config that cites each suppression's reason.</dd>
+            <p>A fast warning scan on the developer machine at commit time, then a scan of the full repository history on every pull request, with an ignore-list tuned entry by entry. Test recordings are deliberately <em>not</em> exempt — that is exactly where the real credentials were found.</p>
+            <dl><dt>Reads &amp; writes</dt><dd>Staged files; full git history; an ignore-list that records the reason for every entry.</dd>
             <dt>Where the engineer drives</dt><dd>Escape hatch on the local hook; none on the CI gate.</dd></dl>
           </article>
           <article class="gate">
@@ -355,7 +415,7 @@
             <div class="no">GATE 05 · TOOLCHAIN</div>
             <h4>Agent-config and toolchain gate</h4>
             <div class="when">any change to the agent surface</div>
-            <p>Instruction files, hooks, skills and MCP configuration are declared security-sensitive, routed through CODEOWNERS, and scanned in CI — hooks resolved from settings, inline commands included. MCP servers must be pinned to a version, digest or commit. No surface to scan is itself a blocking finding.</p>
+            <p>The agent's own configuration — instruction files, hooks, and MCP plug-ins (the servers that extend what the agent can do) — is declared security-sensitive: changes require a named reviewer and are scanned in the pipeline, including the command strings hidden inside settings files. Every plug-in must be pinned to a fixed version. And if the configuration goes missing entirely, that is a failure too — not a free pass.</p>
             <dl><dt>Reads &amp; writes</dt><dd><code>.claude/</code>, <code>.mcp.json</code>, hook scripts, permission patterns.</dd>
             <dt>Where the engineer drives</dt><dd>Owns the pin bump; review is binding.</dd></dl>
           </article>
@@ -394,16 +454,16 @@
   <div class="wrap">
     <div class="sec-head">
       <div class="eyebrow">Calibration is the keystone</div>
-      <h2>A control can exist, be enforced, be wired up — and still be scoped away by its own configuration.</h2>
+      <h2>A safety check can be installed, switched on, wired into the pipeline — and still quietly cancelled by its own settings.</h2>
     </div>
     <div class="cols2">
-      <p>We found four variants of the same failure in our own portfolio. A secret scanner whose allowlist matched whole lines, silently dropping any real token that shared a line with a suppressed value. An audit check that skipped the malicious-hook scan because hooks lived in a different directory — and reported 100%. A dependency cooldown that was a no-op because CI installed the package manager unpinned. A hook scanner we built to fix the skip-and-pass bug, which printed “all clear” on a repository with no settings file at all.</p>
-      <p>None of these was detected by the control itself, because a suppressed finding produces no signal. The blueprint therefore treats calibration as a deliverable with its own loop: every suppression config is diffed against a no-allowlist baseline, every suppressed finding must be attributable to a named entry, entries that match nothing are deleted, and synthetic positives are planted inside each suppressed context to prove the rule is narrow. An untested suppression is indistinguishable from a disabled check.</p>
+      <p>We found four versions of the same failure in our own portfolio. A secret scanner whose ignore-list was drawn too wide, so it also ignored real tokens that happened to sit on the same line as a known false alarm. An audit that reported a perfect security score on files it had never opened — it looked for a folder that did not exist, skipped the check, and counted the skip as a pass. A waiting period for new package versions that did nothing, because the tool that was supposed to enforce it was itself installed at “whatever is newest”. And a scanner we built ourselves that said “all clear” when pointed at a project with nothing in it to scan.</p>
+      <p>None of these announced itself, because a check that has been configured out of the way produces no error — just silence. So the blueprint treats tuning as a deliverable in its own right: every ignore-list entry must name the false alarm it exists for, entries that no longer match anything are deleted, and we plant fake secrets inside the ignored spots to prove the scanner still catches a real one there. An exclusion that has never been tested is the same thing as a check that has been switched off.</p>
     </div>
     <div class="loop" aria-label="The finding-to-instruction loop">
       <div><b>01 AUDIT</b>12-dimension run on a cadence; every check carries evidence, a standard and a confidence tag.</div>
       <div><b>02 VERIFY</b>Every surprising verdict — green ones most of all — is re-checked by hand against the repo.</div>
-      <div><b>03 FIX</b>The change cites the finding ID; the gate is run against a planted positive and an empty input.</div>
+      <div><b>03 FIX</b>The fix names the audit finding it closes; the new gate is proved by planting a fake violation it must catch — and by running it on an empty project it must not wave through.</div>
       <div><b>04 INSTRUCT</b>The finding becomes a line in the instruction files, so the agent does not regenerate it.</div>
       <div><b>05 RE-AUDIT</b>The next run proves the score moved because the control did, not because the detector blinked.</div>
     </div>
@@ -422,7 +482,7 @@
     <table>
       <thead><tr><th>Tier</th><th>Signal</th><th>What happens</th><th>Example</th></tr></thead>
       <tbody>
-        <tr><td>Tier 1 · Blocked</td><td>High-confidence format</td><td>The gate fails the commit or pull request. No override on the CI side.</td><td>A provider-prefixed token in a test cassette; a package name the registry has never seen; an unpinned MCP server.</td></tr>
+        <tr><td>Tier 1 · Blocked</td><td>High-confidence format</td><td>The gate fails the commit or pull request. No override on the CI side.</td><td>A recognisably real token in a test recording; a package name the registry has never seen; an agent plug-in with no version pin.</td></tr>
         <tr><td>Tier 2 · Reported</td><td>Drift, not breach</td><td>The finding is written to the PR as a check annotation; the engineer decides, the decision is logged.</td><td>A scorecard check that dropped but is not on the gated list; a dependency younger than the cooldown that is on the exclude list.</td></tr>
         <tr><td>Tier 3 · Escalated</td><td>Confirmed exposure</td><td>Rotation triage with the credential's owner — verify liveness with read-only probes, rotate live ones first, close dead ones with evidence.</td><td>A production bot token removed from git by a commit that rotated nothing. Removal is not revocation.</td></tr>
         <tr><td>Tier 4 · Accepted</td><td>Known, reasoned risk</td><td>Recorded in the accepted-risk register with the reasoning, so audits stop re-litigating it and a permanent FAIL does not train readers to ignore FAILs.</td><td>TLS terminated at the load balancer, cluster-internal URLs left plain.</td></tr>
@@ -441,23 +501,23 @@
     </div>
     <div class="uc">
       <div class="id">UC-01</div>
-      <div><h3>The credential in the test fixture</h3><p class="sub">A recorded API response carries a runner-registration token the scrubber had no rule for. Header filtering worked; body filtering was a denylist. It sat in <code>main</code> for six months under a passing audit that skipped the tests directory.</p></div>
-      <div class="outcome"><b>Gate Flow</b>Gate 01 fires on the commit (fixtures are not path-excluded). The scrubber is inverted to fail closed — redact by key shape and by value shape — and a test reads every committed cassette so a future hole fails CI. Verified additive: 0 of 73 cassettes changed.</div>
+      <div><h3>The credential in the test recording</h3><p class="sub">Tests often replay saved copies of real API responses instead of calling the live service. One of those recordings carried a live access token that the automatic cleaning step had no rule for — it only removed the fields it had been told about. The token sat on the main branch for six months, under an audit that reported a pass because it skipped the tests folder entirely.</p></div>
+      <div class="outcome"><b>Gate Flow</b>Gate 01 fires on the commit — test recordings are deliberately not exempt. The cleaning step is inverted: instead of removing only the fields it knows about, it removes anything shaped like a credential, and a test re-reads every committed recording so a future gap fails the pipeline. Verified safe to add: 0 of 73 existing recordings changed.</div>
     </div>
     <div class="uc">
       <div class="id">UC-02</div>
       <div><h3>The package that never existed</h3><p class="sub">The agent suggests a plausible helper library. It is not on the registry — yet. By the time someone registers the name, the import is already in the codebase and the next install pulls whatever they published.</p></div>
-      <div class="outcome"><b>Gate Flow</b>Gate 04 blocks any newly added package the registry has never heard of, with age and near-neighbour thresholds derived from the manifest. Back-tested: 0 false positives across 21 packages added by 13 real commits, each judged as of its own commit date.</div>
+      <div class="outcome"><b>Gate Flow</b>Gate 04 blocks any newly added package the public registry has never heard of, and flags names suspiciously close to popular ones. Back-tested against the project's own history: 0 false alarms across 21 real package additions.</div>
     </div>
     <div class="uc">
       <div class="id">UC-03</div>
-      <div><h3>The MCP server that updates itself</h3><p class="sub">Every stdio MCP server in four repositories ran a mutable version — <code>:latest</code>, <code>@canary</code>, or a git URL with no ref. A compromised update executes with developer privileges at every session start. This is the “rug pull” in the OWASP Agentic Top 10.</p></div>
+      <div><h3>The plug-in that updates itself</h3><p class="sub">MCP plug-ins extend what a coding agent can do, and they run with the developer's own privileges. Every one across four repositories was set to “whatever version is newest” — so a compromised update would execute on every developer machine at the next session start, no questions asked. Security bodies call this the “rug pull”.</p></div>
       <div class="outcome"><b>Gate Flow</b>Gate 05 flags any unpinned launch in <code>.mcp.json</code>; servers are pinned to a digest, version or commit, and a pin bump is a reviewed change on the protected surface.</div>
     </div>
     <div class="uc">
       <div class="id">UC-04</div>
-      <div><h3>The hook nobody parses</h3><p class="sub">Four of the six agent hooks across the org existed only as inline shell strings inside a settings file — no linter reads them, no directory scan finds them, and the audit's malicious-hook check skipped them because it looked for a folder that was never there.</p></div>
-      <div class="outcome"><b>Gate Flow</b>Gate 05 resolves the hook surface from the settings file, never from a directory, and blocks download-and-execute, exfiltration, credential reads and guard tampering. Calibrated against the repo's own guard scripts: 0 hits on legitimate code, 24 self-tests inside the job, 13-second run.</div>
+      <div><h3>The script nobody reads</h3><p class="sub">Hooks are small scripts the agent runs automatically around every action. Four of the six across the organisation existed only as command strings buried inside a settings file — no tool reads them, no folder scan finds them, and the audit's malicious-hook check skipped them because it looked for a folder that was never there.</p></div>
+      <div class="outcome"><b>Gate Flow</b>Gate 05 reads the hook list from the settings file itself — the one place it cannot hide — and blocks anything that downloads and runs code, sends data out, reads credentials, or tampers with the other guards. Tuned against the repository's own legitimate scripts: 0 false alarms, and the check runs in 13 seconds on every pull request.</div>
     </div>
     <div class="uc">
       <div class="id">UC-05</div>
@@ -533,7 +593,7 @@
     <div class="cols2">
       <div>
         <h3>What we don't know</h3>
-        <p class="sub">The catch rate of the generation-time security review on your code is not measured until it runs on your code — on ours, a regex-only plugin caught 4 of 9 planted vulnerability classes and none of the Kotlin ones, which is why the built-in review is the gate and the plugin is a supplement. Which of your historical leaks are still live is unknown until the liveness probes run; we do not test credentials for validity without the owner in the room. And not every control is universal: the fail-closed fixture scrubber attaches to a testing practice — recording real API traffic — not to a language or a repository. The Sprint answers that question before anything is copied.</p>
+        <p class="sub">The catch rate of the pre-commit security review on your code is not known until it runs on your code — on ours, a simple pattern-matching plugin caught 4 of 9 planted vulnerabilities and none in one of our main languages, which is why the full AI review is the gate and the pattern-matcher only a supplement. Which of your historical leaks are still live is unknown until the checks run; we never test a credential's validity without its owner in the room. And not every control applies everywhere: the test-recording cleaner only matters for teams that record real API traffic in their tests. The Sprint answers those questions before anything is copied.</p>
       </div>
       <div>
         <h3>What we own</h3>
@@ -569,7 +629,7 @@
         <div class="dur">One release cycle · development environment</div>
         <ul>
           <li>Provectus engineers embed with the team; changes land through the team's own process and review.</li>
-          <li>Gates ported from the reference implementation, tuned on the repo's real history — the tuned allowlist is the deliverable.</li>
+          <li>Gates ported from the reference implementation, tuned on the repo's real history — the tuned ignore-list is the deliverable.</li>
           <li>Each gate proved against a planted positive, a negative control on the repo's own guards, and an empty input.</li>
           <li>A repository ruleset makes the gates required, bypass list empty.</li>
           <li>Head-to-head on the locked scorecard: noise rate, catch rate, cycle time, audit coverage before and after.</li>
