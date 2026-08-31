@@ -1,0 +1,53 @@
+# MCP Pin Check Workflow
+#
+# Checks that every stdio MCP server in .mcp.json launches a version somebody
+# chose. .mcp.json runs third-party code on each developer's machine at session
+# start, with that developer's credentials in the environment, and nothing else
+# in CI reads the file.
+#
+# Ported from the HOPS gate (hops/.github/workflows/hops-mr-check.yml). The
+# checker is the Python twin of the Node one that ships to hops — this repo's
+# CI is Python, and both implementations are held to byte-identical output by
+# an agreement check in the research repo.
+#
+# The verdict is tiered so ops can live with it:
+#   fail  a git URL with no ref, a pre-release channel (@canary, @next, ...),
+#         or `npx -y` — untrusted AND mutable; nobody chose what executes
+#   warn  :latest / @latest from a publisher's stable channel — log only
+#   pass  a tag, an exact version, or a digest; a tag is enough
+# A digest is never required: no Dependabot ecosystem covers .mcp.json, so a
+# digest is a manual chore nobody owns and it rots.
+#
+# Called by ci.yml as a reusable workflow. Deliberately NOT filtered by changed
+# paths: any PR can edit .mcp.json and no label predicts it.
+
+name: MCP Pin Check
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  mcp-pin-check:
+    name: MCP pin check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Self-test the checker
+        run: python3 -m unittest discover -s scripts -p 'test_check_mcp_pins.py'
+
+      - name: Check MCP server pins
+        # --require-surface: an absent .mcp.json fails rather than reporting clean.
+        run: python3 scripts/check_mcp_pins.py --repo . --require-surface

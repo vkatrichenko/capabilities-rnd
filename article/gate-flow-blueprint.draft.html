@@ -1,0 +1,634 @@
+<title>Gate Flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  /* Tokens mirror provectus.com's own --color-* / --font-* set (cream ground, ink, sage, sienna),
+     so the page previews how the blueprint reads once it sits under /blueprints/. Single theme
+     by decision: the site ships no dark mode. */
+  :root{
+    color-scheme:light;
+    --cream:#FDF8F4; --cream-2:#F6EFE8; --ink:#1C1F2E; --ink-2:#3A3F52;
+    --sage-50:#EEF3F0; --sage-100:#DCE8E2; --sage-200:#B8CEC4; --sage-600:#3B5249; --sage-700:#33473F; --sage-800:#263831;
+    --sienna-500:#D97F4A; --sienna-600:#B33A22; --sienna-surface:#FBF1EE;
+    --charcoal:#82827A; --line:#E6E1DA; --muted:#5A6B62;
+    --font-sans:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --w-text:44rem; --w-wide:72rem;
+  }
+  *{box-sizing:border-box;margin:0}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{background:var(--cream);color:var(--ink);font:400 17px/1.65 var(--font-sans);-webkit-font-smoothing:antialiased}
+  a{color:var(--sage-700);text-underline-offset:.2em}
+  a:focus-visible,button:focus-visible{outline:2px solid var(--sage-600);outline-offset:3px;border-radius:2px}
+  code{font-family:var(--font-mono);font-size:.82em;background:var(--sage-50);padding:.1em .4em;border-radius:3px}
+  .mono{font-family:var(--font-mono)}
+  .wrap{max-width:var(--w-wide);margin:0 auto;padding:0 1.5rem}
+  .text{max-width:var(--w-text)}
+  p+p{margin-top:1rem}
+  strong{font-weight:700}
+
+  /* site chrome (preview only) */
+  .nav{border-bottom:1px solid var(--line);background:var(--cream)}
+  .nav .wrap{display:flex;align-items:center;justify-content:space-between;height:4rem;gap:1rem}
+  .logo{font-weight:800;letter-spacing:-.02em;font-size:1.2rem;color:var(--ink);text-decoration:none}
+  .logo span{color:var(--sienna-500)}
+  .nav ul{display:flex;gap:1.6rem;list-style:none;padding:0;font-size:.92rem;font-weight:500}
+  .nav ul a{text-decoration:none;color:var(--ink-2)}
+  .nav ul a[aria-current]{color:var(--ink);border-bottom:2px solid var(--sienna-500);padding-bottom:.15rem}
+  @media (max-width:760px){.nav ul{display:none}}
+  .btn{display:inline-block;background:var(--ink);color:#fff;text-decoration:none;font-weight:600;padding:.8rem 1.35rem;border-radius:999px;font-size:.95rem;border:0;cursor:pointer}
+  .btn:hover{background:var(--sage-800)}
+  .btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--ink)}
+  .crumb{font-size:.82rem;color:var(--charcoal);padding:1.2rem 0 0}
+  .crumb a{color:var(--charcoal);text-decoration:none}
+
+  /* hero */
+  .hero{padding:2.5rem 0 3.5rem;border-bottom:1px solid var(--line)}
+  .hero .grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,.9fr);gap:3rem;align-items:end}
+  @media (max-width:900px){.hero .grid{grid-template-columns:1fr}}
+  .eyebrow{font-family:var(--font-mono);font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--sage-700);font-weight:700}
+  h1{font-size:clamp(2.6rem,6vw,4.4rem);line-height:1;font-weight:800;letter-spacing:-.035em;margin:.6rem 0 1.1rem;text-wrap:balance}
+  .lede{font-size:1.28rem;line-height:1.45;color:var(--ink-2);text-wrap:pretty;max-width:36rem}
+  .hero-cta{display:flex;gap:.8rem;flex-wrap:wrap;align-items:center;margin-top:1.8rem}
+  .tags{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:1.2rem}
+  .tag{font-size:.76rem;font-weight:600;color:var(--sage-800);background:var(--sage-100);padding:.25rem .65rem;border-radius:999px}
+  /* hero figure: the 5 stages of the workflow, each a gate */
+  .stages{display:grid;grid-template-columns:repeat(5,1fr);gap:.35rem;font-family:var(--font-mono);font-size:.68rem}
+  .stage{background:#fff;border:1px solid var(--line);border-radius:6px;padding:.7rem .6rem;min-height:6.6rem;display:flex;flex-direction:column;justify-content:space-between}
+  .stage b{display:block;font-family:var(--font-sans);font-size:.85rem;font-weight:700;letter-spacing:0}
+  .stage .g{color:var(--sienna-600);font-weight:700}
+  .stage-cap{font-size:.78rem;color:var(--charcoal);margin-top:.6rem;font-family:var(--font-sans)}
+  @media (max-width:600px){.stages{grid-template-columns:repeat(2,1fr)}}
+
+  /* sections */
+  section{padding:4.5rem 0;border-bottom:1px solid var(--line)}
+  section.dark{background:var(--ink);color:#F3EFE8;border-color:var(--ink)}
+  section.dark .eyebrow{color:var(--sage-200)}
+  section.dark a{color:var(--sage-200)}
+  section.dark code{background:rgba(255,255,255,.08);color:#F3EFE8}
+  section.tint{background:var(--cream-2)}
+  .sec-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:2rem 4rem;margin-bottom:2.4rem}
+  @media (max-width:900px){.sec-head{grid-template-columns:1fr;gap:1rem}}
+  .kicker{font-size:.95rem;font-weight:700;letter-spacing:-.005em;text-transform:none}
+  h2{font-size:clamp(1.7rem,3.2vw,2.35rem);line-height:1.12;font-weight:800;letter-spacing:-.025em;text-wrap:balance}
+  h3{font-size:1.12rem;font-weight:700;letter-spacing:-.01em;margin-bottom:.4rem}
+  .sub{color:var(--muted);font-size:.95rem}
+  section.dark .sub{color:#B9C4BE}
+
+  .cols3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2.5rem}
+  .cols2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2.5rem}
+  .cols4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1.6rem}
+  @media (max-width:900px){.cols3,.cols4{grid-template-columns:1fr 1fr}}
+  @media (max-width:600px){.cols3,.cols2,.cols4{grid-template-columns:1fr}}
+
+  .stat{border-top:2px solid var(--ink);padding-top:1rem}
+  .stat .n{font-size:2.6rem;font-weight:800;letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums}
+  .stat .n small{font-size:1.1rem;font-weight:600;letter-spacing:0;color:var(--muted)}
+  .stat .l{font-weight:700;margin:.5rem 0 .3rem}
+  .stat .s{font-size:.9rem;color:var(--muted)}
+  .stat .src{font-size:.78rem;color:var(--charcoal);margin-top:.5rem;font-family:var(--font-mono)}
+  .pull{margin:3rem 0 0;padding:1.8rem 0 0;border-top:1px solid var(--line);font-size:1.45rem;line-height:1.3;font-weight:600;letter-spacing:-.015em;text-wrap:balance;max-width:44rem}
+  .pull em{font-style:normal;color:var(--sienna-600)}
+
+  /* blueprint layers */
+  .layer{display:grid;grid-template-columns:9rem minmax(0,1fr);gap:1.5rem;padding:1.8rem 0;border-top:1px solid var(--line)}
+  @media (max-width:760px){.layer{grid-template-columns:1fr;gap:.6rem}}
+  .layer .lbl{font-family:var(--font-mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--sage-700);font-weight:700;line-height:1.5}
+  .layer .lbl b{display:block;font-family:var(--font-sans);font-size:1rem;letter-spacing:-.01em;text-transform:none;color:var(--ink);margin-top:.2rem}
+  .chips{display:flex;flex-wrap:wrap;gap:.5rem}
+  .chip{background:#fff;border:1px solid var(--line);border-radius:6px;padding:.55rem .8rem;font-size:.88rem;font-weight:600}
+  .chip small{display:block;font-weight:400;color:var(--muted);font-size:.8rem}
+  .gates{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
+  @media (max-width:900px){.gates{grid-template-columns:1fr 1fr}}
+  @media (max-width:600px){.gates{grid-template-columns:1fr}}
+  .gate{background:#fff;border:1px solid var(--line);border-radius:8px;padding:1.2rem 1.2rem 1.1rem;display:flex;flex-direction:column;gap:.55rem}
+  .gate .no{font-family:var(--font-mono);font-size:.7rem;letter-spacing:.14em;color:var(--sienna-600);font-weight:700}
+  .gate h4{font-size:1.02rem;font-weight:700;letter-spacing:-.01em}
+  .gate .when{font-size:.78rem;color:var(--charcoal);font-family:var(--font-mono)}
+  .gate p{font-size:.9rem;color:var(--ink-2)}
+  .gate dl{font-size:.84rem;margin-top:.2rem;border-top:1px dashed var(--line);padding-top:.6rem}
+  .gate dt{font-weight:700;color:var(--sage-800);font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;margin-top:.45rem}
+  .gate dd{color:var(--ink-2)}
+  .tagline{font-size:.95rem;font-weight:600;color:var(--sage-800);margin-top:1rem}
+
+  /* loop */
+  .loop{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.6rem;margin-top:1.6rem;font-size:.9rem}
+  @media (max-width:760px){.loop{grid-template-columns:1fr 1fr}}
+  .loop div{background:#fff;border:1px solid var(--line);border-radius:6px;padding:.9rem .9rem}
+  .loop b{display:block;font-family:var(--font-mono);font-size:.7rem;letter-spacing:.12em;color:var(--sienna-600);margin-bottom:.3rem}
+  .loop-note{font-size:.88rem;color:var(--muted);margin-top:.9rem}
+
+  /* tiers table */
+  table{width:100%;border-collapse:collapse;font-size:.92rem}
+  th{text-align:left;font-family:var(--font-mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--sage-700);padding:.6rem .7rem;border-bottom:2px solid var(--ink)}
+  td{padding:.9rem .7rem;border-bottom:1px solid var(--line);vertical-align:top}
+  td:first-child{font-weight:700;white-space:nowrap}
+  .tbl{overflow-x:auto}
+  section.dark th{color:var(--sage-200);border-color:#F3EFE8}
+  section.dark td{border-color:rgba(255,255,255,.14)}
+
+  /* use cases */
+  .uc{border-top:1px solid var(--line);padding:1.5rem 0;display:grid;grid-template-columns:5rem minmax(0,1fr) minmax(0,1fr);gap:1.5rem}
+  @media (max-width:760px){.uc{grid-template-columns:1fr}}
+  .uc .id{font-family:var(--font-mono);font-size:.78rem;color:var(--sienna-600);font-weight:700}
+  .uc h3{margin-bottom:.3rem}
+  .uc .outcome{font-size:.92rem}
+  .uc .outcome b{display:block;font-family:var(--font-mono);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--sage-700);margin-bottom:.3rem}
+
+  /* side by side */
+  .sbs{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+  @media (max-width:760px){.sbs{grid-template-columns:1fr}}
+  .track{border:1px solid var(--line);border-radius:8px;padding:1.4rem;background:#fff}
+  .track.now{border-color:var(--sienna-500)}
+  .track.new{border-color:var(--sage-600)}
+  .track .t{font-family:var(--font-mono);font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;margin-bottom:1rem}
+  .track.now .t{color:var(--sienna-600)}.track.new .t{color:var(--sage-700)}
+  .tl{list-style:none;padding:0;display:flex;flex-direction:column;gap:.7rem;font-size:.9rem}
+  .tl li{display:grid;grid-template-columns:5.4rem minmax(0,1fr);gap:.8rem}
+  .tl .at{font-family:var(--font-mono);font-size:.76rem;color:var(--charcoal);padding-top:.15rem}
+  .track .sum{margin-top:1.2rem;padding-top:.9rem;border-top:1px dashed var(--line);font-weight:700}
+
+  /* engagement */
+  .phases{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.2rem}
+  @media (max-width:900px){.phases{grid-template-columns:1fr}}
+  .phase{border-top:2px solid var(--ink);padding-top:1rem}
+  .phase .ph{font-family:var(--font-mono);font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--sienna-600);font-weight:700}
+  .phase h3{margin:.3rem 0 .1rem}
+  .phase .dur{font-size:.85rem;color:var(--muted);margin-bottom:.8rem}
+  .phase ul{padding-left:1.1rem;font-size:.92rem;display:flex;flex-direction:column;gap:.35rem}
+
+  .commit{border-top:1px solid var(--line);padding:1.3rem 0}
+  .commit h3{margin-bottom:.25rem}
+  .commit p{font-size:.95rem;color:var(--ink-2)}
+
+  .next{padding:5rem 0}
+  .next .wrap{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:3rem;align-items:center}
+  @media (max-width:900px){.next .wrap{grid-template-columns:1fr}}
+  .next .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:1.6rem}
+  .next .card dt{font-family:var(--font-mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--sage-700);font-weight:700;margin-top:.9rem}
+  .next .card dt:first-child{margin-top:0}
+  .next .card dd{font-size:.92rem}
+
+  footer{background:var(--ink);color:#B9C4BE;font-size:.85rem;padding:2.5rem 0}
+  footer .wrap{display:flex;justify-content:space-between;gap:2rem;flex-wrap:wrap}
+  footer a{color:#F3EFE8}
+  .draft{position:sticky;top:0;z-index:5;background:var(--sienna-surface);color:var(--sienna-600);font-family:var(--font-mono);font-size:.72rem;letter-spacing:.08em;text-align:center;padding:.45rem 1rem;border-bottom:1px solid #F0D9CF}
+</style>
+
+<div class="draft">DRAFT · CLIENT EDITION — preview of how the blueprint renders at provectus.com/blueprints/ · repositories anonymised, secret values never appear</div>
+
+<nav class="nav" aria-label="Site">
+  <div class="wrap">
+    <a class="logo" href="#" aria-label="Provectus">provectus<span>.</span></a>
+    <ul>
+      <li><a href="#">Services</a></li>
+      <li><a href="#" aria-current="page">Blueprints</a></li>
+      <li><a href="#">Industries</a></li>
+      <li><a href="#">Insights</a></li>
+      <li><a href="#">Company</a></li>
+    </ul>
+    <a class="btn" href="#next">Start a Sprint →</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="crumb"><a href="#">Blueprints</a> &nbsp;/&nbsp; Engineering &amp; Platform</div>
+    <div class="grid">
+      <div>
+        <div class="eyebrow">Blueprint · AI-assisted software delivery</div>
+        <h1>Gate Flow</h1>
+        <p class="lede">Nearly half of AI-generated code ships with a vulnerability, and the rate is not falling with newer models. Gate Flow puts six deterministic gates at the five moments a change can go wrong — commit, agent call, merge, dependency update, audit — and proves each one against the input it must fail on.</p>
+        <div class="hero-cta">
+          <a class="btn" href="#next">Start a Sprint →</a>
+          <a class="btn ghost" href="#blueprint">See the gates</a>
+        </div>
+        <div class="tags">
+          <span class="tag">Software teams</span><span class="tag">Platform / DevOps</span><span class="tag">AI-assisted engineering</span><span class="tag">GitHub · GitLab</span>
+        </div>
+      </div>
+      <figure>
+        <div class="stages" aria-label="Five workflow stages, each with a gate">
+          <div class="stage"><b>Commit</b><span class="g">▲ secret gate</span></div>
+          <div class="stage"><b>Agent call</b><span class="g">▲ agent guard</span></div>
+          <div class="stage"><b>Merge</b><span class="g">▲ code · config · package gates</span></div>
+          <div class="stage"><b>Dependency</b><span class="g">▲ cooldown · audit</span></div>
+          <div class="stage"><b>Audit</b><span class="g">▲ posture ratchet</span></div>
+        </div>
+        <figcaption class="stage-cap">Every stage of the loop carries a gate that blocks, not a reviewer who might notice. The engineer stays accountable; the gate makes the outcome deterministic.</figcaption>
+      </figure>
+    </div>
+  </div>
+</header>
+
+<!-- THE CONTEXT -->
+<section id="context">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">The context</div>
+      <h2>Three facts. The code is already being written by machines.</h2>
+    </div>
+    <div class="cols3">
+      <div class="stat">
+        <div class="n">45<small>%</small></div>
+        <div class="l">of AI-generated code contains a vulnerability</div>
+        <div class="s">Measured across 100+ models and four languages. The rate is flat across model generations — newer models write more syntactically correct code, not safer code.</div>
+        <div class="src">Veracode, 2025 GenAI Code Security Report</div>
+      </div>
+      <div class="stat">
+        <div class="n">19.7<small>%</small></div>
+        <div class="l">of packages recommended by LLMs do not exist</div>
+        <div class="s">Attackers pre-register the hallucinated names. The agent then installs its own suggestion. Classic typosquatting defenses do not see it — there is no near-neighbour to mis-type.</div>
+        <div class="src">USENIX Security 2025, “slopsquatting”</div>
+      </div>
+      <div class="stat">
+        <div class="n">~80<small>%</small></div>
+        <div class="l">of code at AI-native teams is AI-authored</div>
+        <div class="s">At that share the industry answer is not more human review. It is deterministic scanners on every change, narrow-scope review agents with mandatory evidence, and logged accountability.</div>
+        <div class="src">Anthropic, AI-native SDLC security</div>
+      </div>
+    </div>
+    <p class="pull">The question is no longer whether the model writes good code. It is whether anything <em>between the model and <code>main</code></em> is allowed to say no.</p>
+  </div>
+</section>
+
+<!-- THE MATH -->
+<section id="math" class="tint">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">The math</div>
+      <h2>The leak is never in application code. It is everywhere code review does not look.</h2>
+    </div>
+    <div class="cols3">
+      <div class="stat">
+        <div class="n">7 <small>vs</small> 2</div>
+        <div class="l">Credentials ever leaked: ungated repo vs gated repo</div>
+        <div class="s">Same organisation, same scanner, same ruleset, full history — 14,729 commits across four repositories. The one repo with a secret gate has a verifiably clean history since the gate landed. Its closest sibling without one accumulated seven real-format credentials; one was still readable at the tip of <code>main</code>.</div>
+        <div class="src">Provectus engineering portfolio, gitleaks 8.24.3, 2026</div>
+      </div>
+      <div class="stat">
+        <div class="n">0 <small>of 9</small></div>
+        <div class="l">Real leaks found in application source</div>
+        <div class="s">Every one was in a place review never reads: recorded HTTP test cassettes, a committed test report, Terraform locals, and — the AI-native vector — live credentials pasted into an agent's permission allow-list. A scrubber that lists what to redact fails open on every field it has not seen.</div>
+        <div class="src">Nine distinct high-confidence formats; none tested for validity</div>
+      </div>
+      <div class="stat">
+        <div class="n">13 <small>days</small></div>
+        <div class="l">Audit fail → gate live → re-audit pass</div>
+        <div class="s">A recurring 12-dimension audit flagged the missing secret gate. The fix landed with the finding ID in its config header. The next run passed; prevention coverage moved 66→81.5%, supply chain 83→96%. Controls that are audited become fixes. Controls that are not decay.</div>
+        <div class="src">Two consecutive AWOS audit runs, 17 days apart</div>
+      </div>
+    </div>
+    <div class="cols2" style="margin-top:3rem">
+      <div>
+        <h3>What the untuned scanner costs</h3>
+        <p class="sub">Point a secret scanner at a real repository with its default ruleset and 99.4% of what it reports is noise. Teams turn it off within a week. The craft is the tuned allowlist — verified false positives only, suppressed by <em>value</em> never by <em>path</em>, so a real token in an allowlisted file still fires. That tuning is a deliverable, not a setting.</p>
+      </div>
+      <div>
+        <h3>What “declared” costs versus “enforced”</h3>
+        <p class="sub">Across 26 repositories in one organisation, exactly one default branch required a passing status check before merge. Every gate that ever ran there reported a red cross that a merge could simply ignore. One org-level ruleset change is worth more than every individual gate — and it is where Gate Flow starts.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- THE BLUEPRINT -->
+<section id="blueprint">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">The blueprint</div>
+      <h2>Six gates, three layers, one workflow. The engineer stays in the driver's seat.</h2>
+    </div>
+
+    <div class="layer">
+      <div class="lbl">Layer 01<b>Accountable people</b></div>
+      <div>
+        <div class="chips">
+          <div class="chip">Engineer<small>authors with the agent, owns the change</small></div>
+          <div class="chip">Reviewer<small>reads the finding, not the whole diff</small></div>
+          <div class="chip">Security owner<small>holds the accepted-risk register</small></div>
+          <div class="chip">Platform admin<small>owns the ruleset that makes gates binding</small></div>
+        </div>
+        <p class="tagline">Nothing merges on review alone — and nothing merges without a named human either.</p>
+      </div>
+    </div>
+
+    <div class="layer">
+      <div class="lbl">Layer 02<b>Provectus gates</b></div>
+      <div>
+        <div class="gates">
+          <article class="gate">
+            <div class="no">GATE 01 · SECRETS</div>
+            <h4>Layered secret gate</h4>
+            <div class="when">commit → merge · unconditional</div>
+            <p>A fast advisory pre-commit scan on the developer machine, then a full-history scan in CI on every pull request with a tuned, value-level allowlist. Recorded test fixtures are deliberately <em>not</em> path-excluded — that is where the real credentials were.</p>
+            <dl><dt>Reads &amp; writes</dt><dd>Staged files; full git history; allowlist config that cites each suppression's reason.</dd>
+            <dt>Where the engineer drives</dt><dd>Escape hatch on the local hook; none on the CI gate.</dd></dl>
+          </article>
+          <article class="gate">
+            <div class="no">GATE 02 · AGENT</div>
+            <h4>Agent-time guard</h4>
+            <div class="when">every agent tool call</div>
+            <p>A hook in front of each file or shell action the coding agent takes: it cannot read or write secret material at all, and it re-installs the local git hook after every session so “hook never installed” cannot happen on an agent's machine.</p>
+            <dl><dt>Reads &amp; writes</dt><dd>Tool-call arguments; the repo's hook installation state.</dd>
+            <dt>Where the engineer drives</dt><dd>Sees the block and its reason inline; the agent does not retry.</dd></dl>
+          </article>
+          <article class="gate">
+            <div class="no">GATE 03 · CODE</div>
+            <h4>Deterministic SAST + evidence review</h4>
+            <div class="when">before commit · on merge</div>
+            <p>Static analysis with a quality gate on every merge request, plus a security review the agent runs on itself before commit. Every finding updates the instruction files, so the same class of bug is not generated twice.</p>
+            <dl><dt>Reads &amp; writes</dt><dd>The diff; the CLAUDE.md / rules that steer future generation.</dd>
+            <dt>Where the engineer drives</dt><dd>Accepts, fixes, or records an accepted risk with reasoning.</dd></dl>
+          </article>
+          <article class="gate">
+            <div class="no">GATE 04 · DEPENDENCIES</div>
+            <h4>Dependency gate</h4>
+            <div class="when">any manifest or lockfile change</div>
+            <p>Three checks on every dependency diff: the package must exist on the registry and pre-date the pull request; the version must be older than a cooldown window; and the vulnerability audit runs on the change whether or not anyone labelled it.</p>
+            <dl><dt>Reads &amp; writes</dt><dd>Manifests, lockfiles, registry metadata; blocks the PR.</dd>
+            <dt>Where the engineer drives</dt><dd>Trusted internal packages go on a named exclude list.</dd></dl>
+          </article>
+          <article class="gate">
+            <div class="no">GATE 05 · TOOLCHAIN</div>
+            <h4>Agent-config and toolchain gate</h4>
+            <div class="when">any change to the agent surface</div>
+            <p>Instruction files, hooks, skills and MCP configuration are declared security-sensitive, routed through CODEOWNERS, and scanned in CI — hooks resolved from settings, inline commands included. MCP servers must be pinned to a version, digest or commit. No surface to scan is itself a blocking finding.</p>
+            <dl><dt>Reads &amp; writes</dt><dd><code>.claude/</code>, <code>.mcp.json</code>, hook scripts, permission patterns.</dd>
+            <dt>Where the engineer drives</dt><dd>Owns the pin bump; review is binding.</dd></dl>
+          </article>
+          <article class="gate">
+            <div class="no">GATE 06 · POSTURE</div>
+            <h4>Posture ratchet</h4>
+            <div class="when">every PR · every merge to main</div>
+            <p>An independent scorecard, used as a per-check ratchet against a committed baseline rather than a score threshold: four checks fail a pull request if they drop, eight are reported, six are ignored with the reason recorded next to each. It fails closed when a check goes missing.</p>
+            <dl><dt>Reads &amp; writes</dt><dd>Repo settings, workflows, branch protection; a baseline file.</dd>
+            <dt>Where the engineer drives</dt><dd>Raises the baseline; never lowers it silently.</dd></dl>
+          </article>
+        </div>
+        <p class="tagline">Nothing here is exotic. Each gate is a small deterministic control wired into one stage of the workflow — and each is proved with a planted positive, a negative control on real code, and an empty input.</p>
+      </div>
+    </div>
+
+    <div class="layer">
+      <div class="lbl">Layer 03<b>Systems of record — unchanged</b></div>
+      <div>
+        <div class="chips">
+          <div class="chip">GitHub / GitLab<small>rulesets make gates binding</small></div>
+          <div class="chip">CI runners<small>GitHub Actions, GitLab CI</small></div>
+          <div class="chip">Package registries<small>npm, PyPI, Gradle, Docker</small></div>
+          <div class="chip">Coding agent<small>Claude Code, hooks, MCP</small></div>
+          <div class="chip">SAST + AI review<small>SonarQube, detekt, CodeRabbit</small></div>
+          <div class="chip">Recurring audit<small>AWOS AI-readiness audit, 12 dimensions</small></div>
+        </div>
+        <p class="tagline">Additive, not a replatform. Gate Flow sits in the pipeline you already run.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- THE KEYSTONE -->
+<section id="keystone" class="dark">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">Calibration is the keystone</div>
+      <h2>A control can exist, be enforced, be wired up — and still be scoped away by its own configuration.</h2>
+    </div>
+    <div class="cols2">
+      <p>We found four variants of the same failure in our own portfolio. A secret scanner whose allowlist matched whole lines, silently dropping any real token that shared a line with a suppressed value. An audit check that skipped the malicious-hook scan because hooks lived in a different directory — and reported 100%. A dependency cooldown that was a no-op because CI installed the package manager unpinned. A hook scanner we built to fix the skip-and-pass bug, which printed “all clear” on a repository with no settings file at all.</p>
+      <p>None of these was detected by the control itself, because a suppressed finding produces no signal. The blueprint therefore treats calibration as a deliverable with its own loop: every suppression config is diffed against a no-allowlist baseline, every suppressed finding must be attributable to a named entry, entries that match nothing are deleted, and synthetic positives are planted inside each suppressed context to prove the rule is narrow. An untested suppression is indistinguishable from a disabled check.</p>
+    </div>
+    <div class="loop" aria-label="The finding-to-instruction loop">
+      <div><b>01 AUDIT</b>12-dimension run on a cadence; every check carries evidence, a standard and a confidence tag.</div>
+      <div><b>02 VERIFY</b>Every surprising verdict — green ones most of all — is re-checked by hand against the repo.</div>
+      <div><b>03 FIX</b>The change cites the finding ID; the gate is run against a planted positive and an empty input.</div>
+      <div><b>04 INSTRUCT</b>The finding becomes a line in the instruction files, so the agent does not regenerate it.</div>
+      <div><b>05 RE-AUDIT</b>The next run proves the score moved because the control did, not because the detector blinked.</div>
+    </div>
+    <p class="loop-note">Measured cadence in our own repos: 13 days from FAIL to PASS on the secret gate; two dimensions gained 14–16 points in 17 days.</p>
+  </div>
+</section>
+
+<!-- HUMAN OVERSIGHT -->
+<section id="oversight">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">Human oversight</div>
+      <h2>How gates and people work together. Four tiers. No silent pass.</h2>
+    </div>
+    <div class="tbl">
+    <table>
+      <thead><tr><th>Tier</th><th>Signal</th><th>What happens</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td>Tier 1 · Blocked</td><td>High-confidence format</td><td>The gate fails the commit or pull request. No override on the CI side.</td><td>A provider-prefixed token in a test cassette; a package name the registry has never seen; an unpinned MCP server.</td></tr>
+        <tr><td>Tier 2 · Reported</td><td>Drift, not breach</td><td>The finding is written to the PR as a check annotation; the engineer decides, the decision is logged.</td><td>A scorecard check that dropped but is not on the gated list; a dependency younger than the cooldown that is on the exclude list.</td></tr>
+        <tr><td>Tier 3 · Escalated</td><td>Confirmed exposure</td><td>Rotation triage with the credential's owner — verify liveness with read-only probes, rotate live ones first, close dead ones with evidence.</td><td>A production bot token removed from git by a commit that rotated nothing. Removal is not revocation.</td></tr>
+        <tr><td>Tier 4 · Accepted</td><td>Known, reasoned risk</td><td>Recorded in the accepted-risk register with the reasoning, so audits stop re-litigating it and a permanent FAIL does not train readers to ignore FAILs.</td><td>TLS terminated at the load balancer, cluster-internal URLs left plain.</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</section>
+
+<!-- USE CASES -->
+<section id="usecases" class="tint">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">Key use cases</div>
+      <h2>Five moments an AI-assisted change goes wrong — and where the gate catches it.</h2>
+    </div>
+    <div class="uc">
+      <div class="id">UC-01</div>
+      <div><h3>The credential in the test fixture</h3><p class="sub">A recorded API response carries a runner-registration token the scrubber had no rule for. Header filtering worked; body filtering was a denylist. It sat in <code>main</code> for six months under a passing audit that skipped the tests directory.</p></div>
+      <div class="outcome"><b>Gate Flow</b>Gate 01 fires on the commit (fixtures are not path-excluded). The scrubber is inverted to fail closed — redact by key shape and by value shape — and a test reads every committed cassette so a future hole fails CI. Verified additive: 0 of 73 cassettes changed.</div>
+    </div>
+    <div class="uc">
+      <div class="id">UC-02</div>
+      <div><h3>The package that never existed</h3><p class="sub">The agent suggests a plausible helper library. It is not on the registry — yet. By the time someone registers the name, the import is already in the codebase and the next install pulls whatever they published.</p></div>
+      <div class="outcome"><b>Gate Flow</b>Gate 04 blocks any newly added package the registry has never heard of, with age and near-neighbour thresholds derived from the manifest. Back-tested: 0 false positives across 21 packages added by 13 real commits, each judged as of its own commit date.</div>
+    </div>
+    <div class="uc">
+      <div class="id">UC-03</div>
+      <div><h3>The MCP server that updates itself</h3><p class="sub">Every stdio MCP server in four repositories ran a mutable version — <code>:latest</code>, <code>@canary</code>, or a git URL with no ref. A compromised update executes with developer privileges at every session start. This is the “rug pull” in the OWASP Agentic Top 10.</p></div>
+      <div class="outcome"><b>Gate Flow</b>Gate 05 flags any unpinned launch in <code>.mcp.json</code>; servers are pinned to a digest, version or commit, and a pin bump is a reviewed change on the protected surface.</div>
+    </div>
+    <div class="uc">
+      <div class="id">UC-04</div>
+      <div><h3>The hook nobody parses</h3><p class="sub">Four of the six agent hooks across the org existed only as inline shell strings inside a settings file — no linter reads them, no directory scan finds them, and the audit's malicious-hook check skipped them because it looked for a folder that was never there.</p></div>
+      <div class="outcome"><b>Gate Flow</b>Gate 05 resolves the hook surface from the settings file, never from a directory, and blocks download-and-execute, exfiltration, credential reads and guard tampering. Calibrated against the repo's own guard scripts: 0 hits on legitimate code, 24 self-tests inside the job, 13-second run.</div>
+    </div>
+    <div class="uc">
+      <div class="id">UC-05</div>
+      <div><h3>The control that is on and not binding</h3><p class="sub">A repository requires a pull request and one approving review; administrators are exempt; 1 of the last 30 changesets carried an approval. Every earlier version of this finding was about a control being absent. This one was present, enabled and routed around.</p></div>
+      <div class="outcome"><b>Gate Flow</b>Gate 06 measures enforcement, not presence: branch-protection state is part of the ratchet, and a repository ruleset requiring the security jobs — with an empty bypass list — is the first change of the Enable phase.</div>
+    </div>
+  </div>
+</section>
+
+<!-- SIDE BY SIDE -->
+<section id="sidebyside">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">Side by side</div>
+      <h2>Where the leak is caught changes everything.</h2>
+    </div>
+    <div class="sbs">
+      <div class="track now">
+        <div class="t">Today · leak discovered post-merge</div>
+        <ul class="tl">
+          <li><span class="at">Day 0</span><span>Agent generates Terraform with the Slack tokens inline. Nothing between the editor and <code>main</code> reads them.</span></li>
+          <li><span class="at">Month 8</span><span>A refactor moves the values to Secrets Manager. The commit message says “remove hardcoded tokens”. It rotates nothing.</span></li>
+          <li><span class="at">Month 16</span><span>An external scan of the full history finds the tokens. Owners confirm they were never reissued: full bot access to the workspace for anyone who ever cloned the repo.</span></li>
+          <li><span class="at">Month 16+</span><span>Rotation, reinstall, apply to every environment — under incident conditions.</span></li>
+        </ul>
+        <div class="sum">Exposure window: ~16 months. Detection: by accident.</div>
+      </div>
+      <div class="track new">
+        <div class="t">Gate Flow · leak blocked at the commit</div>
+        <ul class="tl">
+          <li><span class="at">Second 0</span><span>Agent attempts to write the token. Gate 02 refuses the tool call and says why.</span></li>
+          <li><span class="at">Second 1</span><span>Engineer pastes it by hand. The advisory pre-commit flags the format on stage.</span></li>
+          <li><span class="at">Minute 3</span><span>Engineer bypasses locally. The CI secret gate fails the pull request on full-history scan; the ruleset will not merge a failing check.</span></li>
+          <li><span class="at">Minute 10</span><span>The value moves to a secrets-manager reference; the finding is logged; no rotation needed — the token never reached a shared clone.</span></li>
+        </ul>
+        <div class="sum">Exposure window: none. Detection: three independent layers.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- THE BET -->
+<section id="bet" class="tint">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">The bet</div>
+      <h2>Gates are cheap. Proof that they fire is the product.</h2>
+    </div>
+    <div class="cols2">
+      <div>
+        <h3>The reading</h3>
+        <p class="sub">Regulators, standards bodies and the model vendors themselves have converged: NIST SSDF, OWASP's CI/CD and Agentic Top 10, and Anthropic's own playbook all describe the same shape — deterministic scanners on every change, pinned toolchains, protected agent configuration, a recurring audit with a working remediation loop. The practices are settled. What is rare is a team that has measured its own.</p>
+        <h3 style="margin-top:1.6rem">The posture</h3>
+        <p class="sub">Security tooling in most organisations is a property of a repository, never of the organisation. One repo hardened, three with nothing, is the normal shape — we measured it in our own portfolio before we measured it anywhere else. Gate Flow ports one reference implementation across the estate, then makes it binding at the org level.</p>
+      </div>
+      <div>
+        <h3>The asymmetry</h3>
+        <p class="sub">Adding a gate to five repositories cost a week. Running the same scorecard read-only across all 27 repositories cost an afternoon and produced the more valuable result: the one org-level setting that made every gate enforceable. Measurement first, then the cheapest change with the widest blast radius.</p>
+        <h3 style="margin-top:1.6rem">The window</h3>
+        <p class="sub">Every unscanned commit is fresh exposure, and the AI-native vectors — agent permission allow-lists, hallucinated packages, self-updating MCP servers — are not on any conventional scanner's list yet. A team that installs the gates now has a verifiably clean history from that day. A team that waits has a history to remediate.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- THE RISK -->
+<section id="risk">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">The risk</div>
+      <h2>What we do not know. What we will not do.</h2>
+    </div>
+    <div class="cols2">
+      <div>
+        <h3>What we don't know</h3>
+        <p class="sub">The catch rate of the generation-time security review on your code is not measured until it runs on your code — on ours, a regex-only plugin caught 4 of 9 planted vulnerability classes and none of the Kotlin ones, which is why the built-in review is the gate and the plugin is a supplement. Which of your historical leaks are still live is unknown until the liveness probes run; we do not test credentials for validity without the owner in the room. And not every control is universal: the fail-closed fixture scrubber attaches to a testing practice — recording real API traffic — not to a language or a repository. The Sprint answers that question before anything is copied.</p>
+      </div>
+      <div>
+        <h3>What we own</h3>
+        <p class="sub">We do not rotate your credentials, sign off your releases or edit your production configuration. The engineer stays accountable for the change; the security owner holds the accepted-risk register; the platform admin applies the ruleset. Every gate ships with its self-tests inside the job, is proved against a planted positive and an empty input before it is called done, and places its own source inside the surface it protects. Every number we report states the commit it was measured at. Secret values never appear in any artifact we produce.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ENGAGEMENT -->
+<section id="engagement" class="dark">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">The engagement model</div>
+      <h2>Measure first. Gate one repository. Make it binding for all.</h2>
+    </div>
+    <div class="phases">
+      <div class="phase">
+        <div class="ph">Phase 01 · Sprint</div>
+        <h3>Baseline</h3>
+        <div class="dur">Weeks 1–2 · read-only</div>
+        <ul>
+          <li>Full-history secret scan of every repository with one pinned scanner, one ruleset, one day — findings triaged by format confidence, values masked.</li>
+          <li>12-dimension AI-readiness audit on the two most active repos; every surprising verdict re-verified by hand.</li>
+          <li>Org-wide scorecard: which default branches require a passing check, which repos have dependency updates, which controls are on but bypassable.</li>
+          <li>Inventory of the agent surface: hooks, MCP servers and their pin state, permission patterns.</li>
+          <li>Output: a leak count per repo, a rotation list for owners, and a locked scorecard for Enable.</li>
+        </ul>
+      </div>
+      <div class="phase">
+        <div class="ph">Phase 02 · Enable</div>
+        <h3>One repository, all six gates</h3>
+        <div class="dur">One release cycle · development environment</div>
+        <ul>
+          <li>Provectus engineers embed with the team; changes land through the team's own process and review.</li>
+          <li>Gates ported from the reference implementation, tuned on the repo's real history — the tuned allowlist is the deliverable.</li>
+          <li>Each gate proved against a planted positive, a negative control on the repo's own guards, and an empty input.</li>
+          <li>A repository ruleset makes the gates required, bypass list empty.</li>
+          <li>Head-to-head on the locked scorecard: noise rate, catch rate, cycle time, audit coverage before and after.</li>
+        </ul>
+      </div>
+      <div class="phase">
+        <div class="ph">Phase 03 · Realize</div>
+        <h3>The organisation, cycle over cycle</h3>
+        <div class="dur">Quarter over quarter</div>
+        <ul>
+          <li>Port to the remaining repositories in impact ÷ effort order; one policy, per-stack implementations held to identical output.</li>
+          <li>Org-level ruleset: required checks on every default branch.</li>
+          <li>Audit on a cadence; the finding → instruction loop compounds — each caught class is one the agent stops generating.</li>
+          <li>Posture ratchet baselines raised as controls land; detector bugs filed upstream so the audit itself improves.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMMITMENTS -->
+<section id="commitments">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">Commitments</div>
+      <h2>What we sign up for.</h2>
+    </div>
+    <div class="text">
+      <div class="commit"><h3>Bounded confidence</h3><p>One repository, one release cycle, gates measured head-to-head against the baseline the Sprint locked. We scale to the rest of the estate only when the comparison favours the gates.</p></div>
+      <div class="commit"><h3>A range, not a promise</h3><p>The Sprint returns your own numbers — leaks per repository, noise rate at default versus tuned, checks required versus reported. We commit to what your history shows, not to ours.</p></div>
+      <div class="commit"><h3>Proved, not declared</h3><p>No gate is called done on the strength of its configuration. Each is run against the input it must fail on — absence included — and its own source sits inside the surface it protects.</p></div>
+      <div class="commit"><h3>The named trade-off</h3><p>Gate Flow sits in your pipeline, above your systems of record, not inside them. Some checks that need admin scope run by hand from a user token rather than from CI. We accept that for a clean audit trail and a short adoption path.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- NEXT STEP -->
+<section id="next" class="next tint">
+  <div class="wrap">
+    <div>
+      <div class="eyebrow">Next step</div>
+      <h2 style="margin:.6rem 0 1rem">Start with one full-history scan. Read-only, two weeks, your numbers.</h2>
+      <p class="sub" style="max-width:34rem">A Baseline Assessment runs the same instrument we ran on ourselves across your repositories. You get the leak count, the rotation list, the audit scores and the org-level enforcement gap — and we decide together whether Enable is worth a release cycle. If the scan comes back clean, we will say so.</p>
+      <div class="hero-cta"><a class="btn" href="#">Schedule a working session →</a></div>
+    </div>
+    <div class="card">
+      <dl>
+        <dt>Duration</dt><dd>1–2 weeks, read-only access; nothing is written to your repositories.</dd>
+        <dt>You bring</dt><dd>Read access to the repositories and CI config; one engineer who knows the pipeline; a credential owner for the rotation call.</dd>
+        <dt>You receive</dt><dd>Per-repo leak counts by format, in-HEAD vs history-only; audit scores with hand-verified verdicts; org enforcement map; a prioritised, impact ÷ effort roadmap; a locked scorecard for Enable.</dd>
+        <dt>Never</dt><dd>Secret values in any deliverable. Credentials tested for validity without the owner present.</dd>
+      </dl>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div>Gate Flow is a Provectus blueprint for AI-assisted software delivery. Numbers are from Provectus's own engineering portfolio, measured 2026 with the method logged in full — inventory before scanning; same tool, same ruleset, same day; full history not working tree; audit the audit, then read the auditor; every gate proved on the input it must fail on.</div>
+    <div>Sources: Veracode 2025 GenAI Code Security Report · USENIX Security 2025 · Anthropic AI-native SDLC security · OWASP ASVS 5.0, CI/CD Top 10, LLM &amp; Agentic Top 10 · NIST SP 800-218/218A · CSA MCP guidance · SLSA / OpenSSF Scorecard.</div>
+  </div>
+</footer>

@@ -114,3 +114,56 @@ replay that reported "no commits added dependencies", which looked like a plausi
 **Rule:** brace parameters whenever a `:` follows them in zsh (`${cm}:path`). More generally, when
 a loop over real data returns *nothing*, treat that as a bug until proven otherwise — a silent
 empty result is the failure mode most likely to be mistaken for a finding.
+
+## 2026-08-25 — Answered "which repos?" by counting the wrong thing
+
+Asked whether the hook-content scan should be hops-only, I answered from `hooks` blocks: hops 4,
+hops-mcp 2, barley 0, sowinsights 0 — therefore only two repos have anything to scan, therefore
+barley's gate would be a tripwire on an empty surface. The user pushed back ("why no gate in all four
+repos... what is the difference?"), which sent me to read barley's `.claude/settings.json` properly.
+It enables three marketplace plugins from `github: provectus/awos` with no ref. Plugins ship hooks,
+agents and skills. Barley's surface is not empty; it is the largest of the four and the only
+*indirect* one — nothing local to review, third-party code resolved at session start.
+
+I had also reached for a harness argument (does the repo even have CI?) that was false: all four have
+workflows, and all four already carry a Scorecard workflow from W2.3.
+
+**Rule:** before scoping a control by "which repos have X", enumerate what X actually is by reading
+one repo's config end to end, not by counting the field you already know about. And when reaching for
+a reason a control does not apply somewhere, verify the reason — an unverified constraint that
+happens to support the answer you already gave is the easiest kind of wrong.
+
+## 2026-08-25 — Wrote a false-positive count I had not measured
+
+The sweep artifact claimed the first draft of the rules produced "14+ findings on `block-secrets.sh`
+alone". No such run existed. Three of the four narrowings were made at design time, from reading the
+scripts before running anything, so they never produced a measured regression at all — I had
+back-filled a number that felt right for a story about calibration, in a document whose entire
+purpose is evidence.
+
+The fix was cheap: run each naive rule form against the two real scripts and count. The real numbers
+(18, 7, 4, 1, 1 → 0) are better than the invented one, and the shape of the story changed — most of
+the calibration was prevention, not repair, which is worth saying plainly.
+
+**Rule:** a number in an evidence document must come from a command that was run. If a narrowing was
+made at design time and never measured, either measure it retrospectively or say it was a design
+decision — never assign it a plausible figure.
+
+## 2026-08-25 — Shipped a commit message as a PR body, and CI caught what I had not read
+
+Both hops pull requests failed `Spec link – PR template` on their first run. Not for anything in the
+diff: the bodies were the commit messages, and hops enforces a `Spec:` field from its PR template in
+CI (SDD-04, audit 2026-07-17 R6). #556 had no template at all; #557 had it appended below, with the
+field still holding the unfilled HTML hint comment, which the check strips before looking — so it
+read as empty.
+
+I had read `.github/workflows/` closely enough to add a job to `hops-mr-check.yml` and to mirror
+`spec-link-check.yml`'s trigger design in my head, and still did not read what that workflow
+*enforces* about the thing I was about to submit.
+
+**Rule:** a commit message is not a PR body. Before opening a PR in any repo, read
+`.github/pull_request_template.md` and any workflow that validates the body, and fill the template.
+Where a check parses text, simulate it locally against the draft — the same pipeline, in the same
+locale — before pushing. Both corrected bodies were run through `spec-link-check.yml`'s exact
+perl/grep/sed pipeline under the default locale and `LC_ALL=C` before being applied; both passed on
+the first CI run afterwards.

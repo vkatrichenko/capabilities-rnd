@@ -1,0 +1,169 @@
+#!/bin/bash
+# Pre-commit hook: runs checks only for modules with staged changes.
+# Install: chmod +x .git/hooks/pre-commit
+
+set -e
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
+
+if [ -z "$STAGED_FILES" ]; then
+  exit 0
+fi
+
+# --------------------------------------------------------------------------
+# Secrets scan: check staged file names + contents for credentials/keys
+# --------------------------------------------------------------------------
+echo -e "${YELLOW}▶ secrets:${NC} Scanning staged files for credentials..."
+
+# Step 1: Check for suspicious filenames
+SUSPICIOUS_FILES_PATTERN='\.(env|pem|key|p12|pfx|keystore)$|credentials\.json|secrets\.ya?ml|service.account\.json|\.secret$'
+SUSPICIOUS_FOUND=false
+for file in $STAGED_FILES; do
+  if echo "$file" | grep -qiE "$SUSPICIOUS_FILES_PATTERN"; then
+    echo -e "${RED}  ✗ Suspicious file staged: $file${NC}"
+    SUSPICIOUS_FOUND=true
+  fi
+done
+if [ "$SUSPICIOUS_FOUND" = true ]; then
+  echo -e "${RED}✗ Suspicious files detected. These typically contain secrets and should not be committed.${NC}"
+  echo -e "  If intentional, commit with: SKIP_SECRETS=1 git commit ..."
+  if [ "$SKIP_SECRETS" != "1" ]; then
+    exit 1
+  fi
+  echo -e "${YELLOW}  ⚠ SKIP_SECRETS=1 set — proceeding despite findings${NC}"
+fi
+
+# Step 2: Check file contents for secrets patterns
+# Files to skip (binary, lock, generated)
+SKIP_PATTERN='(\.lock|\.png|\.jpg|\.ico|\.woff|\.ttf|generated-sources|node_modules|\.min\.js)$'
+
+# Create temp file with patterns (one per line — avoids BSD grep regex issues)
+PATTERNS_FILE=$(mktemp)
+cat > "$PATTERNS_FILE" << 'PATTERNS'
+AKIA[0-9A-Z]
+PRIVATE KEY-----
+sk-[a-zA-Z0-9]
+ghp_[a-zA-Z0-9]
+gho_[a-zA-Z0-9]/
+github_pat_
+xoxb-[0-9]
+xoxp-[0-9]
+aws_secret_access_key
+aws_access_key_id
+secretID
+secretKey
+[Ss]ecret[" ,:=]
+[Pp]assword[" ,:=]
+[Aa]pi[_-][Kk]ey[" ,:=]
+[Aa]piKey[" ,:=]
+Bearer [a-zA-Z0-9]
+PATTERNS
+trap "rm -f $PATTERNS_FILE" EXIT
+
+SECRETS_FOUND=false
+for file in $STAGED_FILES; do
+  # Skip binary/generated files
+  if echo "$file" | grep -qE "$SKIP_PATTERN"; then
+    continue
+  fi
+  # Skip deleted files
+  if [ ! -f "$file" ]; then
+    continue
+  fi
+
+  # Only scan added lines in the diff, filter out env var placeholders
+  MATCHES=$(git diff --cached -U0 "$file" \
+    | grep -E '^[+]' \
+    | grep -Ev '^[+][+][+]' \
+    | grep -vF '${' \
+    | grep -if "$PATTERNS_FILE" || true)
+
+  if [ -n "$MATCHES" ]; then
+    echo -e "${RED}  ✗ Potential secret in $file:${NC}"
+    echo "$MATCHES" | head -3
+    SECRETS_FOUND=true
+  fi
+done
+
+if [ "$SECRETS_FOUND" = true ]; then
+  echo -e "${RED}✗ Secrets detected in staged files. Remove them before committing.${NC}"
+  echo -e "  If these are false positives, commit with: SKIP_SECRETS=1 git commit ..."
+  if [ "$SKIP_SECRETS" != "1" ]; then
+    exit 1
+  fi
+  echo -e "${YELLOW}  ⚠ SKIP_SECRETS=1 set — proceeding despite findings${NC}"
+fi
+echo -e "${GREEN}✓ No secrets detected${NC}"
+
+HAS_UI_CHANGES=false
+HAS_BACKEND_CHANGES=false
+
+while IFS= read -r file; do
+  case "$file" in
+    hop-ui/*) HAS_UI_CHANGES=true ;;
+    hop-backend/*) HAS_BACKEND_CHANGES=true ;;
+  esac
+done <<< "$STAGED_FILES"
+
+# --------------------------------------------------------------------------
+# hop-ui: TypeScript + ESLint + Prettier
+# --------------------------------------------------------------------------
+if [ "$HAS_UI_CHANGES" = true ]; then
+  echo -e "${YELLOW}▶ hop-ui:${NC} Running TypeScript, ESLint, and Prettier checks..."
+
+  cd hop-ui
+
+  echo "  ↳ tsc --noEmit"
+  # `pnpm tsc` was the original form, but pnpm 8+ no longer falls back to
+  # `pnpm exec` when a package.json script with that name is missing — it
+  # errors with "Command not found". Use the existing `tsCheck` script so
+  # the hook works under any pnpm version on the team.
+  pnpm tsCheck
+
+  UI_STAGED=$(echo "$STAGED_FILES" | grep '^hop-ui/' | sed 's|^hop-ui/||')
+
+  # Lint only the JS/TS files staged in this commit. The previous form
+  # `pnpm lint` walked the whole module, which blocks commits on
+  # pre-existing lint debt in unrelated files (e.g. react-hooks v7
+  # violations carried over from earlier dep bumps). Staged-only keeps the
+  # hook decoupled from main's lint state while still catching what THIS
+  # commit would land.
+  UI_STAGED_JSTS=$(echo "$UI_STAGED" | grep -E '\.(ts|tsx|js|jsx|mjs|cjs)$' || true)
+  if [ -n "$UI_STAGED_JSTS" ]; then
+    echo "  ↳ eslint (staged files)"
+    # NUL-delimit + `--` so filenames with spaces or leading dashes can't break
+    # the invocation or be interpreted as eslint options. Cross-platform
+    # (BSD/macOS + GNU/Linux).
+    echo "$UI_STAGED_JSTS" | tr '\n' '\0' | xargs -0 npx eslint --
+  fi
+
+  echo "  ↳ prettier --check (staged files)"
+  # --ignore-unknown skips extension-less files like env-example that
+  # prettier can't infer a parser for (instead of erroring on them).
+  echo "$UI_STAGED" | xargs -I{} npx prettier --check --ignore-unknown "{}"
+
+  cd ..
+  echo -e "${GREEN}✓ hop-ui passed${NC}"
+fi
+
+# --------------------------------------------------------------------------
+# hop-backend: ktlint + detekt + compileKotlin
+# --------------------------------------------------------------------------
+if [ "$HAS_BACKEND_CHANGES" = true ]; then
+  echo -e "${YELLOW}▶ hop-backend:${NC} Running ktlint, detekt, and compileKotlin..."
+
+  echo "  ↳ make check (ktlint + detekt)"
+  make check
+
+  echo "  ↳ compileKotlin"
+  cd hop-backend && ./gradlew :hop-server:compileKotlin --quiet && cd ..
+
+  echo -e "${GREEN}✓ hop-backend passed${NC}"
+fi
+
+echo -e "${GREEN}✓ All pre-commit checks passed${NC}"

@@ -1,0 +1,40 @@
+# Job template for hops `.github/workflows/hops-mr-check.yml`.
+#
+# Ports into hops as:
+#   scripts/check-mcp-pins.mjs        <- tooling/ci/mcp-pin-check/check-mcp-pins.mjs
+#   scripts/check-mcp-pins.test.mjs   <- tooling/ci/mcp-pin-check/check-mcp-pins.test.mjs
+#
+# Sibling of `agent-config-scan`, same shape, same reasons: not label-gated (any PR can edit
+# `.mcp.json`, no label predicts it), no network, no install step, `--require-surface` so a
+# deleted config fails instead of reporting "nothing to check, all clear".
+#
+# Tiered on purpose — see the header of check-mcp-pins.mjs. Only the fail tier blocks:
+# ref-less git URLs, pre-release channels, `npx -y`. `:latest` from a trusted publisher is a
+# warning in the log and nothing more. A digest is never required; a minor tag passes.
+
+  mcp-pin-check:
+    name: MCP pin check
+    # Not label-gated: .mcp.json can be edited by any PR and no label predicts it. Reads one
+    # JSON file; no network, no install step.
+    runs-on: codebuild-hops-regular-${{ github.run_id }}-${{ github.run_attempt }}
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Self-test the checker
+        run: node --test scripts/check-mcp-pins.test.mjs
+
+      - name: Check MCP server pins
+        # Fails only on a launch nobody chose the version of: a git URL with no ref, a
+        # pre-release channel (@canary, @next, ...), or `npx -y`. A `:latest` image from the
+        # publisher's stable channel is a warning, not a failure — pin a minor tag or record the
+        # acceptance in docs/processes/security-notes.md. A digest is never required.
+        #
+        # --require-surface: an absent .mcp.json fails rather than reporting clean.
+        run: node scripts/check-mcp-pins.mjs --repo . --require-surface

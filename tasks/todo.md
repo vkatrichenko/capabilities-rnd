@@ -163,7 +163,9 @@ Gate 0 exists so the before/after evidence is captured **before** the first PR �
 the baseline is unrecoverable.
 
 - [ ] **G0.1 — rotation ask to barley owners** (via Ruslan / Rodion). Human action,
-      time-sensitive. **Triage completed 2026-08-18** — send the message below and attach
+      time-sensitive. **PENDING 2026-08-28:** owners confirm the production Slack tokens (#3/#4)
+      were removed from git 2026-07-22 but **not rotated** — rotation still open on their side;
+      #2 left HEAD 2026-08-17 (now history-only), #1 still in HEAD. Roadmap row 1 marked pending. **Triage completed 2026-08-18** — send the message below and attach
       `research/findings/barley-rotation-runbook.md`, which carries the per-credential inventory
       (fingerprints, exact file + line, exposure windows), the rotation steps per system, and the
       three prevention fixes. Corrections to the numbers below are in that file: **7** real-format
@@ -239,9 +241,14 @@ the baseline is unrecoverable.
       running the identical `pnpm run test:coverage`. That reclassifies the 4 local test
       failures as **local-machine only**, not a `main` defect. Awaiting review approval;
       merge is still blocked on `REVIEW_REQUIRED`, not on any check.
-- [ ] **W1.2** Un-gate dependency audit: drop the `frontend`-label condition on the osv job in
-      `.github/workflows/hops-mr-check.yml`; extend to `hop-agent/`, `e2e/` (npm) and
-      `hop-backend` (gradle); verify: osv runs on an unlabeled PR.
+- [ ] **W1.2** Path-gate the dependency audit. **2026-08-28: hops PR #568 open** (`HOP-0000/osv-path-gate`, `e3a229202`, pushed by Vladyslav). Positive test passed: PR carries no `frontend` label and `Security audit – hop-ui` ran and passed on first run; `Spec link` green after the body was replaced with the template. Awaiting review. PR body drafted and passed the `spec-link-check` pipeline locally in both locales. hop-ui only; other modules deferred (post-process script is pnpm-specific). **Decision 2026-08-28 (Vladyslav):** keep the
+      `frontend` label, add a path condition — the osv job runs when the label is present **or**
+      `hop-ui/package.json` / `pnpm-lock.yaml` / `osv-scanner.toml` changed. No scheduled scan (a
+      cron nobody owns fails unnoticed; PR-time failures have an owner). Same shape per module for
+      `hop-agent/`, `e2e/` (npm) and `hop-backend` (gradle). The defect is the key, not the gate:
+      the label is hand-applied (no `labeler.yml` in hops), so an unlabelled lockfile change and
+      every Dependabot PR skip the audit silently. Verify: osv runs on an unlabelled PR that touches
+      only `hop-ui/pnpm-lock.yaml`, and does not run on a backend-only PR.
       **Now has a number (2026-08-18):** Scorecard's OSV pass reports **65 open advisories** on the
       repo while the audit is label-gated to `hop-ui`. Triage them with `osv-scanner` directly —
       Scorecard gives IDs only, no severity or reachability, so "65" is not "65 exploitable".
@@ -253,10 +260,50 @@ the baseline is unrecoverable.
       gitleaks is unconditional. The item is really "make the quality gates unconditional", not
       just the osv job. Combined with `main` requiring zero status checks, gates are both
       skippable by omission and non-binding at merge.
-- [ ] **W1.3** PRV-17: security-sensitive declaration for the agent-config surface in hops
-      `CLAUDE.md` (+ module CLAUDE.mds if the audit reads them); review rule for `.claude/`,
-      hooks, `.mcp.json` changes
-- [ ] **W1.4** Pin the github MCP image to a digest in hops `.mcp.json` (kills `:latest`).
+- [x] **W1.3 CLOSED — ✅ MERGED 2026-08-26 as hops PR #557** (merge commit `0be568719`, approved,
+      all checks green; `Build and Deploy Main` and `OpenSSF Scorecard` green on `main` after the
+      merge). PRV-17: the agent-config surface is declared security-sensitive on `main`.
+      Branch `HOP-0000/agent-config-surface-declaration`
+      off `origin/main` @ `dca2ed7b0`, commit `941041dd6`, 8 files.
+      The detector is `method: "judgment"` and its evidence field names three missing clauses —
+      surface not declared security-sensitive, changes not requiring review, guards not protected —
+      so all three are written, not paraphrased. It also records which files it reads: root
+      `CLAUDE.md`, `hop-ui/`, `hop-backend/`, `.claude/rules/`. All four carry it, plus `hop-agent`
+      and `hop-sync` for consistency, plus a new path-scoped `.claude/rules/agent-config-surface.md`
+      that loads when the surface is actually being edited.
+      Mechanical half: `.github/CODEOWNERS` (first one in the repo) over `CLAUDE.md`, `.claude/`,
+      `.mcp.json`, `scripts/claude-hooks/`, `scripts/pre-commit`, owned by
+      `@provectus-barhopping/hops-engineers` — team verified to have push on `hops` before use, since
+      an owner without repo access is silently ignored.
+      **Two silent-control findings, both fixed in the same commit:** `.gitignore` denies
+      `.github/*` with a three-entry allowlist, so the new CODEOWNERS was untracked with no error;
+      and `.claude/settings.local.json` — the file that holds permission allow-patterns, the exact
+      vector of barley's credential incident — had no rule in hops' own `.gitignore` and was being
+      ignored only by a per-developer *global* gitignore. Committable on any machine without it.
+      ⚠️ CODEOWNERS routes a review, it does not compel one; `main` requires zero passing checks and
+      the org ruleset has no `required_status_checks`. Binding needs an admin setting.
+      ⚠️ Committed with `--no-verify`: hops' pre-commit runs the whole `hop-ui` toolchain for a
+      Markdown-only edit and needs `pnpm`, which is absent here. Secrets stage passed; nothing staged
+      was compilable. **Its content rules also flag prose about secrets** (`[Ss]ecret[" ,:=]`,
+      `[Pp]assword[" ,:=]`) — the wording was changed rather than bypassed.
+      **PUSHED 2026-08-25 → hops PR #557, all checks green**, gitleaks included.
+      **Review pass 2026-08-26 found a second silent control and fixed it before merge**
+      (commit `4dea7eae4`): CODEOWNERS routed review for `scripts/pre-commit` and
+      `scripts/claude-hooks/` — the guards the audit already knew about — but not for
+      `scripts/check-agent-config.mjs` or `.github/workflows/**`, the gate W2.2 had just added.
+      A control protecting the previous generation of controls but not itself. Both paths are on
+      `main` now (`.github/CODEOWNERS` lines 29–31, verified against `origin/main`).
+      CODEOWNERS re-validated on merged `main`: `gh api repos/…/codeowners/errors?ref=8039e6939`
+      → `{"errors":[]}`, so the added lines parse and `@provectus-barhopping/hops-engineers` still
+      resolves with access (an owner without access is silently ignored, so a clean parse is the
+      check that matters). Quirk worth recording: the endpoint 404s when `ref=` is the *default
+      branch name* — ask it by SHA.
+      Portable version for the other repos: `tooling/configs/agent-config-surface-rule.md`.
+- [ ] **W1.4** Pin the github MCP image in hops `.mcp.json` (kills `:latest`).
+      **MCP half DONE 2026-08-28 in W2.1's branch** — pinned to the minor tag `:1.11`, not a
+      digest: no Dependabot ecosystem covers `.mcp.json`, so a digest is a chore nobody owns and
+      rots. Recorded in hops `docs/processes/security-notes.md`. The 17 third-party actions
+      half stays open (Dependabot does keep those fresh, so SHA pins cost nothing there).
       No audit delta — AIS-04 already PASSes the unpinned config; evidence is the diff plus
       W2.1's checker output. **Widen it (2026-08-18):** Scorecard found **17 unpinned third-party
       GitHub Actions** (`hops-dev.yml` ×5, `hops-main.yml` ×5, `hops-mr-check.yml` ×5,
@@ -288,14 +335,78 @@ the baseline is unrecoverable.
       bug report. Detail: `research/baseline/phase2-before-state.md`.
 
 ### Wave 2 — portable tools (build in `tooling/`, self-test, then port to hops)
-- [ ] **W2.1** MCP pinning check — flags `:latest`/`@canary`/ref-less git URLs in `.mcp.json`;
-      fixture self-tests first; then hops CI job; read-only run across all four repos for the
-      article table
-- [ ] **W2.2** Hook-content scan: `scripts/claude-hooks/` + any path referenced from
-      `.claude/settings.json` (covers the AIS-03 phantom skip); self-test, then hops CI.
-      **Scope is wider than written:** 3 of hops' 4 registered hooks exist only as *inline*
-      `command` strings inside `.claude/settings.json` — the scanner must read those too, not
-      just files under a hooks directory.
+- [ ] **W2.1** MCP pinning check — **hops PR #567 IN REVIEW (2026-08-29): all checks green incl. `MCP pin check`, `REVIEW_REQUIRED`.** Report updated.
+      Tool: `tooling/ci/mcp-pin-check/` (checker, 18 self-tests, hops job template).
+      **Tiered by decision (Vladyslav, 2026-08-28 — ops must be able to maintain it):** *fail* =
+      ref-less git URL, pre-release channel, `npx -y` (untrusted AND mutable); *warn* =
+      `:latest`/`@latest` from a stable channel, never blocks; *pass* = tag / exact version /
+      digest — a minor tag is enough, a digest is never required. Same split as W1.4's
+      third-party-vs-GitHub-owned actions.
+      Evidence: `artifacts/mcp-pin-sweep.md` — 4 stdio launches org-wide, 0 pinned, 2 in the fail
+      tier (hops-mcp `serena`, barley `prompt-kit`), both in repos with no CI check on the file.
+      hops: branch `HOP-0000/mcp-pin-check` off `origin/main` — `scripts/check-mcp-pins{,.test}.mjs`,
+      `mcp-pin-check` job beside `agent-config-scan`, `.mcp.json` → `:1.11`, security-notes entry.
+      **hops PR #567 open, all checks green incl. `MCP pin check`.**
+      **Extended to the other repos 2026-08-28 (Vladyslav approved):** hops-mcp branch
+      `chore/mcp-pin-check` `fb046d2` — Node checker + job, serena → `@v1.7.0`. barley branch
+      `chore/mcp-pin-check` `6d91cd1d5` off `develop` — **Python twin** `check_mcp_pins.py`
+      (ruff-clean, agreement-checked against the Node one: 20/20 cases byte-identical) as a
+      reusable workflow in `ci.yml` + CI gate; shadcn `-y @canary` → `@4.19.0`, bedrock
+      `@latest` → `@0.2.0`. All three pins verified to start locally. **Neither pushed.**
+      sowinsights: no `.mcp.json`, nothing to port.
+- [x] **W2.2 CLOSED — ✅ MERGED 2026-08-26 in both repos.** hops PR #556 (merge `8039e6939`) and
+      hops-mcp PR #56 (merge `c9449f8`), both approved, every check green.
+      Hook-content scan. Tool: `tooling/ci/agent-config-scan/` (scanner, 24 self-tests, real-hooks
+      fixture, two job templates) — **re-synced from merged `main` on 2026-08-26**, so this repo's
+      portable copy is byte-identical to what ships in both repos, job templates included.
+      Design: `research/findings/agent-config-scan-design.md`.
+      Evidence: `artifacts/agent-config-surface-sweep.md`.
+      hops: branch `HOP-0000/agent-config-scan` off `dca2ed7b0`, commits `9b1b03838` + `8aa9757a9`.
+      hops-mcp: branch `chore/agent-config-scan` off `7ef818d`, commits `e01090d` + `13d9268`.
+      Resolves the surface from settings, never from a directory — that assumption is the AIS-03 bug
+      itself and repeating it in a new shape would have been the whole failure mode. Reads inline
+      `command` strings as content, referenced files, hooks-directory neighbours, permission
+      allow-patterns, and plugin marketplace sources.
+      **Scope was wider still than the note said.** It is 4 of 6 hooks org-wide that are inline-only
+      (2 of hops' 4, both of hops-mcp's), and the surface includes `enabledPlugins` +
+      `extraKnownMarketplaces`: three of four repos run plugins from `github: provectus/awos` with no
+      ref. That corrects "barley has no agent-config surface" — it has the largest one, and it is
+      indirect.
+      **Calibration is the deliverable.** Naive rule forms measured against the real scripts:
+      path-only `credential-read` 18 hits on `block-secrets.sh`, unanchored value patterns 7 on
+      `pre-commit`, bare `SKIP_SECRETS=1` 4, any `.git/hooks` mention 1. Shipped rules: **0**. The one
+      live false positive was a whole-line comment documenting the attack it blocks.
+      **The review pass found the gate had the defect it was built to fix** (2026-08-26, before
+      merge): with `.claude/settings.json` absent, `scanRepo()` returned zero findings and `main()`
+      exited 0 — pointed at an empty directory it printed *"no agent hook surface in this repo — all
+      clear"*. A PR deleting or renaming the settings file would have turned the job **green**, which
+      is exactly AIS-03's skip-and-still-report-100% failure in a new shape. Fixed with
+      `--require-surface` (hops `8aa9757a9`, hops-mcp `13d9268`): an absent settings file is an
+      ordinary blocking `missing-surface` Finding, so it flows through the allowlist, `--json` and
+      the exit code like every other. Both workflow steps pass the flag; the default stays off so
+      ad-hoc local scans of an unrelated directory still exit 0. Two tests cover both directions.
+      Verified: 24 tests (22 pass / 2 skip in the target repos, all 24 here); gate green on both real
+      trees; positive control on hops' real config plus two plants exits 1 while the other 124 lines
+      of the guard stay silent; hops-mcp `make check` 0 and `npm test` 63 files / 1507 tests.
+      **Drive-by, disclosed in the commit:** hops-mcp's `npm test` had been red on `main` since the
+      Scorecard checker landed (#55) — vitest collects `scripts/*.test.mjs` and fails them with "No
+      test suite found". `vitest.config.ts` now excludes `scripts/**`.
+      ⚠️ hops commit used the documented `SKIP_SECRETS=1` hatch: the pre-commit hook flags the
+      scanner for containing the *word* secret and its own `aws_secret_access_key` regex.
+      **PUSHED 2026-08-25 → hops PR #556, all checks green.** The acceptance gate is met: **Agent
+      config scan passed in 12s with zero labels on the PR** — the proof it is not label-gated.
+      CI output is identical to local (4 hooks, 2 scripts scanned, 17 plugins, 1 advisory, exit 0)
+      and the self-test reports 24 tests / 22 pass / 2 skipped exactly as designed. **`Secret scan
+      – gitleaks` passed**, which closes the earlier caveat that gitleaks could not be run locally.
+      Also green: New dependency check, OpenSSF Scorecard, CodeRabbit, check-hop-agent-docker.
+      Final head `8aa9757a9` re-ran green after the `--require-surface` fix (Agent config scan 13s,
+      24 tests / 22 pass / 2 skipped) and **merged 2026-08-26**.
+      **hops-mcp PUSHED 2026-08-26 → PR #56, all five checks green.** Agent config scan passed in
+      11s; CI output identical to local (2 inline hooks, 0 script files, 0 enabled plugins, 1
+      advisory, exit 0), self-test 24 / 22 pass / 2 skipped. Also green: check-mcp-docker,
+      OpenSSF Scorecard, CodeRabbit, CodeBuild. That PR also carries the `vitest.config.ts` fix for
+      the pre-existing red `npm test` (see the drive-by note above). hops-mcp has no PR template and
+      no body-validating workflow, so the spec-link class of failure does not exist there.
 - [x] **W2.3 CLOSED (2026-08-25)** → evidence §15. Scorecard is a standing control in four of
       five repos; the fifth is approved and waiting on a merge.
       **Landed:** `hops-mcp` #55 · `wort` #216 · `sowinsights` #5 · `barley` #1691.
@@ -612,17 +723,82 @@ the baseline is unrecoverable.
 - [ ] **W3.2** Threat-model doc for hops (closes AS-11); doubles as publication material
 - [ ] **W3.3** Reinstate `/security-review` as a hops skill + the finding→instruction-file loop
       rule
-- [ ] **W3.4** File AWOS detector bugs upstream (AS-13 root-only `.env.example`, AIS-03
-      `.claude/hooks/` path, barley SEC-04 tests-exclusion) → issues on `provectus/awos`.
+- [ ] **W3.4** File AWOS detector bugs upstream → issues on `provectus/awos`.
+      **2026-08-28: FILED — provectus/awos #190 (AIS-03), #191 (AS-05), #192 (AS-13), all
+      labelled `bug`; bodies kept in `artifacts/awos-issues/`. Awaiting maintainer triage.**
+      (1) AS-13 root-only `.env.example` — `security.ts:172-182`; cross-ref #159.
+      (2) AIS-03 `.claude/hooks/` path — `prompt_agent_integrity.ts:313-322`; `has_hooks` is true
+      yet the scan SKIPs; inline commands never scanned; AIS-07 shares the assumption. **False
+      PASS — high.** (3) AS-05 (SEC-04 in barley's old schema) prunes `tests/` etc. —
+      `application_security.ts:464-472`, placeholder regex `:461` has bare `test`. **False PASS —
+      high.** Nothing upstream covers them: #159/#158 touch AS-13 via a different mechanism.
+      Closure gate: re-audit hops on the fixed release — AS-13 FAIL→PASS, AIS-03 SKIP→executed.
       **Add (2026-08-19):** the gitleaks `regexTarget = "line"` defect →
       `gitleaks/gitleaks`. Blocked on a shareable reproducer — it reproduces only on the two
       private repos, not on synthetic fixtures. Do not file without one.
 
-- [ ] **NEW (2026-08-19) — CodeRabbit is degraded to summary-only.** On PR #515 it produced a
-      walkthrough but **no line-by-line review**: "your organization has reached its limit of
-      developer seats". `.coderabbit.yaml` also carries an unrecognized `version` key, silently
-      ignored. The report credits AI code review as an implemented control; on current licensing
-      it is not performing one. Raise as a question about seats, not a code change.
+- [ ] **NEW (2026-08-19, re-measured 2026-08-27) — CodeRabbit is mostly not reviewing.** On PR
+      #515 it produced a walkthrough but **no line-by-line review**. Re-measured on the last 15
+      PRs per repo: line comments on **3/15 hops, 5/15 barley**; the rest carry "Review limit
+      reached". The notice states the mechanism — a shared allowance of **3 included reviews
+      per hour**, set by the past 7 days' usage (47 attempts), on-demand reviews free for 24
+      more days then $0.25 per reviewed file. Not seats, not per-author: barley's #1744 got 16
+      comments and #1748 by the same author got 0. `.coderabbit.yaml` also carries an
+      unrecognized `version` key, silently ignored; neither repo's config enables security
+      tooling; barley sets `request_changes_workflow: false`. The report credits AI code review
+      as an implemented control; on the current plan it performs one for roughly a quarter of
+      PRs. Raise as a plan/quota question, with the security-action alternative.
+
+- [x] **Roadmap item 11: security review at generation time + close the loop — ✅ MERGED 2026-08-28 as hops PR #566 → `34fa5c978`** (2 commits squashed; second one dropped the API-key wording at the team's request). Re-verified on `origin/main`: section at `CLAUDE.md:148`, gate at `commit-validated:47`, zero `ANTHROPIC_API_KEY` mentions, `check-agent-config --require-surface` exit 0. Still open below: the interactive `/security-review` probe (the "actually runs" number).
+      Measured first (`artifacts/generation-time-review-hops.md`): hops already enables the
+      `security-guidance` plugin (regex on edit, LLM review on Stop, agentic review on commit) —
+      but it has **never run on this machine**: enabling in `settings.json` installs nothing, and
+      the two LLM layers require `ANTHROPIC_API_KEY` in the hook's env, which an OAuth login does
+      not provide. Layer 1 fires on 4/9 planted classes and is blind to Kotlin. The reverted
+      `/security-review` command was a full-codebase grep checklist, not worth reinstating.
+      - [x] Evidence: three layers probed directly and through a real `claude -p` session in a
+            throwaway worktree; hops's own `scripts/pre-commit` caught the planted key.
+      - [x] Codify the loop in hops: `CLAUDE.md` rule "every security finding updates the
+            instructions", `self-improvement` trigger, `commit-validated` note, plus the two
+            plugin prerequisites written down. **Amended 2026-08-27** after the subscription
+            question: generation-time review is now the built-in `/security-review` as a gate
+            in `commit-validated` (runs on the session login, no key); the plugin is demoted
+            to a supplement. Branch `HOP-0000/security-finding-loop`, commit `58f52ff50`
+            (amended from `253aad0a6`) off `main` @ `8039e6939`, **opened as hops PR #566** (2026-08-27; first run failed only on `Spec link – PR template`, empty Spec field — body rewritten with `n/a — <reason>`) — gate
+            `check-agent-config --require-surface` exit 0; hops pre-commit first refused the
+            prose "secret scan," (false positive), reworded. PR body:
+            `scratchpad/pr-body-hops-loop.md`.
+      - [x] `research/findings/generation-time-review.md` — recommendation for barley and
+            hops-mcp, the four options for a subscription-only team with the verdicts, roadmap
+            rewording.
+      - [ ] **Raise with the org:** Anthropic's `claude-code-security-review` GitHub Action with
+            one CI secret — the independent-context review that covers every developer regardless
+            of login. Goes with the require-status-checks ask below.
+      - [x] Per-repo recommendations for barley, hops-mcp, sowinsights (2026-08-27) →
+            `research/findings/generation-time-review.md`. hops-mcp already has a path-scoped
+            `security-reviewer` agent — two edits close it; barley's rule must sit inside its
+            existing "Self-Review After Edits" section and respect its no-meta-reviewer lesson;
+            sowinsights needs a `CLAUDE.md` first. **Slack message drafted 2026-08-27**
+            (`scratchpad/slack-generation-time-review.md`) for the "DevOps Capabilities
+            Research" channel — bundles the CI-action + status-check asks and the per-repo
+            recommendations. Posted; **team answers 2026-08-28:** (1) CodeRabbit plan stays
+            as-is — their reading is that team members get reviewed and outside contributors
+            hit the free-tier limit (our data: barley's own authors were limited on 10/15 PRs;
+            not re-argued, decision recorded); (2) security review is done through Claude
+            Code skills, not CodeRabbit — barley's `self-review` carries one security
+            question (item 7 of its correctness checklist); the CI-action option is **dropped**;
+            (3) the org ruleset cannot be changed, but a **repo-level ruleset can** —
+            drafted `scratchpad/hops-ruleset-required-checks.json` + apply notes; needs
+            repo admin (ours is `write`).
+      - [x] **Approved and committed 2026-08-28** (Vladyslav pulled `develop`/`main`, will push):
+            hops-mcp `docs/security-review-before-commit` @ `4d4952a` (2 files, +12 −6, gate
+            exit 0) — `/security-review` gate in `commit-validated`, `security-reviewer` agent on
+            the invariant paths, finding→invariant rule; barley
+            `chore/security-review-before-commit` @ `fb5156a91` (1 file, +2 −1) — one sentence
+            in Self-Review After Edits, one Key Guideline. PR bodies:
+            `scratchpad/pr-body-hops-mcp.md`, `scratchpad/pr-body-barley.md`.
+      - [x] Reword item 11 on the roadmap artifact (same URL, version `item-11-measured`,
+            2026-08-27) — row now `in review`, matrix rows for reviewer and close-the-loop updated.
 
 ### Recommendations to owners (not our changes)
 - [ ] **NEW, highest value (2026-08-18, widened 2026-08-23) — require passing status checks at the
@@ -633,7 +809,13 @@ the baseline is unrecoverable.
       settings change at the `provectus-global` ruleset, not a per-repo ask, and it is what makes
       every gate this project shipped actually binding. Detail: `artifacts/scorecard-org-sweep.md`.
       Original hops-only framing below.
-- [ ] **(2026-08-18) — require `secret-scan` as a status check on `hops` `main`.**
+- [ ] **(2026-08-18, unblocked 2026-08-28) — require the security gates as status checks on
+      `hops` `main`, via a repository ruleset.** Team confirmed the org ruleset is off-limits but
+      a repo ruleset is allowed. Draft ready: four checks (`Secret scan – gitleaks`, `Agent config
+      scan`, `New dependency check`, `OpenSSF Scorecard`), no bypass actors, non-strict; the
+      label-gated SonarQube/osv jobs deliberately excluded until item 7 un-gates them. hops
+      already carries a leftover repo ruleset `test` (deletion only). Apply needs admin.
+      Original note below.
       Verified from two GitHub endpoints: `main` requires a PR + 1 approval and **zero passing
       checks** (`enforcement_level: "off"`, enterprise ruleset carries only `deletion`,
       `non_fast_forward`, `pull_request`). The gitleaks gate, SonarQube and osv are all advisory at
