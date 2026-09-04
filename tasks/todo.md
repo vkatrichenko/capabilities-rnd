@@ -856,3 +856,66 @@ the baseline is unrecoverable.
 
 - [ ] Sync with Max Ivanchenko / Vasiliy Ilichev on their roadmap. The charter mandates independent
       research first — **do not** open this until Phase 1 is complete.
+
+---
+
+# Capability 2 — Cloud infrastructure security (kickoff 2026-09-03)
+
+Same method as capability 1, reframed from code to infrastructure. Decisions 2026-09-03 with
+Vladyslav: one report, cloud-infra-security framing (compliance is a section, not the spine);
+evidence = IaC scans + read-only live-account scan; clone the platform IaC repo and
+`sow-insights-infra`; PepsiCo / personal-practice section dropped from this draft. Friday sync
+with Ruslan 2026-09-04. Plan: `~/.claude/plans/righ-now-creating-a-lucky-fairy.md`.
+
+## C0 — Setup
+- [x] **C0.1** Branch `feat/security-cloud` off `main`.
+- [x] **C0.2** Sources moved `article/security-cloud/` → `research/sources/cloud/`.
+- [x] **C0.3** `README.md` / `CLAUDE.md` scope block for capability 2.
+- [x] **C0.4** `methodology/log.md` kickoff entry.
+
+## C1 — Baseline (read-only, every cell with a proof path, every repo at a recorded SHA)
+- [x] **C1.1** `research/baseline/cloud-cross-repo-matrix.md` — hops IaC · hops app · barley ·
+      sowinsights · hops-mcp.
+- [x] **C1.2** `research/baseline/hops-infra-baseline.md` — platform → IaC → Helm → CI → runtime.
+- [x] **C1.3** `research/baseline/barley-infra-baseline.md`.
+- [x] **C1.4** Clone platform IaC repo + `sow-insights-infra` (GitLab, HTTPS — port 22 is blocked
+      from this network); survey EKS/VPC/OIDC/ESO/CodeBuild role; fold into C1.1/C1.2.
+
+## C2 — Scans (non-mutating; raw → `scratch/cloud/`, redacted → `artifacts/cloud/`)
+- [x] **C2.1** Trivy 0.69.3 `config` over every snapshot in `scratch/cloud/src/` (same version,
+      same day, default ruleset); Helm charts rendered with the prod `--set` values first.
+- [x] **C2.2** tflint with each repo's own `.tflint.hcl`.
+- [x] **C2.3** Prowler 5.41.0 (Docker) against `proj-hops` 941000539201, read-only, via
+      `hops-devops` SSO — **needs Vladyslav to run `aws sso login --profile hops-devops`**.
+- [x] **C2.4** Severity-bucketed counts per repo / account → KPI tiles + gap bars.
+
+## C3 — Findings
+- [x] **C3.1** `research/findings/hops-infra-gap-analysis.md`
+- [x] **C3.2** `research/findings/cross-repo-infra-findings.md`
+- [x] **C3.3** `research/findings/awos-infra-coverage.md` (no infra dimension; AS-14 SKIP)
+- [x] **C3.4** `research/findings/cloud-out-of-scope.md`
+- [x] **C3.5** Ranked roadmap (≤12 items, effort chips, evidence per row)
+
+## C4 — Report
+- [x] **C4.1** `artifacts/cloud-security-report.html` — six tabs, Phase 1 shell, DRAFT for 09-04.
+- [ ] **C4.2** Published as a new artifact; URL in the closeout message.
+
+## Deferred by design
+- [ ] PepsiCo project experience + pre-AI/post-AI personal practice section (Vladyslav to dictate).
+- [ ] Client edition of the report (Phase 3 shape).
+
+## C5 — Revision 2 after Vladyslav's review (2026-09-04)
+- [x] **C5.1** Five control groups; merged group named "Data protection and workload hardening".
+- [x] **C5.2** GitLab retired → every repo re-measured at its GitHub head; `core-infra` (platform) surveyed.
+- [x] **C5.3** Per-repo control coverage % (AWOS-style) + Trivy pass-rate + Prowler in the HOPS tab.
+- [x] **C5.4** Roadmap rewritten as defined tasks (wrong / why / done-when / effort / owner), six blocks.
+- [x] **C5.5** Prowler run read-only against 941000539201; artifact written; account-level cells closed.
+- [x] **C5.7** "How we score" tab: method, worked example, 23 controls in plain words, target state,
+      glossary; backed by `cloud-control-scores.md` (method + org scores) and `cloud-target-state.md`.
+- [x] **C5.8** Readability pass — plain-language openers on Overview, standards, implementation, tasks.
+- [x] **C5.9** Account ownership established (member of IT-run org; SSO; org CloudTrail + Config StackSet);
+      ID-4 and DG-1 rescored, T1/T6 rewritten, per-repo table generated from the score data.
+- [x] **C5.10** ignition-consultants reviewed read-only (summary delivered in conversation, not written to
+      this repo); four patterns adopted into T6, T-H2, T-I5 and new T-I7, sourced in
+      `research/sources/cloud/ignition-consultants-patterns.md`; shared-template finding folded into T-C1.
+- [ ] **C5.6** Vladyslav reviews revision 5; file AS-14 upstream after his OK; commit on `feat/security-cloud`.

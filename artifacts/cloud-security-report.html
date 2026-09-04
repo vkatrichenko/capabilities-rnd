@@ -1,0 +1,1127 @@
+<title>Cloud Infrastructure Security Blueprint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  /* Palette and type taken from provectus.com's own design tokens
+     (--color-* / --font-* in the site stylesheet), not approximated. */
+  :root{
+    color-scheme:light;
+    --cream:#FDF8F4; --ink-900:#1C1F2E; --sage-50:#EEF3F0; --sage-100:#DCE8E2;
+    --sage-200:#B8CEC4; --sage-600:#3B5249; --sage-700:#33473F; --sage-800:#263831;
+    --sienna-500:#D97F4A; --sienna-600:#B33A22; --sienna-surface:#FBF1EE;
+    --charcoal-500:#82827A; --divider:#ECECEA;
+
+    --font-sans:"Plus Jakarta Sans","Plus Jakarta Sans Variable",system-ui,-apple-system,sans-serif;
+    --font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+
+    --bg:var(--cream); --surface:var(--sage-50); --ink:var(--ink-900);
+    --muted:#5A6B62; --faint:var(--charcoal-500); --line:var(--divider);
+    --accent:var(--sage-600); --accent-ink:var(--sage-800); --accent-soft:var(--sage-100);
+    --fail:var(--sienna-600); --fail-bg:var(--sienna-surface);
+    --warn:#8A5A20; --warn-bg:#F7EEE3;
+    --pass:var(--sage-700); --pass-bg:var(--sage-100);
+    --info:#3C4A66; --info-bg:#E9ECF3;
+    --bar:var(--sage-600);
+  }
+  /* Single-theme by decision, not omission: provectus.com ships no dark mode,
+     so the report holds the brand's light identity for every viewer. color-scheme
+     keeps form controls and scrollbars light even inside a dark host. */
+  *{ box-sizing:border-box; margin:0; }
+  body{
+    background:var(--bg); color:var(--ink);
+    font:400 16px/1.65 var(--font-sans);
+    -webkit-font-smoothing:antialiased;
+    padding:0 1.25rem 5rem;
+  }
+  .col{ max-width:47rem; margin:0 auto; }
+  .wide{ max-width:64rem; margin:0 auto; }
+  code, .mono{ font-family:var(--font-mono); font-size:.84em; }
+  code{ background:var(--surface); padding:.1em .35em; border-radius:3px; }
+  a{ color:var(--accent); text-underline-offset:.18em; }
+  a:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; border-radius:2px; }
+
+  header{ padding:3rem 0 0; }
+  .eyebrow{ font-family:var(--font-mono); font-size:.7rem; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--accent); font-weight:700; }
+  h1{ font-size:2.4rem; line-height:1.08; font-weight:800; letter-spacing:-.025em;
+      text-wrap:balance; margin:.55rem 0 .8rem; }
+  .standfirst{ color:var(--muted); max-width:40rem; font-size:1.02rem; }
+  .meta{ display:flex; flex-wrap:wrap; gap:.4rem 1.5rem; margin-top:1.2rem; font-size:.82rem; color:var(--faint); }
+  .meta b{ color:var(--muted); font-weight:600; }
+
+  /* tabs */
+  .tabs{ position:sticky; top:0; z-index:5; background:var(--bg); margin-top:2rem;
+         border-bottom:2px solid var(--line); display:flex; gap:.25rem; overflow-x:auto;
+         max-width:64rem; margin-left:auto; margin-right:auto; }
+  .tab{ appearance:none; background:none; border:none; cursor:pointer; color:var(--muted);
+        font:600 .88rem var(--font-sans); padding:.7rem .9rem .55rem;
+        border-bottom:3px solid transparent; margin-bottom:-2px; white-space:nowrap;
+        letter-spacing:-.005em; }
+  .tab:hover{ color:var(--ink); }
+  .tab[aria-selected="true"]{ color:var(--accent); border-bottom-color:var(--accent); }
+  .tab:focus-visible{ outline:2px solid var(--accent); outline-offset:-2px; border-radius:4px; }
+  .panel{ display:none; padding-top:2rem; }
+  .panel.active{ display:block; }
+  @media print{
+    .tabs{ display:none; }
+    .panel{ display:block; padding-top:1.5rem; }
+    .panel::before{ content:attr(data-title); display:block; font-size:1.3rem; font-weight:800;
+                    border-bottom:2px solid #111; margin-bottom:1rem; padding-bottom:.3rem; }
+    tr{ break-inside:avoid; }
+  }
+
+  h2{ font-size:1.45rem; font-weight:800; letter-spacing:-.02em; text-wrap:balance;
+      border-bottom:2px solid var(--ink); padding-bottom:.45rem; margin-bottom:1.25rem; }
+  h3{ font-size:1.02rem; font-weight:700; letter-spacing:-.01em; margin:1.9rem 0 .6rem; }
+  p{ margin:.65rem 0; }
+  .note{ font-size:.85rem; color:var(--muted); }
+  ul,ol{ padding-left:1.2rem; margin:.6rem 0; } li{ margin:.3rem 0; }
+
+  .kpis{ display:grid; grid-template-columns:repeat(auto-fit,minmax(128px,1fr)); gap:1px;
+         background:var(--line); border:1px solid var(--line); border-radius:8px; overflow:hidden; margin:1.5rem 0; }
+  .kpi{ background:var(--bg); padding:.9rem 1rem .8rem; }
+  .kpi .n{ font-size:1.7rem; font-weight:800; font-variant-numeric:tabular-nums;
+           line-height:1.1; letter-spacing:-.03em; }
+  .kpi .n small{ font-size:.9rem; font-weight:600; color:var(--muted); letter-spacing:0; }
+  .kpi .l{ font-size:.74rem; color:var(--muted); margin-top:.25rem; line-height:1.35; }
+
+  .chip{ display:inline-block; font-family:var(--font-mono); font-size:.66rem; font-weight:700;
+         letter-spacing:.06em; padding:.16em .5em; border-radius:999px; vertical-align:.08em; white-space:nowrap; }
+  .c-fail{ color:var(--fail); background:var(--fail-bg); }
+  .c-warn{ color:var(--warn); background:var(--warn-bg); }
+  .c-pass{ color:var(--pass); background:var(--pass-bg); }
+  .c-info{ color:var(--info); background:var(--info-bg); }
+
+  .tblwrap{ overflow-x:auto; margin:1rem 0; border:1px solid var(--line); border-radius:8px; }
+  table{ border-collapse:collapse; width:100%; font-size:.86rem; }
+  th{ text-align:left; font-family:var(--font-mono); font-size:.68rem; letter-spacing:.1em;
+      text-transform:uppercase; color:var(--muted); font-weight:700;
+      padding:.6rem .8rem; border-bottom:1px solid var(--line); background:var(--surface); white-space:nowrap; }
+  td{ padding:.55rem .8rem; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr:last-child td{ border-bottom:none; }
+  td.center, th.center{ text-align:center; }
+  .num-cell{ font-variant-numeric:tabular-nums; }
+  /* Delivery state, applied to the whole row rather than a chip in one cell. */
+  tr.row-done > td{ background:var(--pass-bg); }
+  tr.row-done > td:first-child{ box-shadow:inset 3px 0 0 var(--pass); }
+  tr.row-review > td{ background:var(--info-bg); }
+  tr.row-review > td:first-child{ box-shadow:inset 3px 0 0 var(--info); }
+  tr.row-pending > td{ background:var(--warn-bg); }
+  tr.row-pending > td:first-child{ box-shadow:inset 3px 0 0 var(--warn); }
+  /* A chip on a same-tinted row loses its edge — put it back on the page ground. */
+  tr.row-done .chip.c-pass, tr.row-review .chip.c-info, tr.row-pending .chip.c-warn{ background:var(--bg); }
+  .legend{ display:flex; flex-wrap:wrap; gap:1rem; align-items:center; margin:.75rem 0 0;
+           font-size:.78rem; color:var(--muted); }
+  .legend i{ display:inline-block; width:1.6rem; height:.7rem; border-radius:2px;
+             vertical-align:middle; margin-right:.35rem; }
+  .legend .k-done{ background:var(--pass-bg); box-shadow:inset 3px 0 0 var(--pass); }
+  .legend .k-review{ background:var(--info-bg); box-shadow:inset 3px 0 0 var(--info); }
+  .legend .k-pending{ background:var(--warn-bg); box-shadow:inset 3px 0 0 var(--warn); }
+  .legend .k-open{ background:transparent; box-shadow:inset 0 0 0 1px var(--line); }
+  .grouprow td{ background:var(--surface); font-family:var(--font-mono); font-size:.68rem;
+                letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:700; }
+
+  .bars{ margin:1.25rem 0 .25rem; display:grid; gap:.55rem; }
+  .barrow{ display:grid; grid-template-columns:6.5rem minmax(0,1fr) 13.5rem; align-items:center; gap:.75rem; }
+  .barrow .label{ font-family:var(--font-mono); font-size:.78rem; text-align:right; color:var(--muted); }
+  .track{ position:relative; height:22px; }
+  .fill{ position:absolute; inset:0 auto 0 0; background:var(--bar); border-radius:0 4px 4px 0; min-width:2px; }
+  .fill.zero{ background:var(--line); width:2px; }
+  .barval{ font-family:var(--font-mono); font-size:.76rem; font-variant-numeric:tabular-nums; line-height:1.3; }
+  .viz-cap{ font-size:.78rem; color:var(--faint); margin-top:.5rem; }
+
+  .timeline{ margin:1.5rem 0; padding-left:1.1rem; border-left:2px solid var(--line); display:grid; gap:1.1rem; }
+  .tl{ position:relative; }
+  .tl::before{ content:""; position:absolute; left:calc(-1.1rem - 6px); top:.42em; width:8px; height:8px;
+               border-radius:50%; background:var(--accent); border:2px solid var(--bg); }
+  .tl .d{ font-family:var(--font-mono); font-size:.72rem; color:var(--accent); font-weight:700; }
+  .tl .t{ font-size:.9rem; }
+
+  .call{ border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:6px;
+         background:var(--surface); padding:.9rem 1.1rem; margin:1.25rem 0; font-size:.92rem; }
+  .call.red{ border-left-color:var(--fail); background:var(--fail-bg); }
+  .call b:first-child{ display:block; margin-bottom:.25rem; }
+
+  .cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:.8rem; margin:1.25rem 0; }
+  .card{ border:1px solid var(--line); border-radius:8px; padding:.9rem 1rem; background:var(--bg); }
+  .card h4{ font-size:.92rem; font-weight:700; letter-spacing:-.01em; margin-bottom:.35rem; }
+  .card p{ font-size:.84rem; color:var(--muted); margin:0; }
+
+  footer{ margin-top:4rem; padding-top:1.25rem; border-top:1px solid var(--line);
+          font-size:.78rem; color:var(--faint); }
+  @media (prefers-reduced-motion:reduce){ *{ animation:none!important; transition:none!important; } }
+  /* capability-2 additions */
+  .mx td:not(:first-child){ text-align:center; }
+  .mx td:first-child{ min-width:14rem; }
+  .layer{ border-left:3px solid var(--accent-soft); padding-left:1rem; margin:1.4rem 0; }
+  .layer h3{ margin-top:0; }
+  .layer h4{ font-size:1rem; font-weight:700; letter-spacing:-.01em; margin:0 0 .4rem; }
+  .layer .ok{ color:var(--pass); }
+  .two{ display:grid; grid-template-columns:repeat(auto-fit,minmax(18rem,1fr)); gap:1rem; }
+  tr.row-open > td:first-child{ box-shadow:inset 3px 0 0 var(--line); }
+</style>
+
+<div class="col">
+<header>
+  <div class="eyebrow">DevOps Capabilities Research · Provectus · Capability 2</div>
+  <h1>Cloud Infrastructure Security Blueprint</h1>
+  <p class="standfirst">How we secure the AWS account, the cluster and the pipelines our AI-assisted
+  products run on: the industry baseline in five control groups, what each of our infrastructure
+  repositories implements as a percentage, what the live account says, what the AWOS audit measures
+  about it (nothing, yet), and a task list with the reason behind every task. Phase 1 research —
+  every claim traces to a file path at a recorded commit on GitHub, a scanner run, or a cited source.</p>
+  <div class="meta">
+    <span><b>Date</b> 2026-09-04 · <b>revision 2</b> after review (five groups, per-repo scores, defined tasks, GitHub heads, live scan)</span>
+    <span><b>Researcher</b> Vladyslav Katrychenko</span>
+    <span><b>Scope</b> cloud infrastructure &amp; CI-to-cloud security · AWS account 941000539201, EKS/ECS, Terraform, Helm</span>
+    <span><span class="chip c-warn">INTERNAL EDITION</span> — names repos, accounts and roles; no secret value appears</span>
+  </div>
+</header>
+</div>
+
+<nav class="tabs" role="tablist" aria-label="Report sections">
+  <button class="tab" role="tab" id="t-overview"  aria-controls="p-overview">Overview</button>
+  <button class="tab" role="tab" id="t-standards" aria-controls="p-standards">Industry standards</button>
+  <button class="tab" role="tab" id="t-awos"      aria-controls="p-awos">AWOS audit</button>
+  <button class="tab" role="tab" id="t-hops"      aria-controls="p-hops">HOPS implementation</button>
+  <button class="tab" role="tab" id="t-score"     aria-controls="p-score">How we score</button>
+  <button class="tab" role="tab" id="t-gaps"      aria-controls="p-gaps">Gaps &amp; tasks</button>
+  <button class="tab" role="tab" id="t-method"    aria-controls="p-method">Methodology</button>
+</nav>
+
+<!-- ════════ OVERVIEW ════════ -->
+<section class="panel" id="p-overview" role="tabpanel" aria-labelledby="t-overview" data-title="Overview">
+<div class="col">
+  <h2>Overview</h2>
+  <p class="note">New to this subject? <b>How we score</b> explains every term and every check in
+  plain words, and describes what finished infrastructure would look like. This page assumes only
+  that you know we run our software on Amazon's cloud.</p>
+  <p><b>For managers:</b> capability 1 secured the code; this research asks the same question of the
+  cloud the code runs on. We read every infrastructure repository the BarHopping projects own on
+  GitHub — the platform (<code>core-infra</code>: network, cluster, CI runners, secrets store), the
+  project Terraform (<code>hops-infra</code>, <code>sowinsights-infra</code>, barley's 253-file tree),
+  every Helm chart, Dockerfile and deployment pipeline — scored each against the same 23-control
+  list, ran one misconfiguration scanner over all of it at a recorded commit, and ran a read-only
+  posture scan of the live account. The answer has a shape: <b>every control the AWS baseline asks
+  for exists somewhere in the org, in one repository each, and the platform everything stands on is
+  the least covered piece.</b> One pipeline identity serves seven repositories and is an administrator
+  of the production cluster; the cluster's API is open to the internet; and no infrastructure
+  repository has a pipeline, a scanner, or an audit dimension that could fail. What the IT department
+  provides centrally — the organization, single sign-on, activity recording — is the part that works.</p>
+
+  <div class="kpis">
+    <div class="kpi"><div class="n">29–41<small>%</small></div><div class="l">control coverage across the five infrastructure repos (platform lowest, 29 %)</div></div>
+    <div class="kpi"><div class="n">72.5<small>%</small></div><div class="l">live-account pass-rate, Prowler 5.41.0, 648 checks · CIS 5.0 67.5 %</div></div>
+    <div class="kpi"><div class="n">1 <small>role</small></div><div class="l">CI identity for 7 repos — <code>system:masters</code>, <code>iam:PassRole</code> on <code>*</code>, behind a webhook with no actor or branch filter</div></div>
+    <div class="kpi"><div class="n">0 <small>of 3</small></div><div class="l">IaC repositories with any pipeline — applies run from laptops</div></div>
+    <div class="kpi"><div class="n">off</div><div class="l">GuardDuty, Security Hub, Access Analyzer, network flow logs — account-wide, and asked for by no repository</div></div>
+    <div class="kpi"><div class="n">14</div><div class="l">critical live findings; none a HOPS resource — the shared account is the blast radius</div></div>
+  </div>
+
+  <p><b>For engineers:</b> the HOPS stack is sound where it is declared — IRSA everywhere, no IAM
+  users, internal ALBs with TLS 1.2, secrets via External Secrets from Parameter Store, an encrypted
+  Aurora cluster in private subnets, Bedrock token alarms to Slack, and on the live account two organization-wide
+  activity trails and a configuration recorder pushed down by the IT department. What is missing sits in the seams: ECR
+  scanning off on 35 repositories, no <code>rds.force_ssl</code> or deletion protection, a trace UI on
+  the public zone behind basic auth, a nightly prod dump restored into demo environments, zero
+  <code>securityContext</code> in seven charts, and an External Secrets role that reads every secret in
+  the account from any namespace. None of it is caught, because nothing looks.</p>
+
+  <div class="timeline">
+    <div class="tl"><div class="d">2026-09-03</div><div class="t">First draft measured the HOPS IaC from a GitLab clone — <b>the org had moved to GitHub</b>; the GitHub head was 42 commits ahead and the platform repo (<code>core-infra</code>) had never been read. Every number re-derived at the GitHub heads.</div></div>
+    <div class="tl"><div class="d">2026-09-04</div><div class="t">Live account scanned read-only: 4,582 findings, 1,258 FAIL. CloudTrail and Config exist by hand; GuardDuty, Security Hub and root MFA do not.</div></div>
+    <div class="tl"><div class="d">2026-09-04</div><div class="t">Two scanners caught skipping: Trivy reported <b>0</b> on a chart it could not render (31 once rendered); hops-infra's own tflint config cannot load under any tflint since 2024.</div></div>
+  </div>
+
+  <div class="call">
+    <b>The thesis</b>
+    The infrastructure capability is not a list of AWS settings — the org already knows every
+    setting, one repository each. It is <b>propagation and enforcement</b>: a pipeline template that
+    every IaC repo runs, a shared module set so the good copy of a bucket, a role and a database is
+    the only copy, a per-project CI identity instead of one for all, a checklist of secret-handling
+    flags no scanner checks for you, and an audit dimension so fail → fix → pass has something to
+    measure. Capability 1's finding — one hardened repo, three bare ones — one layer down, with the
+    platform at the bottom scoring lowest.
+  </div>
+
+  <h3>Where to go in this report</h3>
+  <div class="cards">
+    <div class="card"><h4>Industry standards</h4><p>Five control groups, 20 practices, each with its benchmark source (AWS Startup Security Baseline, Well-Architected, CIS), our status and what is missing.</p></div>
+    <div class="card"><h4>AWOS audit</h4><p>What the recurring audit sees of infrastructure — no dimension, one false-negative SKIP traced to its source line — and the twelve-check dimension it should have.</p></div>
+    <div class="card"><h4>HOPS implementation</h4><p><b>How secure is each repo, in percent</b> — coverage, scanner pass-rate and the live account side by side — then the layers.</p></div>
+    <div class="card"><h4>How we score</h4><p>Where the percentages come from, every check explained without jargon, and a picture of what finished infrastructure looks like. <b>Start here if the words in this report are unfamiliar.</b></p></div>
+    <div class="card"><h4>Gaps &amp; tasks</h4><p>Six task blocks: what is wrong, why it must be fixed, what done looks like, effort and owner.</p></div>
+    <div class="card"><h4>Methodology</h4><p>Capability 1's rules kept, five earned here, and the trail.</p></div>
+  </div>
+</div>
+</section>
+
+<!-- ════════ INDUSTRY STANDARDS ════════ -->
+<section class="panel" id="p-standards" role="tabpanel" aria-labelledby="t-standards" data-title="Industry standards">
+<div class="col">
+  <h2>Industry standards — and why they matter</h2>
+  <p class="note"><b>In plain words:</b> this is the marking scheme. Amazon publishes a list of
+  security basics for a small organisation running on its cloud; the table below is that list plus
+  the industry additions for containers and AI, with our own status against each line.</p>
+  <p>The yardstick is the <a href="https://docs.aws.amazon.com/prescriptive-guidance/latest/aws-startup-security-baseline/" target="_blank" rel="noopener">AWS Startup Security Baseline</a>
+  (SSB): foundational controls for a single-account architecture, aligned to the Well-Architected
+  security pillar — which is what several projects sharing account <span class="mono">941000539201</span>
+  are. Vendor guidance (Wiz, Sysdig, Snyk, Palo Alto, Spacelift) fills in the container, IaC-scanning
+  and identity detail; the AWS AI Security Framework covers the Bedrock surface; Prowler's own
+  mappings score the live account against CIS 5.0 and the Well-Architected pillar. Status reflects
+  the strongest implementation in the org; per-repo scores are in <i>HOPS implementation</i>.</p>
+
+  <h3>Why these five groups</h3>
+  <ul>
+    <li><b>Identity and OIDC</b> — the pipeline is the most privileged identity in the org and the
+    one an attacker reaches through a pull request; humans and workloads come next. SSB ACCT.02–.05,
+    ACCT.13, WKLD.01; OWASP CI/CD Top 10 CICD-SEC-2.</li>
+    <li><b>Data protection and workload hardening</b> — what is at rest (the database, the buckets,
+    the Terraform state that holds every secret in cleartext, the secret store) and what runs (pod
+    security standards, non-root images, scan-on-push, immutable tags, pinned tooling). SSB ACCT.08,
+    WKLD.03/.04/.08/.09; CIS EKS §4; Sysdig's container practices.</li>
+    <li><b>Network</b> — private subnets, security groups, TLS at the edge, VPC endpoints, and
+    whether the cluster's own API is reachable from the internet. SSB WKLD.10–.14; CIS EKS 5.4.</li>
+    <li><b>Detection and governance</b> — CloudTrail, GuardDuty, Config, Security Hub; account
+    hygiene (root MFA, password policy, Access Analyzer); a scanner in the pipeline; tags; toolchain
+    currency; an audit that can see any of it. SSB ACCT.06/.07/.11/.14/.15, WKLD.15.</li>
+    <li><b>AI workload on AWS</b> — the part specific to this initiative: Bedrock invoke scoping,
+    guardrails, invocation logging, PrivateLink, cost alarms. AWS AI Security Framework.</li>
+  </ul>
+</div>
+
+<div class="wide">
+  <div class="tblwrap">
+  <table>
+    <tr><th>Infrastructure security practice</th><th>Benchmark source</th><th class="center">Status</th><th>Implemented today</th><th>Missing</th></tr>
+    <tr class="grouprow"><td colspan="5">Identity and OIDC</td></tr>
+    <tr><td><b>CI reaches the cloud by federation, scoped, defined in code</b></td>
+        <td>SSB ACCT.13, WKLD.01 · OWASP CI/CD CICD-SEC-2</td>
+        <td class="center"><span class="chip c-warn">PARTIAL</span></td>
+        <td>barley: OIDC via <code>configure-aws-credentials</code>, 16 workflows, zero static keys; hops family: CodeBuild-hosted runners with the role declared in <code>core-infra</code>, no stored keys, buildspec not user-controlled</td>
+        <td>barley's OIDC role carries <b>AdministratorAccess</b> in dev and prod; the hops family's role is <b>one role for seven repos</b>, <code>system:masters</code>, <code>iam:PassRole</code> / <code>lambda:UpdateFunctionCode</code> / <code>ecr:PutImage</code> on <code>*</code>, webhook filtered only on <code>WORKFLOW_JOB_QUEUED</code>; no GitHub OIDC provider exists in the account's code</td></tr>
+    <tr><td><b>Workload identity by role, actions enumerated</b></td>
+        <td>SSB WKLD.01 · Well-Architected SEC 3</td>
+        <td class="center"><span class="chip c-warn">PARTIAL</span></td>
+        <td>hops: IRSA on six roles, no IAM users or keys, no <code>Action:"*"</code>; sowinsights-infra: Bedrock invoke on ten explicit model ARNs</td>
+        <td>barley task role <code>iam:*</code> on <code>*</code>; hops Bedrock <code>Resource:"*"</code>, <code>s3:*</code> on one bucket, wildcard-namespace trust on preview roles; platform node roles carry Route53/ECR/ELB FullAccess; the External Secrets role reads <code>parameter/*</code> and <code>secret:*</code></td></tr>
+    <tr><td><b>Human access to production is short-lived and conditioned</b></td>
+        <td>SSB ACCT.02/.04/.05 · CIS EKS 4.1</td>
+        <td class="center"><span class="chip c-warn">PARTIAL</span></td>
+        <td>All human access is AWS single sign-on with role assumption — short-lived credentials, second factor at the identity provider; the root user has no access keys</td>
+        <td>The standing grants underneath are too broad: <code>Planner_Developers</code> trusts the whole account with an empty condition and holds RW+Delete on the prod documents bucket; <code>system:developers</code> gets <code>pods/exec</code> in <code>hops-prod</code> and <code>secrets get,list</code> in preview; two legacy IAM users hold static keys, one unrotated for 673 days</td></tr>
+    <tr><td><b>Org guardrails</b> — Organization membership, SCPs, permission boundaries</td>
+        <td>SSB ACCT.17 · AWS SRA</td>
+        <td class="center"><span class="chip c-warn">PARTIAL</span></td>
+        <td>the account is a member of the IT-managed organization <span class="mono">060183668755</span>, with all features enabled — so service control policies may well exist above us</td>
+        <td>they are invisible from a member account by design, so this research cannot confirm them; inside our own repos no permission boundary is set (a boundary variable exists on the hops chatbot role and is never used), and four customer policies allow privilege escalation</td></tr>
+
+    <tr class="grouprow"><td colspan="5">Data protection and workload hardening</td></tr>
+    <tr><td><b>Terraform state encrypted, locked, secrets marked sensitive</b></td>
+        <td>Well-Architected SEC 8 · Spacelift IAM-via-IaC</td>
+        <td class="center"><span class="chip c-warn">PARTIAL</span></td>
+        <td>every backend <code>encrypt = true</code>; DynamoDB lock (hops, core, sowinsights) or <code>use_lockfile</code> (barley)</td>
+        <td>no CMK anywhere; hops-infra and core-infra have <b>zero</b> <code>sensitive = true</code>; the shared state bucket asserts no TLS-only policy or access logging (Prowler); sowinsights <code>develop</code> root unlocked with its lockfile gitignored</td></tr>
+    <tr><td><b>Databases encrypted, TLS enforced, protected from deletion</b></td>
+        <td>SSB WKLD.09</td>
+        <td class="center"><span class="chip c-warn">PARTIAL</span></td>
+        <td>all three RDS instances in the account storage-encrypted and private (Prowler); hops Aurora with log export and a worker-only SG</td>
+        <td>hops: no <code>rds.force_ssl</code>, no <code>deletion_protection</code> (Prowler: <code>hops-db</code> and <code>hops-fin-service</code> FAIL), no CMK; barley: <code>storage_encrypted</code> absent, <code>skip_final_snapshot = true</code>; two instances accept unencrypted transport</td></tr>
+    <tr><td><b>Every bucket blocks public access and declares encryption</b></td>
+        <td>SSB ACCT.08 · Wiz S3 practices</td>
+        <td class="center"><span class="chip c-warn">PARTIAL</span></td>
+        <td>live: all 26 buckets individually blocked and default-encrypted; hops <code>hop-sowa-documents</code> and runner cache built right in code</td>
+        <td>account-level public-access block off; 24 buckets without a TLS-only policy, 26 without access logging (incl. <code>hops-prod-db-dump</code>, the state bucket); in code the prod dump bucket and <code>hops-insights</code> declare nothing; barley <code>modules/s3/v2</code> neither</td></tr>
+    <tr><td><b>Secrets from a store, with rotation that propagates, never in variables, argv or URLs</b></td>
+        <td>SSB WKLD.03/.04</td>
+        <td class="center"><span class="chip c-warn">PARTIAL</span></td>
+        <td>no literal credential in any live Terraform resource (grep, seven repos); hops SSM → External Secrets; barley Secrets Manager + <code>valueFrom</code></td>
+        <td>ESO reads every secret in the account from any namespace; <code>refreshInterval: "0"</code> at six sites; Jaeger's Elasticsearch on <code>changeme</code>, SonarQube <code>adminpassword</code>; six committed OAuth/Bamboo credentials in a dead core-infra module; a GitHub <i>variable</i> used as a password; 12 Secrets Manager secrets without rotation; Slack/Notion tokens in Lambda environment variables (other projects)</td></tr>
+    <tr><td><b>Pod security standards</b> — non-root, read-only fs, no privilege escalation, dropped capabilities</td>
+        <td>CIS EKS §4 · Kubernetes PSS <i>restricted</i> · Sysdig</td>
+        <td class="center"><span class="chip c-fail">MISSING</span></td>
+        <td>—</td>
+        <td>zero <code>securityContext</code> in seven charts (hops ×5, sowinsights, hops-mcp); no PSA labels; no admission policy; legacy GitLab runners <code>privileged</code> with a cgroup hostPath and <code>cluster-admin</code></td></tr>
+    <tr><td><b>Non-root minimal images, scanned on push, immutable tags</b></td>
+        <td>Sysdig 17 practices · SSB WKLD.15</td>
+        <td class="center"><span class="chip c-warn">PARTIAL</span></td>
+        <td>hops <code>hop-agent</code> and hops-mcp: multi-stage, non-root, health-checked; Grype blocks CRITICAL on hops images in CI</td>
+        <td>ECR scan-on-push off on <b>35 of 36</b> repositories in the account, tags mutable; <code>hop-backend</code>, <code>hop-ui</code>, sowinsights, 30 barley stages run as root; <code>:latest</code> pushed to prod; no digests, signing or SBOM</td></tr>
+    <tr><td><b>Pinned, verified CI tooling; least token permissions</b></td>
+        <td>OWASP CI/CD CICD-SEC-8 · OpenSSF Scorecard</td>
+        <td class="center"><span class="chip c-warn">PARTIAL</span></td>
+        <td>hops: gitleaks and osv-scanner binaries SHA256-verified; Scorecard ratchet on five repos</td>
+        <td>hops: <code>curl … helm/helm/main … | bash</code> and Grype's installer on every deploy job; ~50 tag-pinned actions; no <code>permissions:</code> on deploy jobs; <code>issue_comment</code> triggers without an author check; all seven CodeBuild projects <code>privileged_mode</code></td></tr>
+
+    <tr class="grouprow"><td colspan="5">Network</td></tr>
+    <tr><td><b>Private subnets, no open-world ingress</b></td>
+        <td>SSB WKLD.10/.11 · Wiz security-group practices</td>
+        <td class="center"><span class="chip c-warn">PARTIAL</span></td>
+        <td>all workloads in private subnets in every repo; hops RDS SG ingress from the worker SG only; 32 of 38 security groups closed (Prowler)</td>
+        <td>barley and sowinsights: <code>0.0.0.0/0</code> on 80/443 with a module default of open-world; sowinsights peers into the shared corporate VPC and writes routes into every route table; SSH open to the internet on two instances (other projects); platform default SG/NACL unmanaged</td></tr>
+    <tr><td><b>Cluster API private or CIDR-restricted; network policies</b></td>
+        <td>CIS EKS 5.4 · SSB WKLD.10</td>
+        <td class="center"><span class="chip c-fail">MISSING</span></td>
+        <td>one NetworkPolicy on prod <code>hop-be</code>; the CNI supports policies (Prowler PASS)</td>
+        <td>EKS <code>endpoint_public_access = true</code>, <code>endpoint_private_access = false</code>, no CIDR list — the production API is open to the internet; no policy on any other workload</td></tr>
+    <tr><td><b>HTTPS-only edge, modern TLS, WAF on public endpoints</b></td>
+        <td>SSB WKLD.13/.14</td>
+        <td class="center"><span class="chip c-warn">PARTIAL</span></td>
+        <td>hops ALBs: redirect, TLS-1.2 policy, ACM; all five ALB listeners TLS (Prowler); cert-manager Let's Encrypt on the platform ingress</td>
+        <td>Jaeger UI on the public zone behind basic auth; Grafana public with self-sign-up and a local admin login; CloudFront proxy <code>allow-all</code> / <code>TLSv1</code>; no WAF on any ALB or distribution; <code>ingress-nginx</code> 4.1.4 (2022) on the internet-facing NLB; 2018 TLS policy, not TLS 1.3</td></tr>
+    <tr><td><b>VPC endpoints with policies; flow logs</b></td>
+        <td>SSB WKLD.12 · ACCT.09</td>
+        <td class="center"><span class="chip c-fail">MISSING</span></td>
+        <td>hops S3 gateway endpoint (2026-02); barley interface endpoints</td>
+        <td>hops endpoint has no policy (defaults to <code>*</code>); no Bedrock endpoint in any repo; flow logs off on all four VPCs (Prowler)</td></tr>
+
+    <tr class="grouprow"><td colspan="5">Detection and governance</td></tr>
+    <tr><td><b>CloudTrail, GuardDuty, Config, Security Hub — declared in code</b></td>
+        <td>SSB ACCT.07/.14/.15</td>
+        <td class="center"><span class="chip c-warn">PARTIAL</span></td>
+        <td><b>Centrally provided and correct</b>: two organization trails from the management account (multi-region, log-file validation on, KMS-encrypted) and an AWS Config recorder deployed by an organization StackSet. barley additionally declares CloudTrail + GuardDuty in code for its own accounts, with a Slack runbook</td>
+        <td>GuardDuty, Security Hub and Access Analyzer <b>off</b> account-wide, and network flow logs off on all four networks — nobody owns them, centrally or locally. A leftover local trail (<code>management-events-test</code>) still logs without validation or KMS, duplicating the organization trails</td></tr>
+    <tr><td><b>Account hygiene</b> — root MFA, password policy, Access Analyzer, EBS default encryption</td>
+        <td>SSB ACCT.02/.06/.11, WKLD.08</td>
+        <td class="center"><span class="chip c-warn">PARTIAL</span></td>
+        <td>No root access keys; single sign-on for every human; member of the IT-managed organization — the items an individual project cannot set are owned above us</td>
+        <td>Ours to fix: Access Analyzer off, EBS default encryption off with 50 unencrypted volumes and snapshots, account-level public-access block off, password policy unset. For IT: root has no second factor on this member account (a candidate for centralized root access management, which removes root credentials entirely)</td></tr>
+    <tr><td><b>IaC scanned and plan reviewed before apply</b></td>
+        <td>SSB WKLD.15 · Snyk IaC · Well-Architected SEC 1</td>
+        <td class="center"><span class="chip c-fail">MISSING</span></td>
+        <td>barley: plan as a PR comment, apply job, tflint gate (0 issues)</td>
+        <td>no misconfiguration scanner in any repo (Trivy's first pass: 900+ failing rows across the GitHub heads); <code>core-infra</code>, <code>hops-infra</code>, <code>sowinsights-infra</code> have no <code>.github/</code> at all — applies from laptops, <code>-auto-approve</code> in one; hops-infra's own tflint config cannot load</td></tr>
+    <tr><td><b>Tagging standard and toolchain currency</b></td>
+        <td>Datadog tagging practices · Well-Architected OPS</td>
+        <td class="center"><span class="chip c-warn">PARTIAL</span></td>
+        <td>core-infra and hops-infra: provider <code>default_tags</code> with owner, tech lead, repo, state file; barley seven keys</td>
+        <td>hops-infra TF 1.3.9 / aws 4.63.0 (2023), ALB controller 1.5.2, <code>ingress-nginx</code> 4.1.4; sowinsights <code>Environment=production</code> on resources named <code>-dev-</code>; dead modules and GitLab READMEs left behind by the migration</td></tr>
+    <tr><td><b>Recurring audit that can fail on infrastructure</b></td>
+        <td>NIST SSDF · capability 1's own loop</td>
+        <td class="center"><span class="chip c-fail">MISSING</span></td>
+        <td>AWOS audit runs on hops and barley (repo hygiene, app-sec, supply chain, AI files)</td>
+        <td>no infrastructure dimension; the IaC repos have never been audited; <code>collected/ci.json</code> is empty in every run</td></tr>
+
+    <tr class="grouprow"><td colspan="5">AI workload on AWS</td></tr>
+    <tr><td><b>Bedrock: scoped invoke, guardrails, invocation logging, PrivateLink, cost alarms</b></td>
+        <td>AWS AI Security Framework · Wiz AI workload guidance</td>
+        <td class="center"><span class="chip c-warn">PARTIAL</span></td>
+        <td>live: <b>invocation logging on</b> and a guardrail exists (by hand); sowinsights-infra: invoke scoped to ten model ARNs; hops and sowinsights: four token-count alarms → Slack each</td>
+        <td>nothing in code declares the logging or the guardrail (Prowler: no contextual-grounding policy); hops <code>Resource:"*"</code> on three roles; barley <code>bedrock:*</code>; no endpoint in any repo; both projects' alarms are <code>dimensions = {}</code> in one account, so each fires on the other's traffic; AWS AI Security Framework mapping 68.8 %</td></tr>
+  </table>
+  </div>
+  <p class="note">Status = strongest implementation in the org, verified against GitHub snapshots
+  taken 2026-09-03/04 and the live account on 2026-09-04. Sources: AWS Startup Security Baseline ·
+  AWS Security Reference Architecture · Well-Architected Security Pillar · AWS AI Security Framework ·
+  CIS AWS Foundations 5.0 / CIS EKS (via Prowler's mapping) · OWASP CI/CD Top 10 · Wiz, Sysdig, Snyk,
+  Spacelift, Palo Alto guidance from the 41-source notebook list (<code>research/sources/cloud/</code>).</p>
+</div>
+</section>
+
+<!-- ════════ AWOS AUDIT ════════ -->
+<section class="panel" id="p-awos" role="tabpanel" aria-labelledby="t-awos" data-title="AWOS audit">
+<div class="col">
+  <h2>The AWOS audit — what it sees of infrastructure</h2>
+  <p>Capability 1 established how the <a href="https://github.com/provectus/awos" target="_blank" rel="noopener">AWOS</a>
+  AI-readiness audit works: 13 dimensions, detector checks with evidence arrays, health = awarded ÷
+  applicable weight, and a measured 13-day fail → fix → pass loop on hops. This research asked one
+  question of the same two runs (hops <span class="mono">2026-07-17</span>, <span class="mono">2026-08-03</span>)
+  and barley's <span class="mono">2026-06-03</span>: <b>which checks read infrastructure?</b></p>
+
+  <div class="kpis">
+    <div class="kpi"><div class="n">0</div><div class="l">checks, across 13 dimensions and both runs, that mention terraform, iac, oidc, encryption, eks, ecr or iam</div></div>
+    <div class="kpi"><div class="n">2</div><div class="l">infra-adjacent verdicts: AS-01 (accepted risk, permanent FAIL) and AS-14 (SKIP)</div></div>
+    <div class="kpi"><div class="n">false</div><div class="l"><code>collected/ci.json</code> <code>available</code> — the audit has never seen a pipeline run</div></div>
+    <div class="kpi"><div class="n">0 <small>of 3</small></div><div class="l">IaC repositories ever audited — the audit runs on the application repo only</div></div>
+  </div>
+
+  <h3>The two verdicts, read correctly</h3>
+  <div class="tblwrap"><table>
+    <tr><th>Audit verdict</th><th>Reality (verified by hand, then in the engine)</th><th>Class</th></tr>
+    <tr><td>AS-01 <span class="chip c-fail">FAIL</span> "application enforces TLS", both runs</td>
+        <td>13 plain-HTTP URLs, all cluster-internal <code>--set</code> values — a documented accepted risk (<code>docs/processes/security-notes.md</code>: TLS terminates at the ALB, a mesh is a separate decision). No waiver mechanism, so an 8-point FAIL every run. Already covered upstream by the maintainers' #158</td>
+        <td><span class="chip c-info">KNOWN</span></td></tr>
+    <tr><td>AS-14 <span class="chip c-info">SKIP</span> "sensitive file types excluded from VCS <i>and</i> from container image builds" — <i>"no sensitive file types present in this stack — not applicable"</i></td>
+        <td><b>A false negative in this repo.</b> hops's root <code>.dockerignore</code> is seven lines; <code>.gitignore</code> covers <code>*.pem</code>, <code>*.key</code>, <code>*.p12</code>, <code>credentials*.json</code>, <code>secrets*.yml</code>, <code>.auth/</code> — none of which the <code>.dockerignore</code> repeats, and all three images build with the repo root as context. That is the inconsistency the check is defined to flag. In the engine (<code>detectors/security.ts</code>, <code>detectSensitiveFilesGitignored</code>, plugin 2.4.4): applicability is decided by whether a <code>*.pem</code> or <code>credentials*.json</code> <i>currently exists in the working tree</i>. A repo whose developers never left one lying around is skipped; only a repo that already has the problem on disk gets measured</td>
+        <td><span class="chip c-fail">FALSE NEGATIVE</span></td></tr>
+  </table></div>
+  <p class="note">The maintainers already fixed the mirror-image trap (an ignore-honoring walk made
+  PASS unreachable — the comment in <code>git_ignore.ts</code> says so). The remaining gap is one step
+  earlier: evaluate coverage on the <i>pattern set</i>, comparing what <code>.gitignore</code> treats as
+  sensitive with what every <code>.dockerignore</code> in a build context covers, and FAIL on the
+  difference when a Dockerfile exists. Reproducer, fix and test drafted in
+  <code>research/findings/awos-infra-coverage.md</code>; filed upstream only after review.</p>
+
+  <h3>The dimension that should exist</h3>
+  <p>Twelve detected checks, derived from the five control groups, checkable from a repository tree
+  plus an optional read-only account collector — this research used Prowler's output as exactly that
+  collector, so the "live" column in <i>HOPS implementation</i> is what such a dimension would see:</p>
+  <div class="tblwrap"><table>
+    <tr><th>ID</th><th>Check</th><th>Source</th><th>hops family today</th></tr>
+    <tr><td class="mono">IS-01</td><td>IaC applied from a pipeline, not a workstation</td><td>SSB WKLD.15</td><td><span class="chip c-fail">FAIL</span> 3 of 3 repos</td></tr>
+    <tr><td class="mono">IS-02</td><td>CI reaches the cloud by federation or a runner identity declared in code; no access-key secret</td><td>SSB ACCT.13</td><td><span class="chip c-warn">WARN</span> declared, shared</td></tr>
+    <tr><td class="mono">IS-03</td><td>No <code>AdministratorAccess</code> / <code>Action:"*"</code> / <code>system:masters</code> on a CI or workload role</td><td>SSB ACCT.04, WKLD.01</td><td><span class="chip c-fail">FAIL</span></td></tr>
+    <tr><td class="mono">IS-04</td><td>State backend encrypted and locked; <code>sensitive = true</code> on secret-bearing values</td><td>WA SEC 8</td><td><span class="chip c-warn">WARN</span></td></tr>
+    <tr><td class="mono">IS-05</td><td>Every bucket declares a public-access block and encryption</td><td>SSB ACCT.08</td><td><span class="chip c-warn">WARN</span></td></tr>
+    <tr><td class="mono">IS-06</td><td>Databases declare encryption, deletion protection and a TLS-enforcing parameter group</td><td>SSB WKLD.09</td><td><span class="chip c-fail">FAIL</span></td></tr>
+    <tr><td class="mono">IS-07</td><td>ECR <code>scan_on_push</code> and <code>IMMUTABLE</code></td><td>WA SEC 6</td><td><span class="chip c-fail">FAIL</span></td></tr>
+    <tr><td class="mono">IS-08</td><td>Kubernetes workloads set a restricted <code>securityContext</code>; Dockerfiles set <code>USER</code></td><td>CIS EKS §4 / PSS</td><td><span class="chip c-fail">FAIL</span></td></tr>
+    <tr><td class="mono">IS-09</td><td>A misconfiguration scanner runs in CI over IaC, Helm and Dockerfiles</td><td>SSB WKLD.15</td><td><span class="chip c-fail">FAIL</span></td></tr>
+    <tr><td class="mono">IS-10</td><td>CloudTrail, GuardDuty, Config or Security Hub declared in code (collector: enabled live)</td><td>SSB ACCT.07/.14/.15</td><td><span class="chip c-warn">WARN</span> 2 of 4 live, 0 in code</td></tr>
+    <tr><td class="mono">IS-11</td><td>Cluster API not public; secrets envelope-encrypted; all log types on</td><td>CIS EKS 5.4 / 5.3</td><td><span class="chip c-fail">FAIL</span></td></tr>
+    <tr><td class="mono">IS-12</td><td>Bedrock invoke scoped to model ARNs; guardrails or invocation logging present</td><td>AWS AI Security Framework</td><td><span class="chip c-warn">WARN</span> live yes, code no</td></tr>
+  </table></div>
+</div>
+</section>
+
+<!-- ════════ HOPS IMPLEMENTATION ════════ -->
+<section class="panel" id="p-hops" role="tabpanel" aria-labelledby="t-hops" data-title="HOPS implementation">
+<div class="col">
+  <h2>HOPS — how secure is the infrastructure, per repository</h2>
+  <p class="note"><b>In plain words:</b> one row per code repository, with a percentage for how many
+  of the 23 security basics it has. The method behind the percentage, and every check explained
+  without jargon, is in <b>How we score</b>.</p>
+  <p>Three numbers per repo, three meanings, none of them "how secure" alone. <b>Coverage</b> follows
+  the AWOS audit's own convention — awarded ÷ applicable over the same 23-control list for every repo,
+  pass = 1, partial = ½, fail = 0, not-applicable excluded — and scores what the standards ask for,
+  including what no scanner reads (CI identity, human access, audit cadence). <b>Trivy pass-rate</b>
+  is the scanner's own successes ÷ evaluated, weighted by how many resources exist — high everywhere
+  because most resources are fine and the seams between them are not resources. <b>Prowler</b> is the
+  live account. Judgement and evidence for every cell:
+  <code>research/baseline/cloud-control-scores.md</code>.</p>
+</div>
+<div class="wide">
+  <div class="tblwrap"><table class="mx">
+    <tr><th>Repository (GitHub, ref)</th><th>What it owns</th><th class="center">Coverage</th><th class="center">Identity</th><th class="center">Data &amp; workload</th><th class="center">Network</th><th class="center">Detection</th><th class="center">AI</th><th class="center">Trivy pass-rate</th></tr>
+    <tr><td><b>core-infra</b> <span class="mono">36a127633</span></td><td>platform: VPC, EKS <code>internal-projects</code>, CodeBuild runners and role, External Secrets, ingress, monitoring</td><td><b>29 %</b> <span class="note">5.5 / 19</span></td><td>40 %</td><td>17 %</td><td>25 %</td><td>38 %</td><td>—</td><td>94.1 %</td></tr>
+    <tr><td><b>hops-infra</b> <span class="mono">9ce74cd45</span></td><td>project IaC: Aurora, ECR, IRSA roles, buckets, Jaeger, SonarQube, alarms</td><td><b>33 %</b> <span class="note">7 / 21</span></td><td>30 %</td><td>25 %</td><td>50 %</td><td>38 %</td><td>33 %</td><td>87.2 %</td></tr>
+    <tr><td><b>hops</b> (app) <span class="mono">63d0cc050</span></td><td>five Helm charts, three Dockerfiles, eleven GitHub Actions workflows</td><td><b>35 %</b> <span class="note">4.5 / 13</span></td><td>38 %</td><td>25 %</td><td>50 %</td><td>33 %</td><td>—</td><td>94.9 % <span class="note">(charts rendered 86.5 %)</span></td></tr>
+    <tr><td><b>hops-mcp</b> <span class="mono">352b091b7</span></td><td>one Helm chart, one Dockerfile</td><td><b>36 %</b> <span class="note">2.5 / 7</span></td><td>25 %</td><td>50 %</td><td>—</td><td>0 %</td><td>—</td><td>76.2 % <span class="note">(rendered; 100 % unrendered = skip)</span></td></tr>
+    <tr><td><b>barley</b> <span class="mono">develop 548f0271f</span></td><td>253 Terraform files, 8 stacks, two accounts, us-west-2</td><td><b>36 %</b> <span class="note">6.5 / 18</span></td><td>38 %</td><td>33 %</td><td>25 %</td><td>62 %</td><td>0 %</td><td>68.4 %</td></tr>
+    <tr><td><b>sowinsights-infra</b> <span class="mono">3cc8a7a48</span></td><td>ECS Fargate, VPC + peering, ECR, IAM, alarms (us-east-1)</td><td><b>41 %</b> <span class="note">7 / 17</span></td><td>38 %</td><td>50 %</td><td>0 %</td><td>38 %</td><td>67 %</td><td>93.8 %</td></tr>
+    <tr><td><b>sowinsights</b> (app) <span class="mono">b12880d31</span></td><td>one chart, one Dockerfile, one workflow</td><td><b>17 %</b> <span class="note">1 / 6</span></td><td>25 %</td><td>17 %</td><td>—</td><td>0 %</td><td>—</td><td>94.2 %</td></tr>
+    <tr class="grouprow"><td colspan="9">The live account — read-only scan, Prowler 5.41.0, 2026-09-04</td></tr>
+    <tr><td><b>proj-hops</b> <span class="mono">941000539201</span></td><td>648 checks, us-east-2 + us-east-1; shared with malt, assessor, avatar-demo, awos-recruitment</td><td><b>72.5 %</b> <span class="note">3,310 / 4,568</span></td><td colspan="5">CIS 5.0 <b>67.5 %</b> · Well-Architected security pillar <b>72.3 %</b> · AWS Foundational Security Best Practices <b>59.7 %</b> · AWS AI Security Framework <b>68.8 %</b> · ISO 27001:2022 80.1 %</td><td>1,258 FAIL · 14 critical</td></tr>
+  </table></div>
+  <div class="col">
+  <div class="bars" role="img" aria-label="Control coverage per repository: core-infra 29, hops-infra 33, hops 35, hops-mcp 36, barley 36, sowinsights-infra 41 percent">
+    <div class="barrow"><span class="label">core-infra</span><div class="track"><div class="fill" style="width:29%"></div></div><span class="barval"><b>29 %</b> · the platform everyone stands on</span></div>
+    <div class="barrow"><span class="label">hops-infra</span><div class="track"><div class="fill" style="width:33%"></div></div><span class="barval"><b>33 %</b></span></div>
+    <div class="barrow"><span class="label">hops app</span><div class="track"><div class="fill" style="width:35%"></div></div><span class="barval"><b>35 %</b></span></div>
+    <div class="barrow"><span class="label">hops-mcp</span><div class="track"><div class="fill" style="width:36%"></div></div><span class="barval"><b>36 %</b> · 7 applicable controls</span></div>
+    <div class="barrow"><span class="label">barley</span><div class="track"><div class="fill" style="width:36%"></div></div><span class="barval"><b>36 %</b> · strongest detection, weakest identity</span></div>
+    <div class="barrow"><span class="label">sowa-infra</span><div class="track"><div class="fill" style="width:41%"></div></div><span class="barval"><b>41 %</b> · best identity, no network</span></div>
+  </div>
+  <p class="viz-cap">Bars are coverage (judged). The measured numbers disagree with each other on
+  purpose: barley's 68 % Trivy pass-rate is one ECR module instantiated 27 times; hops-mcp reads 100 %
+  until its chart is rendered. A repo whose only failing control is "the CI role is shared" can score
+  well on both scanners and still be one merge from cluster-admin — that is the coverage column's job.</p>
+
+  <h3>What holds, and what does not, by layer</h3>
+  </div>
+</div>
+<div class="col">
+  <div class="layer">
+    <h3>Layer 0 — platform (<code>core-infra</code>, coverage 29 %)</h3>
+    <p><b class="ok">Holds:</b> exact provider pins with a full lockfile on TF 1.5.7 / aws 6.0.0; state
+    encrypted and locked with the lock table in code; six private subnets; EKS 1.34 on the current
+    module; IRSA and Pod Identity for add-ons, some fully qualified; nine-key provider
+    <code>default_tags</code>; namespaced developer RBAC; cert-manager Let's Encrypt; Alertmanager → Slack.
+    Provided centrally by IT: the organization itself, single sign-on for every human, two organization
+    CloudTrail trails (multi-region, log-validated, KMS-encrypted) and an AWS Config recorder — the part
+    of this picture that works.</p>
+    <p><b>Does not hold:</b> <code>codebuild-hops-aws-iac</code> — one role for seven projects,
+    <code>system:masters</code>, <code>iam:PassRole</code> + <code>ecs:RegisterTaskDefinition</code> on <code>*</code>,
+    <code>lambda:UpdateFunctionCode</code> on <code>*</code>, <code>ecr:PutImage</code> on <code>*</code>, prod-dump read, org GitHub
+    token, <code>privileged_mode</code>, webhook filter <code>WORKFLOW_JOB_QUEUED</code> only; EKS API public with
+    private access disabled and no secrets KMS; External Secrets role on <code>parameter/*</code> and
+    <code>secret:*</code> with an unqualified trust; GuardDuty, Security Hub, Access Analyzer and flow logs off account-wide
+    and owned by nobody, while the detective controls that do exist are declared in no repository and a
+    leftover local trail duplicates them without validation or encryption;
+    two legacy GitLab runners still deployed as <code>cluster-admin</code> and privileged;
+    <code>Planner_Developers</code> trusting the whole account; <code>ingress-nginx</code> 4.1.4 on the public NLB;
+    Grafana public with self-sign-up and a local admin login; six committed credentials in a dead module;
+    no pipeline for the repo itself.</p>
+  </div>
+  <div class="layer">
+    <h3>Layer 1 — project IaC (<code>hops-infra</code>, coverage 33 %)</h3>
+    <p><b class="ok">Holds:</b> IRSA on six roles, no IAM users or keys, no <code>Action:"*"</code>;
+    Aurora encrypted in private subnets with a worker-only SG and log export; every secret an SSM
+    reference; internal ALBs with redirect and TLS 1.2; four Bedrock token alarms → Slack; Chatbot
+    capped at <code>ReadOnlyAccess</code>; the two newest buckets built right; provider
+    <code>default_tags</code> since the migration; a fully-qualified fin-service role.</p>
+    <p><b>Does not hold:</b> no pipeline in any commit; ECR <code>scan_on_push = false</code> and
+    <code>MUTABLE</code> on eight repos; Aurora without <code>rds.force_ssl</code>, <code>deletion_protection</code>
+    or a CMK; Jaeger UI on the public zone behind basic auth, Elasticsearch on <code>changeme</code>;
+    SonarQube <code>adminpassword</code>; the nightly prod dump (<code>0777</code>, <code>apt install</code>, no
+    <code>set -e</code>) into a bucket declaring nothing; <code>s3:*</code> on a bare <code>hops-insights</code> bucket;
+    <code>Planner_Developers</code> RW+Delete on prod documents; wildcard-namespace trust on two preview roles;
+    an S3 endpoint without a policy; ESO <code>refreshInterval: "0"</code> ×6; zero <code>sensitive = true</code>;
+    TF 1.3.9 / aws 4.63.0; ALB controller 1.5.2; the CI-variable pipeline deleted in the migration with
+    nothing in its place; three dead modules and a GitLab README.</p>
+  </div>
+  <div class="layer">
+    <h3>Layer 2 — Kubernetes and images (<code>hops</code>, coverage 35 %; <code>hops-mcp</code> 36 %)</h3>
+    <p><b class="ok">Holds:</b> IRSA wired on the <code>hops</code> service account; External Secrets with a
+    15-minute refresh; one NetworkPolicy on prod <code>hop-be</code>; ALB ingress with redirect and ACM;
+    <code>hop-agent</code> and hops-mcp images multi-stage, non-root, health-checked; Grype blocks CRITICAL.</p>
+    <p><b>Does not hold:</b> zero <code>securityContext</code> in six charts; no <code>values.yaml</code> in any
+    hops chart; <code>hop-backend</code> (full JDK, DB password on the java command line) and <code>hop-ui</code>
+    run as root; the NetworkPolicy's egress is all namespaces and its selectors render empty on dev;
+    <code>system:developers</code> gets <code>secrets get,list</code> and <code>pods/exec</code> in preview; preview
+    Postgres pulled straight from Docker Hub; no chart linted or scanned; hops-mcp's chart does not
+    render without values, which is how a scanner reports it clean.</p>
+  </div>
+  <div class="layer">
+    <h3>Layer 3 — CI to cloud (<code>hops</code> workflows on the platform's runners)</h3>
+    <p><b class="ok">Holds:</b> no stored AWS credentials of any kind; no <code>pull_request_target</code>;
+    gitleaks and osv-scanner SHA256-verified; Scorecard ratchet; Dependabot on actions; kubeconfig
+    minted per job; buildspec not user-controlled (Prowler).</p>
+    <p><b>Does not hold:</b> the identity is Layer 0's shared role; one EKS cluster for prod, dev, demo
+    and every preview; no <code>permissions:</code> on deploy jobs; helm and Grype by <code>curl … main … | bash</code>;
+    <code>/deploy-admin</code> and <code>/destroy-admin</code> from any commenter; <code>USER_PASSWORD</code> a variable,
+    the preview password posted into a PR comment inside a sign-in URL; <code>:latest</code> to prod ECR; the
+    prod dump restored into demo; a legacy <code>.gitlab-ci.yml</code> with Docker-in-Docker TLS off;
+    <b>zero required status checks on <code>main</code></b>.</p>
+  </div>
+  <div class="layer">
+    <h3>Layer 4 — process</h3>
+    <p>An accepted-risk register (<code>docs/processes/security-notes.md</code>) that already records the
+    in-cluster plain-HTTP decision; an agent guard that blocks reads of <code>~/.aws</code> and credential
+    files; a rule that bans <code>curl | sh</code> in hooks — which the deploy workflows do. No document on
+    cluster architecture, network design, encryption at rest, KMS, backups, DR, incident response or a
+    threat model (audit AS-11 says the same). The GitLab migration was a file copy: three IaC repos with
+    GitLab MR templates, no <code>.github/</code>, READMEs pointing at the old host.</p>
+  </div>
+  <div class="call">
+    <b>What makes this the blueprint</b>
+    The skeleton is right and the seams are open. Every control that is present is a small declarative
+    setting in a module; every gap is the same kind of setting, absent — <code>scan_on_push</code>,
+    <code>rds.force_ssl</code>, <code>runAsNonRoot</code>, <code>endpoint_private_access</code>, one <code>service_role_arn</code>
+    per project. The capability is the pipeline and the shared modules that make the present ones the
+    default and the absent ones impossible to forget.
+  </div>
+</div>
+</section>
+
+<!-- ════════ HOW WE SCORE ════════ -->
+<section class="panel" id="p-score" role="tabpanel" aria-labelledby="t-score" data-title="How we score">
+<div class="col">
+  <h2>How we score — and what "finished" would look like</h2>
+  <p>This section is written for a reader who does not work with this system every day. It explains
+  where the percentages come from, what each thing we check actually means, and what our
+  infrastructure would look like if none of it were missing.</p>
+
+  <div class="call">
+    <b>The short version</b>
+    We wrote down 23 things that well-run cloud infrastructure does. We checked each of our seven
+    code repositories against every one of them, gave a point for done, half a point for
+    half-done, nothing for not done, and skipped the ones that do not apply to that repository.
+    The percentage is points scored ÷ points available. It is a building inspection, not an exam
+    grade: 30 % does not mean the system is broken, it means most of the safety features an
+    inspector looks for have not been installed yet.
+  </div>
+
+  <h3>The method, in four steps</h3>
+  <ol>
+    <li><b>One list for everybody.</b> The same 23 checks are applied to every repository, grouped
+    into the five areas this report uses: who can get in, what protects the data and the running
+    software, the network, whether anyone would notice a problem, and the AI-specific controls.
+    The list comes from Amazon's own baseline for a small organisation on AWS, plus the industry
+    standards named in <i>Industry standards</i> — we did not invent the bar.</li>
+    <li><b>Three verdicts per check.</b> <b>Done</b> (1 point) means the protection is in place and
+    written down in the code, so it cannot quietly disappear. <b>Half done</b> (½ point) means it is
+    partly there — protecting one environment but not the other, or switched on by hand where a
+    person could switch it off again. <b>Not done</b> (0 points) means it is absent.</li>
+    <li><b>Skip what does not apply.</b> A repository with no database is not marked down for
+    failing to encrypt one. Skipped checks are removed from the total, which is why the
+    denominators differ: the platform repository is judged on 19 checks, the HOPS infrastructure
+    repository on 21, a small service repository on 6 or 7.</li>
+    <li><b>Divide, and keep the evidence.</b> Every verdict carries the file and line it was read
+    from, at a recorded version of the code. The full list of verdicts and their evidence is in the
+    research files; nothing in the score is a matter of opinion that cannot be checked.</li>
+  </ol>
+
+  <h3>Worked example — the HOPS infrastructure repository, 33 %</h3>
+  <p>Twenty-three checks, two skipped as not applicable (it runs no cluster of its own, and its
+  pipeline tooling question belongs to the application repository), leaving 21. It scored 7 points.</p>
+</div>
+<div class="wide">
+  <div class="tblwrap"><table>
+    <tr><th>What we checked</th><th class="center">Verdict</th><th class="center">Points</th><th>Why</th></tr>
+    <tr><td>The deploy pipeline logs in without a stored password</td><td class="center"><span class="chip c-fail">NOT DONE</span></td><td class="center num-cell">0</td><td>There is no pipeline at all — changes are applied from a laptop</td></tr>
+    <tr><td>The deploy identity can only touch its own project</td><td class="center"><span class="chip c-fail">NOT DONE</span></td><td class="center num-cell">0</td><td>Same reason: the identity is whoever is sitting at the laptop</td></tr>
+    <tr><td>Each application has its own identity with listed permissions</td><td class="center"><span class="chip c-warn">HALF</span></td><td class="center num-cell">0.5</td><td>Six applications have one — but one of them may call any AI model and another may do anything at all to one storage bucket</td></tr>
+    <tr><td>People get narrow, temporary access to production</td><td class="center"><span class="chip c-warn">HALF</span></td><td class="center num-cell">0.5</td><td>Everyone signs in through single sign-on and borrows permissions for a few hours — the right mechanism. But a developer role can read, write <b>and delete</b> the production documents bucket</td></tr>
+    <tr><td>Identities name exactly who may use them</td><td class="center"><span class="chip c-warn">HALF</span></td><td class="center num-cell">0.5</td><td>Production is exact; the preview environments accept any namespace whose name starts with the right prefix</td></tr>
+    <tr><td>The infrastructure description file is encrypted and its secrets marked</td><td class="center"><span class="chip c-warn">HALF</span></td><td class="center num-cell">0.5</td><td>Encrypted and locked, but with Amazon's default key, and no value in it is marked secret — so passwords appear in plain text when a change is previewed</td></tr>
+    <tr><td>Databases encrypted, refusing plain connections, protected from deletion</td><td class="center"><span class="chip c-warn">HALF</span></td><td class="center num-cell">0.5</td><td>Encrypted at rest and privately networked; but it still accepts unencrypted connections and a single mistaken command could delete it</td></tr>
+    <tr><td>Every storage bucket closed to the public and encrypted</td><td class="center"><span class="chip c-warn">HALF</span></td><td class="center num-cell">0.5</td><td>The two newest buckets are exemplary; the one holding the nightly production database copy declares nothing</td></tr>
+    <tr><td>Passwords live in a vault, rotate, never appear in a link or a command</td><td class="center"><span class="chip c-fail">NOT DONE</span></td><td class="center num-cell">0</td><td>Two well-known default passwords are live in configuration files, and rotated passwords never reach the running system</td></tr>
+    <tr><td>Containers run as an ordinary user, not as administrator</td><td class="center"><span class="chip c-fail">NOT DONE</span></td><td class="center num-cell">0</td><td>Nothing sets it anywhere</td></tr>
+    <tr><td>Images scanned for known vulnerabilities; versions cannot be swapped</td><td class="center"><span class="chip c-fail">NOT DONE</span></td><td class="center num-cell">0</td><td>Scanning is explicitly switched off on all eight image registries</td></tr>
+    <tr><td>Servers on private networks, nothing open to the whole internet</td><td class="center"><span class="chip c-pass">DONE</span></td><td class="center num-cell">1</td><td>The database accepts connections only from the application's own machines</td></tr>
+    <tr><td>Everything public is encrypted in transit and filtered</td><td class="center"><span class="chip c-fail">NOT DONE</span></td><td class="center num-cell">0</td><td>The engineering trace viewer is on the public internet behind a single shared password, and one service still accepts unencrypted web traffic</td></tr>
+    <tr><td>Traffic to Amazon services stays private and is recorded</td><td class="center"><span class="chip c-warn">HALF</span></td><td class="center num-cell">0.5</td><td>One private route exists, without a rule saying what may travel it; the AI service is not on it</td></tr>
+    <tr><td>Recording and threat detection switched on, with a clear owner</td><td class="center"><span class="chip c-warn">HALF</span></td><td class="center num-cell">0.5</td><td>The IT department records all activity across the company's accounts, properly — but threat detection, the security dashboard and network records are switched on by nobody</td></tr>
+    <tr><td>Changes reviewed and machine-checked before they apply</td><td class="center"><span class="chip c-fail">NOT DONE</span></td><td class="center num-cell">0</td><td>No review step, and the one checking tool that is configured cannot even start</td></tr>
+    <tr><td>Resources labelled with an owner; tooling current</td><td class="center"><span class="chip c-warn">HALF</span></td><td class="center num-cell">0.5</td><td>Labelling was fixed this year; the tooling is from 2023</td></tr>
+    <tr><td>Alarms reach a human who knows what to do</td><td class="center"><span class="chip c-warn">HALF</span></td><td class="center num-cell">0.5</td><td>Alarms reach Slack; there is no written procedure for what to do when one fires</td></tr>
+    <tr><td>The AI service may call only approved models</td><td class="center"><span class="chip c-fail">NOT DONE</span></td><td class="center num-cell">0</td><td>It may call any model in any region</td></tr>
+    <tr><td>AI prompts and answers are recorded and filtered</td><td class="center"><span class="chip c-fail">NOT DONE</span></td><td class="center num-cell">0</td><td>Not asked for here (it is switched on in the account by hand — which is why the account scores better than the code)</td></tr>
+    <tr><td>A runaway AI bill or loop pages someone quickly</td><td class="center"><span class="chip c-pass">DONE</span></td><td class="center num-cell">1</td><td>Four alarms, the fastest firing within a minute</td></tr>
+    <tr class="grouprow"><td>Total</td><td class="center">21 apply</td><td class="center num-cell"><b>7.0</b></td><td><b>7.0 ÷ 21 = 33 %</b></td></tr>
+  </table></div>
+</div>
+
+<div class="col">
+  <h3>Why three different numbers, and not one</h3>
+  <p>The report shows each repository's coverage beside two machine-produced numbers. They measure
+  different things and they are supposed to disagree.</p>
+  <div class="cards">
+    <div class="card"><h4>Coverage (29–41 %)</h4><p><b>Judged</b> against the 23 checks. It includes the things no tool can see: who holds the keys, whether a human can delete production, whether anyone reviews a change. This is the number to act on.</p></div>
+    <div class="card"><h4>Scanner pass-rate (68–95 %)</h4><p><b>Measured</b> by a tool reading the code. It counts settings on resources — encryption on, logging off — so a repository with hundreds of correct settings and one shared master key scores high. Useful, but blind to the biggest risks in this report.</p></div>
+    <div class="card"><h4>Live account (72.5 %)</h4><p><b>Measured</b> against the real AWS account, not the code. It is the only way to learn what someone switched on by hand — and therefore what could be switched off again without a trace.</p></div>
+  </div>
+  <p>A single blended figure would hide exactly the disagreement that matters. The clearest example
+  in this report: one repository scores 76 % with the scanner and is one merge away from full
+  administrator access to the production cluster. The scanner cannot see that. The coverage score
+  can, because a human read the identity policy and marked it.</p>
+
+  <h3>The 23 checks, in plain words</h3>
+  <p>"Org score" is how all seven repositories did on that check together, on the same scale — 100 %
+  means every repository has it, 0 % means none does.</p>
+</div>
+<div class="wide">
+  <div class="tblwrap"><table>
+    <tr><th>What we check</th><th>Why it matters</th><th class="center">Org score</th><th>What we found</th></tr>
+    <tr class="grouprow"><td colspan="4">Who can get in — identity</td></tr>
+    <tr><td><b>The deploy pipeline logs in without a stored password</b></td><td>A stored cloud password in a code repository is the single most-stolen credential in the industry. Modern pipelines prove who they are per job instead, and the proof expires in minutes</td><td class="center"><span class="chip c-warn">43 %</span></td><td>Nobody stores passwords — good. But three of the seven have no pipeline at all, so a person's laptop credentials do the work</td></tr>
+    <tr><td><b>The deploy identity can only touch its own project</b></td><td>If the pipeline can change everything, then a bad change to the smallest project can damage the largest one</td><td class="center"><span class="chip c-fail">0 %</span></td><td>Nobody passes. One identity serves seven projects and is an administrator of the production cluster; another project's identity is a full account administrator</td></tr>
+    <tr><td><b>Each application has its own identity with listed permissions</b></td><td>An application that can only do its own job cannot be turned into a tool for reaching everything else</td><td class="center"><span class="chip c-warn">50 %</span></td><td>The pattern is used almost everywhere — the gaps are permissions written as "anything" instead of a list</td></tr>
+    <tr><td><b>People get narrow, temporary access to production</b></td><td>Standing permanent access to live customer data is the difference between a mistake and an incident</td><td class="center"><span class="chip c-warn">50 %</span></td><td>The way in is right: everyone signs in through single sign-on and borrows permissions that expire. What sits underneath is too generous — a developer role can delete production documents, developers can open a shell inside production containers, and two long-forgotten machine accounts still hold permanent keys</td></tr>
+    <tr><td><b>Identities name exactly who may use them</b></td><td>An identity that trusts a name pattern can be claimed by anything matching the pattern</td><td class="center"><span class="chip c-warn">50 %</span></td><td>Production is precise; preview and test environments are not</td></tr>
+    <tr class="grouprow"><td colspan="4">What protects data and running software</td></tr>
+    <tr><td><b>The infrastructure description is encrypted, its secrets marked</b></td><td>That file records every password the system was built with; unmarked, they are printed in plain text every time somebody previews a change</td><td class="center"><span class="chip c-warn">50 %</span></td><td>Encrypted and locked everywhere; marked as secret nowhere; all on a shared key rather than one we control</td></tr>
+    <tr><td><b>Databases encrypted, refusing plain connections, protected from deletion</b></td><td>Encryption protects the disk; refusing plain connections protects the wire; deletion protection stops one command destroying the business</td><td class="center"><span class="chip c-fail">25 %</span></td><td>All live databases are encrypted. Two accept unencrypted connections, two can be deleted without a second thought, and one project's blueprint does not ask for encryption at all</td></tr>
+    <tr><td><b>Every storage bucket closed to the public and encrypted</b></td><td>A public bucket is the classic cloud data breach; the protection has to be written down, not merely true today</td><td class="center"><span class="chip c-fail">25 %</span></td><td>All 26 live buckets are closed and encrypted — but mostly by Amazon's defaults rather than by our code, and 24 of them still accept unencrypted connections</td></tr>
+    <tr><td><b>Passwords in a vault, rotating, never in a link or a command</b></td><td>Most leaks are not a password in the source code; they are a password in a log, a web link, or a settings field that was never meant to hold one</td><td class="center"><span class="chip c-warn">58 %</span></td><td>The vault is used properly. The leaks are elsewhere: two default passwords live in configuration, a sign-in password posted into a comment, six real credentials in an unused file, and rotation that never reaches the running system</td></tr>
+    <tr><td><b>Containers run as an ordinary user</b></td><td>Software that runs as the machine's administrator turns a small bug into a full break-out</td><td class="center"><span class="chip c-fail">0 %</span></td><td>Not one of the seven container blueprints sets it. Two of our four images also run as administrator internally</td></tr>
+    <tr><td><b>Images scanned for known vulnerabilities; versions cannot be swapped</b></td><td>Scanning finds the published flaws before an attacker does; fixed versions mean the thing you reviewed is the thing that runs</td><td class="center"><span class="chip c-fail">14 %</span></td><td>Scanning is switched off on 35 of 36 registries in the account, and versions can be overwritten in place</td></tr>
+    <tr><td><b>The pipeline installs exact, verified tool versions</b></td><td>A pipeline that downloads "the latest" from the internet on every run executes code nobody reviewed, with the deploy keys in its hands</td><td class="center"><span class="chip c-warn">40 %</span></td><td>Two security tools are pinned and checksum-verified — the model to copy. Two others are fetched from a live branch and piped straight into a shell</td></tr>
+    <tr class="grouprow"><td colspan="4">The network</td></tr>
+    <tr><td><b>Servers on private networks, nothing open to the whole internet</b></td><td>Anything reachable from everywhere gets found by automated scanning within hours</td><td class="center"><span class="chip c-warn">38 %</span></td><td>Workloads are private everywhere. Two projects leave web ports open to any address, and two machines in the shared account have remote login open to the internet</td></tr>
+    <tr><td><b>The cluster's control panel is not on the public internet</b></td><td>It is the master control for every application in it; on the public internet, a single leaked token is a way in</td><td class="center"><span class="chip c-fail">25 %</span></td><td>The production cluster's control panel is reachable from anywhere, with the private option switched off</td></tr>
+    <tr><td><b>Everything public is encrypted in transit and filtered</b></td><td>Unencrypted public traffic can be read and altered in transit; a filter in front stops the routine attacks</td><td class="center"><span class="chip c-fail">33 %</span></td><td>The main applications are correct. An engineering trace viewer sits on the public internet behind one shared password, a dashboard allows self-registration, and no public endpoint has a filter</td></tr>
+    <tr><td><b>Traffic to Amazon services stays private and is recorded</b></td><td>Private routes keep data off the public internet; the records are what an investigation reads afterwards</td><td class="center"><span class="chip c-fail">25 %</span></td><td>One private route, with no rule about what may use it; network records are off on all four networks</td></tr>
+    <tr class="grouprow"><td colspan="4">Would anyone notice — detection and governance</td></tr>
+    <tr><td><b>Recording and threat detection on, with a clear owner</b></td><td>Recording is what an investigation reads afterwards; threat detection is what tells you to investigate. Both need a named owner, or they get switched off and nobody notices</td><td class="center"><span class="chip c-warn">38 %</span></td><td>Activity recording is done well and centrally: the IT department runs two company-wide trails, tamper-evident and encrypted, plus a configuration recorder. Threat detection, the security dashboard, the permission analyser and network traffic records are switched on by nobody — and a leftover trial recorder in our account duplicates the company one without the protections</td></tr>
+    <tr><td><b>Changes reviewed and machine-checked before they apply</b></td><td>This is the control that keeps all the others from decaying — without it, good and bad changes land at the same rate</td><td class="center"><span class="chip c-fail">7 %</span></td><td>One project of seven previews changes for review. No project machine-checks infrastructure changes at all</td></tr>
+    <tr><td><b>Resources labelled with an owner; tooling current</b></td><td>When something goes wrong at 2 a.m., the label is how you find who owns it; current tooling is how security fixes arrive</td><td class="center"><span class="chip c-warn">50 %</span></td><td>Labelling is now good in most repositories. Two are running 2023 tooling that has had three years of security fixes since</td></tr>
+    <tr><td><b>Alarms reach a human who knows what to do</b></td><td>An alarm nobody owns is noise; a written procedure is what turns it into a response</td><td class="center"><span class="chip c-warn">60 %</span></td><td>Alarms reach Slack from most projects. One project has a written procedure; the rest do not</td></tr>
+    <tr class="grouprow"><td colspan="4">The AI-specific controls</td></tr>
+    <tr><td><b>The AI service may call only approved models</b></td><td>An unrestricted grant means any model in any region — a cost, compliance and data-residency question at once</td><td class="center"><span class="chip c-fail">33 %</span></td><td>One project lists its ten approved models exactly. The other two allow anything</td></tr>
+    <tr><td><b>AI prompts and answers recorded and filtered</b></td><td>Without the record you cannot answer "what was it asked, and what did it say"; the filter is what stops the obvious misuse</td><td class="center"><span class="chip c-fail">0 %</span></td><td>Recording is on and one filter exists — set up by hand, asked for by no repository, and the filter is missing a check</td></tr>
+    <tr><td><b>A runaway AI bill or loop pages someone quickly</b></td><td>AI spend can rise faster than any monthly budget alert can catch</td><td class="center"><span class="chip c-pass">100 %</span></td><td>Both AI projects alarm on usage, the fastest within a minute. The one thing everybody does well</td></tr>
+  </table></div>
+</div>
+
+<div class="col">
+  <h3>What "finished" would look like</h3>
+  <p>If every check were green, this is what would be true. It is deliberately written as a picture
+  rather than a list of settings, because that is the thing to aim at.</p>
+
+  <div class="layer">
+    <h4>Getting in</h4>
+    <p>Each project's pipeline has its own identity, which exists in code and can be read by anyone
+    reviewing it. That identity can push its own images, deploy its own applications and read its own
+    settings — and nothing else. It proves who it is per job and the proof expires in minutes. A
+    change in the smallest project cannot reach the largest one. People reach production through a
+    time-limited request with a second factor, and the account's master login is protected by a
+    hardware key that lives in a safe. Nobody, human or machine, is a permanent administrator.</p>
+  </div>
+  <div class="layer">
+    <h4>Data and running software</h4>
+    <p>Every database is encrypted with a key we control, refuses unencrypted connections, and cannot
+    be deleted without deliberately removing the protection first. Every storage bucket is closed to
+    the public, encrypted and refuses unencrypted connections, and those three facts are written in
+    the code rather than left to defaults. Passwords live in the vault, rotate on a schedule, and the
+    rotation reaches the running system automatically. Containers run as an ordinary user on a
+    read-only disk with no ability to gain privileges. Every image is scanned when it is published,
+    and a published version can never be replaced by different content.</p>
+  </div>
+  <div class="layer">
+    <h4>The network</h4>
+    <p>The cluster's control panel is reachable only from our own network. Applications sit on private
+    networks and talk to Amazon services over private routes with rules about what may travel them.
+    Everything public is encrypted with a current standard and sits behind a filter. Network traffic
+    records are on, so an investigation has something to read. Engineering tools — trace viewers,
+    dashboards, metrics — are on the internal network behind the company login, not on the public
+    internet behind a shared password.</p>
+  </div>
+  <div class="layer">
+    <h4>Noticing and keeping it that way</h4>
+    <p>Activity recording and configuration history keep coming from the IT department, and we can name
+    who owns them. Threat detection, the security dashboard, the permission analyser and network traffic
+    records are on too, each with an owner — either inherited from IT or described in our own code, so
+    that switching one off is a visible change somebody has to approve. Our own account holds no
+    duplicate, half-configured copy of something IT already does properly. Every infrastructure change is previewed for a human and machine-checked before it can
+    apply; a change that would remove one of these protections fails the check. Every resource carries
+    its owner. Alarms reach a named person with a written procedure. And a recurring audit measures
+    all of it, so the score moves on a schedule instead of when someone remembers.</p>
+  </div>
+  <div class="layer">
+    <h4>The AI parts</h4>
+    <p>The AI service may call only the models we approved, over a private route. Prompts and answers
+    are recorded, and a filter sits in front of them. Usage alarms are per project rather than
+    account-wide, so one team's spike does not page another team.</p>
+  </div>
+
+  <div class="call">
+    <b>What it would take</b>
+    Most of the distance is not exotic. A large share of the checks are a one-line or one-file
+    change once someone decides to make it — switch on image scanning, require encrypted database
+    connections, mark the secrets as secret, set the container user. Four are genuinely structural:
+    splitting the shared deploy identity, closing the cluster's public control panel, giving the
+    secret store per-project scope, and putting a review-and-check pipeline in front of every
+    infrastructure repository. Those four are what the task list calls Blocks A and B, and they are
+    the ones that stop the others from decaying afterwards.
+  </div>
+
+  <h3>Honest limits of this score</h3>
+  <ul>
+    <li><b>It is judged, not measured.</b> A person read the code and assigned each verdict against a
+    written definition. The evidence is recorded per verdict so anyone can disagree with a specific
+    cell, which is the point — but two careful people could score a few cells differently.</li>
+    <li><b>Half a point is a blunt instrument.</b> "Encrypted but with a shared key" and "encrypted
+    but only in one environment" both score ½, and they are not equally serious.</li>
+    <li><b>Skipped checks flatter small repositories.</b> A repository judged on six checks is not
+    directly comparable to one judged on 21; the small ones are shown for completeness, and the
+    numbers to act on are the platform and the two infrastructure repositories.</li>
+    <li><b>It is a snapshot.</b> Every score names the exact version of the code it was read from. The
+    point of the recurring audit in the task list is that this number should be produced automatically
+    from now on, not by hand every few months.</li>
+  </ul>
+
+  <h3>The words this report uses</h3>
+  <div class="tblwrap"><table>
+    <tr><th>Term</th><th>What it means here</th></tr>
+    <tr><td>Repository (repo)</td><td>A folder of code with its full history, shared by a team. Some hold applications; some hold the description of the cloud infrastructure itself</td></tr>
+    <tr><td>Infrastructure as code / Terraform</td><td>The servers, networks, databases and permissions written down as files, so building them is repeatable and reviewable rather than a person clicking in a console</td></tr>
+    <tr><td>Pipeline / CI</td><td>The automated process that builds, tests and deploys the software whenever code changes</td></tr>
+    <tr><td>Cluster / Kubernetes / EKS</td><td>A pool of machines that runs the applications in containers, with a control panel that schedules them</td></tr>
+    <tr><td>Container / image</td><td>An application packaged with everything it needs to run; the image is the packaged file, the container is the running copy</td></tr>
+    <tr><td>Registry / ECR</td><td>The private library where our container images are stored</td></tr>
+    <tr><td>Identity / role / permissions policy</td><td>Who or what may perform which actions on which resources in the cloud account. The central control in this report</td></tr>
+    <tr><td>Secret / vault</td><td>A password, token or key, and the managed service that stores them so they never sit in code</td></tr>
+    <tr><td>Bucket / S3</td><td>Cloud file storage</td></tr>
+    <tr><td>The account</td><td>The single AWS account, number ending 9201, that several of our projects share — which is why one project's problem is every project's problem</td></tr>
+  </table></div>
+</div>
+</section>
+
+<!-- ════════ GAPS & TASKS ════════ -->
+<section class="panel" id="p-gaps" role="tabpanel" aria-labelledby="t-gaps" data-title="Gaps and tasks">
+<div class="col">
+  <h2>What is missing — and the tasks</h2>
+  <p class="note"><b>In plain words:</b> the first half of this page is the evidence — what the
+  scanners found and how the problems arise. The second half is the work, written so that each item
+  says what is wrong, why it matters, what "done" means, roughly how big it is and who owns it.
+  Block A is the part to start this week.</p>
+
+  <h3>The gap is measurable: one scanner, one ruleset, one day — and one live scan</h3>
+  <p><code>trivy fs --scanners misconfig</code> 0.69.3, default rules, over a <code>git archive</code>
+  snapshot of each repository's GitHub default branch; distinct failing checks per surface (Trivy
+  repeats a row per module instantiation, so barley's 530 rows are one ECR module called 27 times):</p>
+  <div class="bars" role="img" aria-label="Distinct Trivy misconfiguration checks failing per repository: barley 44, hops-infra 34, core-infra 32, hops charts and Dockerfiles 22, hops-mcp 17, sowinsights 17, sowinsights-infra 10">
+    <div class="barrow"><span class="label">barley</span><div class="track"><div class="fill" style="width:100%"></div></div><span class="barval"><b>44</b> checks · 530 rows · 16 CRITICAL</span></div>
+    <div class="barrow"><span class="label">hops-infra</span><div class="track"><div class="fill" style="width:77%"></div></div><span class="barval"><b>34</b> · 67 rows · 2 CRITICAL</span></div>
+    <div class="barrow"><span class="label">core-infra</span><div class="track"><div class="fill" style="width:73%"></div></div><span class="barval"><b>32</b> · 73 rows · <span style="color:var(--fail);font-weight:700">12 CRITICAL</span></span></div>
+    <div class="barrow"><span class="label">hops app</span><div class="track"><div class="fill" style="width:50%"></div></div><span class="barval"><b>22</b> · 97 rows · 23 HIGH</span></div>
+    <div class="barrow"><span class="label">hops-mcp</span><div class="track"><div class="fill" style="width:38.6%"></div></div><span class="barval"><b>17</b> · 31 rows · <span style="color:var(--fail);font-weight:700">0 before rendering</span></span></div>
+    <div class="barrow"><span class="label">sowinsights</span><div class="track"><div class="fill" style="width:38.6%"></div></div><span class="barval"><b>17</b> · 18 rows</span></div>
+    <div class="barrow"><span class="label">sowa-infra</span><div class="track"><div class="fill" style="width:22.7%"></div></div><span class="barval"><b>10</b> · 17 rows · 3 CRITICAL</span></div>
+  </div>
+  <p class="viz-cap">Evidence: <code>artifacts/cloud/trivy-misconfig-2026-09-03.md</code> (refs in each
+  row) · live account: <code>artifacts/cloud/prowler-2026-09-04.md</code> — 4,582 findings, 1,258
+  FAIL, 72.5 % pass; the 14 criticals are two instances with SSH open to the internet, Slack and Notion
+  tokens in Lambda environment variables, secrets in ECS task definitions, the SSO admin policy, and
+  and the organization's single-sign-on administrator policy — none a HOPS resource, all of them HOPS's neighbours in the shared account.</p>
+
+  <h3>How it happens — the vectors are infrastructure-shaped</h3>
+  <ul>
+    <li><b>One identity for everyone.</b> Seven repositories' GitHub Actions jobs run as
+    <code>codebuild-hops-aws-iac</code>: cluster-admin, <code>iam:PassRole</code> on <code>*</code>, image push to
+    every registry, the prod database dump — and the webhook that starts a build checks only that a
+    job was queued. A merge in the smallest repo is a merge into the largest blast radius.</li>
+    <li><b>The right mechanism with the wrong permission.</b> barley federates CI by OIDC — textbook —
+    and the last line of the policy list attaches <code>AdministratorAccess</code>.</li>
+    <li><b>Secrets that are never literals, and still leak.</b> No live resource commits a credential.
+    They leak through flags and scope: an External Secrets role that reads every parameter in the
+    account, <code>sensitive</code> never used, a password as a GitHub variable posted in a URL, a DB
+    password on a command line, <code>changeme</code> and <code>adminpassword</code> in values files, and six
+    real credentials sitting in a dead module in git history.</li>
+    <li><b>Nobody owns the controls nobody inherited.</b> The IT department provides the organization,
+    single sign-on and two company-wide activity trails, and those are the parts that work. Bedrock
+    logging and a guardrail were switched on locally by hand and are declared in no repository.
+    GuardDuty, Security Hub, the permission analyser and network flow logs fall between the two — IT
+    has not pushed them down and no project has asked for them, so they are simply off.</li>
+    <li><b>Good patterns and bad ones land at the same rate.</b> The 42 commits since the retired
+    GitLab head added provider tags, two model buckets and an S3 endpoint — and <code>s3:*</code> on a bare
+    bucket, a wider wildcard trust, three more unscanned registries, and deleted the CI-variable
+    pipeline with nothing in its place. Without a scanner in the loop there is no ratchet.</li>
+    <li><b>Production data leaves production.</b> The nightly dump lands in a bucket declaring nothing
+    and is restored into demo environments on spot nodes, while the process doc says previews carry no
+    production data.</li>
+  </ul>
+</div>
+
+<div class="col">
+  <h3>The tasks — what is wrong, why it must be fixed, what done is</h3>
+  <p class="note">Six blocks, ordered by impact ÷ effort inside each. <b>Block C lands in <code>hops</code>
+  under the approved scope (dev first)</b>; every other block is a recommendation to its owner until
+  confirmed. Effort chips as in capability 1. Full text with paths:
+  <code>research/findings/hops-infra-gap-analysis.md</code>.</p>
+</div>
+<div class="wide">
+  <div class="tblwrap"><table>
+    <tr><th>#</th><th>Task</th><th>What is wrong (evidence)</th><th>Why it must be fixed</th><th>Done when</th><th>Effort · owner</th></tr>
+
+    <tr class="grouprow"><td colspan="6">Block A — stop the bleeding (days)</td></tr>
+    <tr class="row-open"><td class="num-cell">T1</td><td><b>Ask IT to close out the root user</b> <span class="chip c-info">NOT OURS</span></td>
+        <td>Prowler <code>iam_root_mfa_enabled</code> FAIL. Context checked afterwards: <span class="mono">941000539201</span> is a <b>member</b> account of the IT-run organization <span class="mono">060183668755</span>; root holds no access keys, and every human signs in through single sign-on. So this is not a project task and not the day-to-day login for anyone</td>
+        <td>Root still bypasses every policy in this report if it is ever used, and only the organization's owner can settle it</td>
+        <td>IT confirms either a hardware second factor on the member account's root user, or — better — centralized root access management, which removes the member account's root credentials outright. One question to the IT department, not a change we make</td>
+        <td><span class="chip c-pass">ONE EMAIL</span> IT department</td></tr>
+    <tr class="row-pending"><td class="num-cell">T2</td><td><b>Rotate the committed credentials, delete the dead module</b></td>
+        <td>Six <code>base64encode("…")</code> literals in <code>core-infra …/modules/parameter-store/locals.tf</code>: a Bamboo service-account password, staging and <b>production</b> Google OAuth client secrets, a staging DB password; module uncalled, values in every clone's history</td>
+        <td>Base64 is encoding, not encryption — anyone with repo read holds the production OAuth client secret</td>
+        <td>All six rotated at the issuer; the module directory deleted; the rotation recorded in the accepted-risk register</td>
+        <td><span class="chip c-pass">HOURS</span> core-infra</td></tr>
+    <tr class="row-pending"><td class="num-cell">T3</td><td><b>Split the CodeBuild role — one per project</b></td>
+        <td><code>codebuild-hops-aws-iac</code> is the service role of all 7 projects; <code>system:masters</code> in aws-auth; <code>iam:PassRole</code> + <code>ecs:RegisterTaskDefinition</code> + <code>ecs:UpdateService</code> on <code>*</code>, <code>lambda:UpdateFunctionCode</code> on <code>*</code>, <code>ecr:PutImage</code> on <code>*</code>, prod dump read, the CodeConnections token; <code>privileged_mode = true</code>; webhook filter <code>WORKFLOW_JOB_QUEUED</code> only; trust without <code>aws:SourceArn</code></td>
+        <td>A merged — or, without the org's fork-approval setting, a forked — PR in <code>sowinsights</code> or <code>hops-mcp</code> is an account administrator and a cluster admin. The single largest privilege in the org sits behind a filter that checks nothing</td>
+        <td>One role per project with only its ECR repo, its namespaces via RBAC (not <code>system:masters</code>), its SSM path; <code>iam:PassRole</code> limited to the task roles it deploys; <code>lambda:UpdateFunctionCode</code> and <code>ecr:PutImage</code> scoped or removed; webhook filters on actor and head ref; <code>aws:SourceArn</code> in the trust; <code>privileged_mode</code> only where a docker build needs it</td>
+        <td><span class="chip c-warn">MEDIUM</span> core-infra</td></tr>
+    <tr class="row-pending"><td class="num-cell">T4</td><td><b>Close the EKS API, encrypt its secrets, assert its logs</b></td>
+        <td><code>endpoint_public_access = true</code>, <code>endpoint_private_access = false</code>, no CIDR allowlist; <code>create_kms_key = false</code>, <code>encryption_config = null</code>; log types never set (Prowler: not all types)</td>
+        <td>The production cluster's API is reachable from anywhere on the internet; a leaked token is a shell; secrets in etcd are AWS-default encrypted only</td>
+        <td>Private access on, public restricted to the VPN/office CIDRs or off; a CMK in <code>encryption_config</code>; all five log types in code; Prowler <code>eks_*</code> checks PASS</td>
+        <td><span class="chip c-warn">LOW–MEDIUM</span> core-infra</td></tr>
+
+    <tr class="grouprow"><td colspan="6">Block B — the platform (core-infra owners)</td></tr>
+    <tr class="row-open"><td class="num-cell">T5</td><td><b>Scope External Secrets per namespace</b></td>
+        <td>ESO IRSA role reads <code>ssm:…:parameter/*</code> and <code>secretsmanager:…:secret:*</code>; both <code>ClusterSecretStore</code>s share one service account; trust has no <code>oidc_fully_qualified_subjects</code>; the key it uses has rotation off</td>
+        <td>Any namespace that can create an <code>ExternalSecret</code> — the CodeBuild role, the GitLab runners — reads every project's secrets: HOPS prod DB, planner, sow-*, the platform's own tokens</td>
+        <td>Per-namespace <code>SecretStore</code>s backed by roles scoped to that project's SSM path; fully-qualified trust with <code>:aud</code>; cluster stores removed; CMK rotation on</td>
+        <td><span class="chip c-warn">MEDIUM</span> core-infra</td></tr>
+    <tr class="row-open"><td class="num-cell">T6</td><td><b>Close the detective gap — after asking IT what they already push down</b></td>
+        <td><b>Already handled centrally, verified live:</b> two organization CloudTrail trails from the management account (multi-region, log-file validation, KMS-encrypted) and an AWS Config recorder deployed by an organization StackSet. <b>Genuinely off:</b> GuardDuty and Security Hub (no detector or hub in either region), IAM Access Analyzer, VPC flow logs on all four networks, the account-level S3 public-access block, EBS default encryption, and the password policy. <b>Local litter:</b> a non-organization trail <code>management-events-test</code> still logging without validation or KMS into a bucket in this account</td>
+        <td>Nothing today would detect the misuse of the shared pipeline role in T3. The centrally-run trail records the API call, but no service is watching it and there is no network record to corroborate it</td>
+        <td>First, one question to IT: will GuardDuty and Security Hub be delegated organization-wide, or should this account enable them itself? Building a module that later collides with an organization roll-out is the wrong outcome. Then, whichever the answer, adopt the shape another Provectus project already runs (<b>ignition-consultants</b>, see the note under this table): <b>(a)</b> one file named <code>security_audit.tf</code> per account holding every detective control — CloudTrail, Config, GuardDuty, Security Hub — so "what is watching this account?" is answerable by opening one file and diffable between environments; <b>(b)</b> Security Hub subscribed to the Foundational Security Best Practices standard with an EventBridge rule filtered to <code>Severity.Label ∈ {CRITICAL, HIGH}</code> <i>and</i> <code>Compliance.Status ∈ {FAILED, WARNING}</code> routed to the existing Slack SNS topic — about thirty lines, and the difference between a dashboard nobody opens and a finding someone reads; <b>(c)</b> the account-level settings we own regardless — Access Analyzer, flow logs, account S3 block, EBS default encryption, password policy — declared in <code>core-infra</code>; <b>(d)</b> the leftover test trail deleted. Prowler ACCT.11/.14/.15 PASS and the duplicate trail gone</td>
+        <td><span class="chip c-warn">LOW–MEDIUM</span> core-infra + IT</td></tr>
+    <tr class="row-open"><td class="num-cell">T7</td><td><b>Retire the GitLab runners, fix the developer role</b></td>
+        <td>Two runner service accounts bound to <code>cluster-admin</code>, <code>privileged = true</code> with a rw cgroup hostPath, IRSA roles with <code>ssm:GetParameter</code> on <code>*</code> and the same <code>PassRole</code> / <code>PutImage</code> / <code>UpdateFunctionCode</code> wildcards (Prowler: privilege escalation); <code>Planner_Developers</code> trusts <code>Principal.AWS = 941000539201</code> with <code>Condition: {}</code> and holds <code>lambda:*</code>, <code>events:*</code>, <code>ssm:PutParameter</code> on <code>/config/hop-project/*</code>, <code>secretsmanager:DeleteSecret</code> on <code>sow-*</code></td>
+        <td>GitLab is retired — these are unused root-equivalent paths into the cluster and the account; the developer role is assumable by every principal in the account</td>
+        <td>Both runner modules removed and the releases uninstalled; <code>Planner_Developers</code> trust narrowed to the SSO permission set with an MFA condition; wildcards replaced by enumerated actions</td>
+        <td><span class="chip c-warn">MEDIUM</span> core-infra</td></tr>
+    <tr class="row-open"><td class="num-cell">T8</td><td><b>Upgrade the edge and the platform add-ons</b></td>
+        <td><code>ingress-nginx</code> chart 4.1.4 (2022) on the internet-facing NLB; <code>kubernetes-dashboard</code> dead module with <code>--enable-skip-login</code> + cluster-admin; Grafana public with <code>allow_sign_up: true</code> and a local admin login that bypasses SSO (seed <code>changeme</code>); Prometheus and Alertmanager on plain HTTP without auth</td>
+        <td>Three years of ingress-controller CVEs on the public edge; a shared admin password on a public URL</td>
+        <td>ingress-nginx current; dashboard module deleted; Grafana <code>disable_login_form</code> and no sign-up; Prometheus/Alertmanager behind oauth2-proxy</td>
+        <td><span class="chip c-fail">HIGH</span> core-infra</td></tr>
+
+    <tr class="grouprow"><td colspan="6">Block C — HOPS, within the approved scope (<code>hops</code>, dev first)</td></tr>
+    <tr class="row-open"><td class="num-cell">T-H1</td><td><b>Pod security context as the chart default</b></td>
+        <td>Zero <code>securityContext</code> in five charts; <code>hop-backend</code> and <code>hop-ui</code> have no <code>USER</code>; no <code>values.yaml</code> to carry a default (Trivy 97 FAIL)</td>
+        <td>Every HOPS pod runs as uid 0 with a writable root filesystem — a container escape starts from root</td>
+        <td><code>runAsNonRoot</code>, <code>readOnlyRootFilesystem</code> (+ the <code>emptyDir</code>s the apps need), <code>allowPrivilegeEscalation: false</code>, drop ALL, seccomp <code>RuntimeDefault</code> in a <code>values.yaml</code> per chart; <code>USER</code> in both Dockerfiles; proved on dev with a planted root container that fails the new check</td>
+        <td><span class="chip c-pass">LOW</span> hops</td></tr>
+    <tr class="row-open"><td class="num-cell">T-H2</td><td><b>Misconfiguration scan in the MR pipeline</b></td>
+        <td>No scanner reads <code>helm/</code>, the Dockerfiles or <code>.github/</code>; zero required status checks on <code>main</code></td>
+        <td>T-H1 regresses the day someone adds a chart without it; the audit has no dimension to notice</td>
+        <td>An unconditional <code>trivy config</code> job (binary SHA256-verified like gitleaks) over <code>helm/</code>, Dockerfiles and workflows, WARN against a committed baseline that ratchets, <b>failing when nothing was scanned</b>; a required check once an admin enables it. <b>ignition-consultants</b> already runs this warn-first shape — <code>terraform_trivy</code> at <code>--severity HIGH,CRITICAL</code> with <code>--exit-code=0</code> and the comment "warn-only at first" — so the ratchet is a copy, not an experiment</td>
+        <td><span class="chip c-pass">LOW</span> hops</td></tr>
+    <tr class="row-open"><td class="num-cell">T-H3</td><td><b>Pin the installers, scope the token, check the commenter, make the password a secret</b></td>
+        <td><code>curl … helm/helm/main … | bash</code> and Grype's installer on every deploy job; no <code>permissions:</code> on prod/dev/demo deploy jobs; <code>/deploy-admin</code>, <code>/destroy-admin</code>, stop-* from any commenter; <code>USER_PASSWORD</code> a GitHub <i>variable</i> reaching prod as an env var; the preview password posted into a PR comment inside a sign-in URL</td>
+        <td>The runner that deploys prod executes unpinned code from a mutable branch; a comment tears down environments; the password sits in logs, history and Referer headers</td>
+        <td>helm and Grype by version + checksum; top-level <code>permissions: contents: read</code>; <code>author_association</code> in MEMBER/OWNER on the four comment triggers; <code>USER_PASSWORD</code> a secret, the preview password delivered out of band</td>
+        <td><span class="chip c-pass">LOW</span> hops</td></tr>
+    <tr class="row-open"><td class="num-cell">T-H4</td><td><b>No production data outside production</b></td>
+        <td><code>hops-demo.yml:193</code> restores <code>s3://hops-prod-db-dump/…</code> into demo on spot nodes (the process doc says previews carry no prod data); the dump is written by a <code>0777</code> script with nightly <code>apt install</code> and no <code>set -e</code> into a bucket declaring no SSE/PAB/TLS policy (Prowler: no TLS-only policy, no access logging)</td>
+        <td>The production database is copied to the least-protected environment every demo, and the job can silently overwrite the last good dump with an empty file</td>
+        <td>Demo seeded from a sanitised dataset; the dump job <code>set -euo pipefail</code>, awscli in the image, mode <code>0555</code>; SSE + PAB + <code>aws:SecureTransport</code> deny declared in hops-infra</td>
+        <td><span class="chip c-warn">MEDIUM</span> hops + hops-infra</td></tr>
+
+    <tr class="grouprow"><td colspan="6">Block D — hops-infra (owners; one-line to one-file changes)</td></tr>
+    <tr class="row-open"><td class="num-cell">T-I1</td><td><b>ECR: scan on push, immutable tags, no <code>:latest</code> to prod</b></td>
+        <td><code>scan_on_push = false</code>, <code>MUTABLE</code> on eight repos (Prowler: 35 of 36 in the account); <code>hops-main.yml</code> pushes <code>:latest</code> beside the sha tag</td>
+        <td>A vulnerable image is never flagged; a tag can be repointed after review</td>
+        <td><code>scan_on_push = true</code>, <code>IMMUTABLE</code>, the <code>:latest</code> push removed; the eight Prowler rows PASS</td>
+        <td><span class="chip c-pass">ONE LINE ×2</span> hops-infra</td></tr>
+    <tr class="row-open"><td class="num-cell">T-I2</td><td><b>Aurora: enforce TLS, protect from deletion</b></td>
+        <td>No parameter group (<code>rds.force_ssl = 0</code>), no <code>deletion_protection</code> (Prowler: <code>hops-db</code> and <code>hops-fin-service</code> FAIL), no CMK, single instance</td>
+        <td>Plaintext client connections are accepted today; a destroy or a replacing diff drops production</td>
+        <td>A parameter group with <code>rds.force_ssl = 1</code>; <code>deletion_protection = true</code>; <code>publicly_accessible = false</code> asserted; the two Prowler rows PASS</td>
+        <td><span class="chip c-pass">LOW</span> hops-infra</td></tr>
+    <tr class="row-open"><td class="num-cell">T-I3</td><td><b>Take Jaeger off the public zone; remove the literal passwords</b></td>
+        <td>Jaeger UI on <code>jaeger.hops.provectus.pro</code> behind basic auth (served by the platform's public nginx); Elasticsearch <code>password: changeme</code> on plain HTTP; SonarQube <code>monitoring_passcode = "adminpassword"</code>; ESO <code>refreshInterval: "0"</code> ×6</td>
+        <td>Traces expose paths, user ids and queries to the internet behind one password; two well-known defaults are live; a rotated secret never reaches the cluster</td>
+        <td>Jaeger on the internal domain with <code>scheme: internal</code>; both passwords from SSM; <code>refreshInterval</code> set</td>
+        <td><span class="chip c-pass">LOW</span> hops-infra</td></tr>
+    <tr class="row-open"><td class="num-cell">T-I4</td><td><b>Scope the IRSA policies and the human grant</b></td>
+        <td><code>bedrock:InvokeModel</code> on <code>Resource:"*"</code> (3 roles); <code>s3:*</code> on <code>hops-insights</code>; preview roles trusting <code>hops-preview-*</code> and <code>hops-sowa-preview-*</code> without <code>:aud</code>; <code>Planner_Developers</code> Get/Put/<b>Delete</b>/List on the prod documents bucket</td>
+        <td><code>s3:*</code> includes deleting the bucket and its public-access block; any namespace with the prefix mints the role; a developer can delete production documents</td>
+        <td>A model-ARN list (sowinsights-infra already has one); enumerated S3 actions; <code>:aud</code> on the wildcard trust; <code>DeleteObject</code> removed for the human role</td>
+        <td><span class="chip c-warn">MEDIUM</span> hops-infra</td></tr>
+    <tr class="row-open"><td class="num-cell">T-I5</td><td><b>A pipeline for every IaC repository</b></td>
+        <td><code>core-infra</code>, <code>hops-infra</code>, <code>sowinsights-infra</code> have no <code>.github/</code> at all; applies from laptops; hops-infra's <code>.tflint.hcl</code> cannot load under any tflint since 2024; sowinsights-infra applies with <code>-auto-approve</code></td>
+        <td>Nothing reviews a plan, scans a change, or records who applied what; T-I1–T-I4 regress silently</td>
+        <td>One reusable workflow — fmt + validate + tflint + <code>trivy config</code> on PR, plan as a PR comment (barley's shape), manual apply on <code>main</code> — with a per-repo OIDC role scoped to its state key; READMEs updated from GitLab to GitHub. Take the developer-side half from <b>ignition-consultants</b> near-verbatim: their <code>.pre-commit-config.yaml</code> (<code>antonbabenko/pre-commit-terraform</code> with <code>terraform_fmt</code>, <code>terraform_docs</code>, <code>terraform_tflint</code>, <code>terraform_trivy</code>) and their <code>.tflint.hcl</code>, which is current and actually loads — the direct replacement for hops-infra's, which no tflint released since 2024 can parse</td>
+        <td><span class="chip c-warn">MEDIUM</span> template once, three repos</td></tr>
+    <tr class="row-open"><td class="num-cell">T-I7</td><td><b>Real backups, enrolled by tag</b></td>
+        <td>No AWS Backup plan, vault or selection exists in any HOPS repository. The only protections are Aurora's <code>backup_retention_period = 7</code> and the nightly <code>pg_dump</code> — which is written by a <code>0777</code> script with no <code>set -e</code>, to a fixed object key that each run overwrites, in a bucket declaring no encryption, no public-access block and no TLS-only policy (T-H4). Nothing at all covers the DynamoDB tables, the document buckets or the Airflow-equivalent state</td>
+        <td>Seven days of automated snapshots is not a recovery plan, and a dump job that can silently overwrite the last good copy with an empty file is worse than no dump job. Neither survives an account-level mistake or a rogue credential</td>
+        <td>Copy the tag-based pattern from <b>ignition-consultants</b>: two or three <code>aws_backup_plan</code> resources with a vault each, and an <code>aws_backup_selection</code> keyed on a <code>BackupPlan</code> tag, so a new resource opts in by adding one tag rather than by editing a plan and being forgotten. Enrol the Aurora cluster and the document buckets, which their version does not. Add what their version is missing before shipping ours: <code>aws_backup_vault_lock_configuration</code>, a <code>copy_action</code> to a second region or account, <code>cold_storage_after</code> for the long plan, and a customer-managed key on the vault — without the lock and the copy, one compromised administrator deletes the backups and the data in the same afternoon</td>
+        <td><span class="chip c-warn">MEDIUM</span> hops-infra</td></tr>
+    <tr class="row-open"><td class="num-cell">T-I6</td><td><b>Upgrade the toolchain</b></td>
+        <td>TF 1.3.9 / aws 4.63.0 (2023) — predate Bedrock resources, ESO v1 and <code>use_lockfile</code>; ALB controller 1.5.2 with the unconditioned <code>ec2:AuthorizeSecurityGroupIngress</code> on <code>*</code>; the <code>gitlab</code> provider still required by a dead module</td>
+        <td>No security fix in three years of provider releases has reached this repo; the controller can open ingress on any security group in the account</td>
+        <td>Staged upgrade with a plan diff per module, controller ≥ 2.7 with the current policy, dead modules deleted — after T-I5 so it is reviewed</td>
+        <td><span class="chip c-fail">HIGH</span> hops-infra</td></tr>
+
+    <tr class="grouprow"><td colspan="6">Block E — recommendations to other owners</td></tr>
+    <tr class="row-open"><td class="num-cell">T-S1</td><td><b>sowinsights-infra: close the security group, scope the peering, add a pipeline</b></td>
+        <td><code>0.0.0.0/0</code> on 80/443 (Prowler flags the SG) reachable through peering routes written into every route table of the shared corporate VPC; <code>-auto-approve</code> from a Makefile; ECR defaults; <code>:latest</code> deployed</td>
+        <td>The workload is reachable from the whole corporate network; the develop state has no lock</td>
+        <td>Self-referencing SG (the <code>develop</code> root already does it right); peering routes limited to the private tables; T-I5's workflow; ECR set</td>
+        <td><span class="chip c-warn">LOW–MEDIUM</span> sowinsights-infra</td></tr>
+    <tr class="row-open"><td class="num-cell">T-B1</td><td><b>barley: drop AdministratorAccess from the OIDC role; encrypt the RDS module; scan</b></td>
+        <td>The org's best CI identity carrying the worst permission (<code>base-{dev,prod}/locals.tf</code>); <code>modules/rds</code> without <code>storage_encrypted</code>; <code>modules/s3/v2</code> without PAB/SSE; tflint only</td>
+        <td>Every workflow run is an account administrator; production data unencrypted at rest by default</td>
+        <td>The six scoped policies without the seventh; <code>storage_encrypted</code> + CMK + deletion protection; PAB/SSE in the module; Trivy beside tflint in <code>terraform-validate.yml</code></td>
+        <td><span class="chip c-warn">MEDIUM</span> barley owners</td></tr>
+    <tr class="row-open"><td class="num-cell">T-A1</td><td><b>Account owners: the fourteen criticals</b></td>
+        <td>SSH open to the internet on two instances; Slack and Notion tokens in Lambda environment variables; secrets in <code>malt</code> and <code>avatar-demo</code> ECS task definitions; an IAM user's access key 673 days unrotated</td>
+        <td>Not HOPS resources — the same account, the same blast radius as T3</td>
+        <td>Prowler critical count 0 for the account</td>
+        <td><span class="chip c-warn">VARIES</span> project owners</td></tr>
+
+    <tr class="grouprow"><td colspan="6">Block F — the capability deliverables (Phase 2)</td></tr>
+    <tr class="row-open"><td class="num-cell">T-C1</td><td><b>Shared modules</b> — bucket, ECR repository, IRSA role, RDS cluster, pipeline identity</td>
+        <td>The good copies exist one each: <code>hop-sowa-documents</code>, barley <code>modules/kms</code>, sowinsights-infra's Bedrock ARN list, <code>hops-fin-service</code>'s trust</td>
+        <td>Each repo re-derives its own subset; the bad copy propagates as easily as the good one</td>
+        <td>One module set, versioned, adopted by the three IaC repos; the per-repo coverage numbers move together</td>
+        <td><span class="chip c-warn">MEDIUM</span> capability</td></tr>
+    <tr class="row-open"><td class="num-cell">T-C2</td><td><b>An <code>infrastructure-security</code> audit dimension</b> + file AS-14 upstream</td>
+        <td>No audit check reads infrastructure; AS-14 skips exactly the repos that need it</td>
+        <td>Without a FAIL to close, the 13-day remediation loop that worked for capability 1 cannot run here</td>
+        <td>The twelve checks in <i>AWOS audit</i> proposed upstream with a Prowler collector; AS-14 filed with reproducer, fix and test</td>
+        <td><span class="chip c-warn">MEDIUM</span> capability</td></tr>
+    <tr class="row-open"><td class="num-cell">T-C3</td><td><b>The secret-handling checklist</b></td>
+        <td>Every secret leak in this report is a flag or a scope, not a committed value: <code>masked</code>, <code>protected</code>, <code>sensitive</code>, <code>valueFrom</code>, ESO path scope, never argv, never a URL, never a variable</td>
+        <td>Capability 1's scanner reads committed values; none of these is one</td>
+        <td>A one-page checklist in every IaC repo's PR template, checked by review; T-H2/T-I5 enforce the machine-checkable half</td>
+        <td><span class="chip c-pass">A PAGE</span> capability</td></tr>
+  </table></div>
+  <div class="legend">
+    <span><i class="k-pending"></i>Block A — act this week</span>
+    <span><i class="k-open"></i>not started</span>
+  </div>
+  <div class="col">
+    <h3>Where four of these recommendations come from</h3>
+    <p>T6, T-H2, T-I5 and T-I7 cite <b>ignition-consultants</b> (<span class="mono">proj-ignition-consultants/ignition-consultant-ai</span>,
+    production account, reviewed read-only 2026-09-04). It is another Provectus project on AWS, and on
+    four points it is materially ahead of HOPS: it declares its detective controls in a single named
+    file, it routes severity-filtered Security Hub findings into Slack, it runs Terraform format,
+    documentation, lint and misconfiguration scanning as pre-commit hooks with the scanner deliberately
+    warn-only to start, and it backs resources up by tag rather than one plan per resource. Those four
+    are proven inside the company rather than proposed from a standards document, which is the whole
+    reason to prefer them.</p>
+    <p>Adopting a pattern is not endorsing the project: that review found its own serious problems, and
+    they are not this report's subject. Two points are worth carrying across anyway. Where its version
+    is incomplete — backup vaults with no lock and no cross-region copy — the task above says so and
+    asks for the missing part. And the pipeline role at the centre of <b>T3</b> is not a HOPS invention:
+    the same role in that project grants <b>30 of the same 33 IAM actions</b>, including
+    <code>iam:PassRole</code> on <code>*</code>, and both node roles carry the identical six
+    <code>FullAccess</code> policies. It is a shared internal template, which is precisely the argument
+    for <b>T-C1</b> — fix the module once and every project inherits the fix, exactly as they have all
+    inherited the flaw.</p>
+  </div>
+</div>
+</section>
+
+<!-- ════════ METHODOLOGY ════════ -->
+<section class="panel" id="p-method" role="tabpanel" aria-labelledby="t-method" data-title="Methodology">
+<div class="col">
+  <h2>Methodology — capability 1's rules, and what this one added</h2>
+  <p>The eleven rules from the AI SDLC Security research were applied unchanged: inventory before
+  scanning; same tool, same ruleset, same day; audit the audit, then read the auditor; root-cause the
+  control, not the finding; prove an ignore rule narrow before trusting it; resolve the real base ref
+  before measuring; run every gate against the input it must fail on, absence included; close from the
+  default branch; log everything as it happens. Five were earned here:</p>
+  <ol>
+    <li><b>Enumerate the org's repositories before trusting a pointer.</b> The first draft measured the
+    HOPS IaC from a GitLab clone named in a README; the org had moved to GitHub, the real head was 42
+    commits ahead, and the platform repository had never been read. <code>gh repo list</code> is now the
+    first command, before the first file.</li>
+    <li><b>Resolve which repository owns the resource before scoring its absence.</b> The project IaC
+    creates no VPC, cluster or OIDC provider — <code>core-infra</code> does. "Absent in repo" and "absent"
+    are different verdicts; the live-account scan is the tie-breaker for what exists by hand.</li>
+    <li><b>Render before you scan, and fail on nothing scanned.</b> Trivy reported 0 on a chart it could
+    not render and said nothing about it. Every Helm surface was rendered with the values CI actually
+    passes; the CI recommendation carries the rule.</li>
+    <li><b>A configured linter that cannot load is a finding, not a pass.</b> hops-infra's own
+    <code>.tflint.hcl</code> produced two incompatibilities with any tflint since 2024 — evidence of
+    non-execution that a file-existence check would score as present.</li>
+    <li><b>Show three numbers, not one.</b> Coverage (judged against the standard), scanner pass-rate
+    (measured, resource-weighted) and the live account disagree by design; a single blended figure would
+    hide which of them moved. Each is labelled with how it was computed, and the judged one carries its
+    evidence per cell.</li>
+  </ol>
+  <p class="note">Trail: <code>capabilities-rnd/methodology/log.md</code> · baselines in
+  <code>research/baseline/</code> (<code>cloud-control-scores.md</code>, <code>core-infra-baseline.md</code>,
+  <code>hops-infra-baseline.md</code>, <code>barley-infra-baseline.md</code>, <code>cloud-cross-repo-matrix.md</code>) ·
+  findings and the task list in <code>research/findings/</code> · scanner evidence in
+  <code>artifacts/cloud/</code> (Trivy, tflint, Prowler), raw output in <code>scratch/cloud/</code> (never
+  committed) · every snapshot carries a <code>.MEASURED_REF</code>; the live scan carries the identity it
+  ran as, confirmed before and after. Not verified: the CIS benchmark texts (cited through Prowler's
+  mapping, not re-read), the maintainers' current <code>main</code> for AS-14, whether the org's GitHub
+  fork-approval setting is on (it decides how far T3 reaches), and IMDSv2 on the EKS nodes (Prowler saw
+  18 of 19 instances enforcing it; the node group config never says).</p>
+</div>
+</section>
+
+<div class="col">
+<footer>
+  DevOps Capabilities Research — Capability 2, Phase 1, revision 2 · 2026-09-04 · Vladyslav
+  Katrychenko · advisors R. Sadretdinov, R. Ugarov · internal edition: account IDs, role and resource
+  names appear because they are already in the repositories; no secret value appears in this document
+  or the underlying research files; public IPs are masked in the scan evidence.
+</footer>
+</div>
+
+<script>
+(function(){
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.tab'));
+  var panels = Array.prototype.slice.call(document.querySelectorAll('.panel'));
+  function activate(id, push){
+    tabs.forEach(function(t){ t.setAttribute('aria-selected', String(t.id === 't-'+id)); });
+    panels.forEach(function(p){ p.classList.toggle('active', p.id === 'p-'+id); });
+    if (push && history.replaceState) history.replaceState(null,'','#'+id);
+  }
+  tabs.forEach(function(t, i){
+    t.addEventListener('click', function(){ activate(t.id.slice(2), true); });
+    t.addEventListener('keydown', function(e){
+      var d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+      if (!d) return;
+      var n = tabs[(i + d + tabs.length) % tabs.length];
+      n.focus(); activate(n.id.slice(2), true); e.preventDefault();
+    });
+  });
+  var initial = (location.hash || '#overview').slice(1);
+  if (!document.getElementById('p-'+initial)) initial = 'overview';
+  activate(initial, false);
+})();
+</script>

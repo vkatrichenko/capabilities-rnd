@@ -25,6 +25,19 @@ The first capability focus is AI SDLC security — code and repository security 
 - In scope: secrets exposure in Git from LLM-generated code, vulnerabilities introduced by AI-generated code, supply-chain attacks via unverified packages.
 - Out of scope: infrastructure security, runtime security, network security.
 
+### Capability 2 (from 2026-09-03): Cloud Infrastructure Security
+
+- Same method and report shape as capability 1, reframed from code to infrastructure. Kickoff call
+  summary: `research/sources/cloud/summary-call.md`.
+- In scope: the AWS account and cluster the BarHopping projects run in — identity and CI-to-cloud
+  federation, data and Terraform-state protection, network edge, workload and image supply chain,
+  detection and governance, and the Bedrock/AI-workload controls. The "out of scope" line above
+  applies to capability 1 only.
+- Still out of scope: runtime intrusion detection inside containers, service mesh, application
+  logic. Record such findings in `research/findings/` as out-of-scope rather than chasing them.
+- Evidence: read-only IaC scans over every repo at a recorded SHA, plus a read-only posture scan of
+  the `proj-hops` account. Nothing mutates; nothing is applied.
+
 ## Team
 
 | Person | Role |
