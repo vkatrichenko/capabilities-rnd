@@ -167,3 +167,44 @@ Where a check parses text, simulate it locally against the draft — the same pi
 locale — before pushing. Both corrected bodies were run through `spec-link-check.yml`'s exact
 perl/grep/sed pipeline under the default locale and `LC_ALL=C` before being applied; both passed on
 the first CI run afterwards.
+
+## 2026-09-04 — Trusted a README pointer to GitLab; the org had moved to GitHub
+
+The hops `infra/README.md` pointed at `gitlab.provectus.com/…/internal-projects-iac/hops`, a local
+clone of it existed, and the whole IaC survey was built on that — 42 commits behind the real repo,
+which had moved to `github.com/provectus-barhopping/hops-infra` (plus `core-infra`, the platform repo
+I spent probes looking for on GitLab). Vladyslav: "forget about gitlab, we fully moved to github."
+
+**Rule:** before surveying any repository named by a pointer (README, comment, remote-state key),
+enumerate the org's actual repository list on the primary code host (`gh repo list <org>`) and take
+the freshest copy by last-activity date. A pointer is a claim about the past; the org listing is the
+present. One command, before the first read.
+
+## 2026-09-04 — Drafted the report's structure without asking the reader first
+
+The draft's six control groups, the layer-by-layer HOPS tab and the roadmap table were my own
+choices; Vladyslav wanted five groups (data + workload merged), a per-repo percentage in the
+implementation tab, and roadmap rows written as defined tasks with a "why". All three were
+structural, so the rewrite touches every tab.
+
+**Rule:** for a report a reader has opinions about, put the skeleton in front of them before writing
+prose — the group names, what each tab's headline number is, and the row shape of the roadmap — as a
+five-line question, not a 70 KB draft. Content is cheap to rewrite; structure is not.
+
+## 2026-09-04 — Scored the project down for controls the IT department already owns
+
+I reported "zero CloudTrail/GuardDuty/Config in code" and put "enable MFA on the root user" at the top
+of the act-this-week list. Vladyslav: "all users log in via SSO and assume role. AWS org is managed by
+it dep. Cloudtrail should be enable, but maybe manually via UI, not terraform." Checking took four
+read-only calls: the account is a **member** of an IT-run organization, CloudTrail is two properly
+configured *organization* trails, AWS Config comes from an org StackSet, and the trail Prowler flagged
+is a leftover local test trail. Root has no access keys and nobody logs in with it. Two controls I had
+scored 0 were partly satisfied, and the loudest task on my list was not the project's to do.
+
+**Rule:** before scoring any *account-level* control against a project, establish who owns the account.
+Run `organizations describe-organization`, and for anything the scanner flags at account level check
+whether the resource is org-managed (`IsOrganizationTrail`, StackSet-named recorders, delegated
+administrators) before calling it absent. In a member account, "not declared in this repo" is often
+correct rather than a gap — and a task nobody in the room can perform discredits the ones they can.
+Where the answer is not visible from a member account (service control policies return AccessDenied),
+say so rather than reporting absence.

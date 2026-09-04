@@ -15,3 +15,7 @@ runtime, and network security are outside this capability (this rules out `barle
 All four repos are **read-only**: research reads everything, changes land only in `hops`. A gap
 found in `barley`, `hops-mcp` or `sowinsights` is written up as a recommendation in `findings/`, not
 implemented.
+
+Capability 2 (cloud infrastructure) adds `baseline/cloud-control-scores.md` (the scored control
+matrix and the scoring method) and `findings/cloud-target-state.md` (what "finished" looks like), and
+inverts the infrastructure exclusion in the paragraph above for that capability only.

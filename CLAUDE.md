@@ -71,6 +71,14 @@ directory with a **mandatory AWOS workflow** (`/awos:product` → `spec` → `te
 When a promising finding falls outside scope, record it in `research/findings/` as out-of-scope
 rather than chasing it. Scope creep is the main risk to the deadline.
 
+**Capability 2 (2026-09-03 →) inverts the infrastructure exclusion.** Cloud infrastructure security
+is the second capability: the HOPS IaC repo (GitLab `process-automation/internal-projects-iac/hops`,
+local clone `~/Documents/hops`, **read-only, push URL disabled**), the platform IaC repo it consumes
+state from, `barley`'s Terraform, and every repo's Helm charts, Dockerfiles and CI-to-AWS path are in
+scope. The IaC repos are not `hops`: a change there needs fresh approval — write it as a
+recommendation. Live AWS reads only (`sts`, `get`/`list`/`describe`, Prowler); never a mutating call,
+never `terraform` locally. Sources for this capability: `research/sources/cloud/`.
+
 ## Hard constraints
 
 - **All four BarHopping repos are read-only for research.** Reading is in scope everywhere; writing

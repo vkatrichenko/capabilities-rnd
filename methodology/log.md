@@ -1566,3 +1566,273 @@ the five workflow stages; (4) working title "Gate Flow", matching the site's "<N
 naming — placeholder. Draft: `article/gate-flow-blueprint.draft.html`, published as artifact
 f4959b17 with provectus.com tokens. Not verified: the site's real component markup (WebFetch
 returns text only), so the chrome is an approximation of the layout, not a pixel match.
+
+## 2026-09-03 — Capability 2 kickoff: cloud infrastructure security
+
+**Goal.** Reframe the completed AI SDLC Security method onto infrastructure security, per the
+2026-09-03 Rodion/Vladyslav call (`research/sources/cloud/summary-call.md`): same method, same
+report shape, ≥3× faster because access, audits and tooling exist. Decisions with Vladyslav: one
+report framed as cloud-infra security (compliance is a section, not the spine); evidence is IaC
+scans plus a read-only live-account scan; clone the platform IaC repo and `sow-insights-infra`;
+the PepsiCo / personal-practice section is dropped from this draft. Friday sync with Ruslan
+2026-09-04.
+
+**Method.** Four read-only Explore-agent surveys in parallel — (1) hops app repo: `helm/`,
+`.github/workflows`, Dockerfiles, `docs/`, `.claude/`, AWOS audit JSONs grepped for infra
+keywords; (2) this repo's Phase 1 structure so the skeleton is reused, not reinvented; (3) barley
+Terraform + sowinsights + hops-mcp; (4) the HOPS IaC repo at `~/Documents/hops` (GitLab
+`internal-projects-iac/hops`). Sources read: the three notebook syntheses and the 41-source list
+in `research/sources/cloud/`.
+
+**What came back.** `hops/infra/` is a one-file pointer; the Terraform lives in GitLab.
+The AWOS audit has **no infrastructure-security dimension** — zero hits for terraform / iac /
+oidc / encryption / eks / ecr / iam across all 13 dimension JSONs in both runs; `collected/ci.json`
+is `available=false`. barley federates CI→AWS via OIDC and then attaches `AdministratorAccess`
+in dev and prod; the hops IaC repo has never had a pipeline. Full survey output is folded into
+`research/baseline/*` with paths.
+
+**Corrections earned immediately.** (a) The local hops IaC clone was **34 commits behind
+`origin/main`** (2025-07-16 → 2026-05-13) — the exact 2026-08-19 lesson. Port 22 to
+`gitlab.provectus.com` is blocked from this network; the fetch went over HTTPS with the keychain
+credential, and every IaC number below is re-derived at `origin/main af090803c`. (b) SSO profile
+`hops-devops` is `AdministratorAccess` on 941000539201 with an expired session — Prowler waits for
+Vladyslav's `aws sso login`; the profile's role is more than read-only, so the run is bounded by
+Prowler's own read-only design, not by the role. (c) barley and hops-mcp local checkouts sat on
+`chore/mcp-pin-check`; scans use `git archive origin/develop` / `origin/main` snapshots in
+`scratch/cloud/src/`, each with a `.MEASURED_REF` file.
+
+**Decision.** Six standards groups for the report — identity & CI-to-cloud federation; data &
+state; network & edge; workload & image supply chain; detection & governance; AI workload on AWS.
+Instruments: Trivy 0.69.3 (`fs --scanners misconfig`, default ruleset, same day) for every repo;
+tflint with each repo's own config; Prowler 5.41.0 in Docker (pinned) for the account. Checkov
+only if Trivy leaves an obvious class uncovered — one instrument, held constant, like gitleaks was.
+
+## 2026-09-03 — C2: scans run, and two instruments caught skipping
+
+**Trivy.** `trivy fs --scanners misconfig` 0.69.3, default ruleset, over `git archive` snapshots of every
+repo's default branch (`scratch/cloud/run-trivy.sh`; refs in each snapshot's `.MEASURED_REF`). Results
+in `artifacts/cloud/trivy-misconfig-2026-09-03.md`: barley 530 FAIL (16 CRITICAL — one ECR module
+instantiated 27 times accounts for 216 of them), hops IaC at head 49, hops Helm charts 97 (23 HIGH),
+sow-insights-infra 17 (3 CRITICAL), sowinsights 18, hops-mcp **0**.
+
+**Correction, caught before it shipped.** The first draft of the artifact explained hops-mcp's zero as
+"chart carries a full securityContext" — written from the survey's tone, not from a command (the 2026-08-25
+lesson, again). Checked: `grep securityContext values.yaml` → nothing. The real cause: the chart fails
+`helm template` with default values (`ingress.host` nil, then a required `environment` value), and Trivy
+drops an unrenderable chart from its results with no error line — the JSON lists only `package-lock.json`
+and `Dockerfile`. Rendered with the two required values the same chart fails 31 checks, 6 HIGH. Same
+shape as the audit's AIS-03: a scanner that says nothing when it cannot read its input. Artifact rewritten;
+`hops-mcp-rendered` added as its own row.
+
+**tflint.** barley's own config: 0 issues, 0 errors (it runs in their CI). The hops IaC repo's `.tflint.hcl`
+cannot load under tflint 0.61: `"module" attribute was removed in v0.54.0`, and with that patched, the
+pinned aws plugin 0.22.1 is SDK-incompatible. Two independent breakages → the file has not been executed in
+years, consistent with the repo having no CI. A compatibility run (same rules, aws plugin 0.39.0, local
+modules only — registry modules would need `terraform init`, which this research never runs) gives 51
+warnings, mostly missing `required_providers`/`required_version` in modules. `artifacts/cloud/tflint-2026-09-03.md`.
+
+**hops IaC re-verified at `origin/main` af090803c.** Every claim from the stale-clone survey holds; the 34
+commits added an `s3:*` grant on a new bare `hops-insights` bucket, cross-account S3 RW, two new IRSA roles
+(one with wildcard-namespace trust), a human role with delete on the prod documents bucket, and an S3
+gateway endpoint with no policy — and two buckets built correctly (PAB, SSE, lifecycle). ESO moved to
+`external-secrets.io/v1` / `eso-paramstore`; `refreshInterval` still `"0"` everywhere.
+
+**sow-insights-infra cloned** (HTTPS; port 22 is blocked from this network) and surveyed: tidy IAM, but the
+CI identity (`codebuild-hops-sowinsights-*`) exists in no repo, the service SG opens 80/443 to `0.0.0.0/0`
+behind a peering that writes routes into every route table of the shared corporate VPC, and the `develop`
+root applies with `-auto-approve` against unlocked state. The **platform repo** (`internal.tfstate`: VPC,
+EKS, OIDC provider, ESO store, CodeBuild projects) is still not located — 14 candidate names probed under
+`internal-projects-iac/`, only `hops` and `sow-insights-infra` exist. Asked Vladyslav for the path.
+
+**Prowler.** Image `toniblyx/prowler:5.41.0` pulled; blocked on `aws sso login --profile hops-devops`
+(session expired; the profile's permission set is `AdministratorAccess`, so the read-only guarantee is
+Prowler's design, not the role — noted for the report).
+
+## 2026-09-03 — C3/C4: findings, AS-14 traced, report drafted
+
+Findings written from the baselines, each row with its path: `hops-infra-gap-analysis.md` (12-item
+roadmap, effort chips, owners), `cross-repo-infra-findings.md` (F1–F8: three CI-to-AWS models, nothing
+scans IaC, controls exist but are never shared, the shared-account blast radius, secrets that leak by
+flag not by value, prod data leaving prod, K8s hardening absent as a class, the audit cannot see any of
+it), `awos-infra-coverage.md`, `cloud-out-of-scope.md`. Sources note `research/sources/cloud/benchmarks-and-standards.md`
+records what was read (AWS SSB ACCT/WKLD control lists via the AWS Knowledge MCP) versus cited.
+
+**AS-14 traced.** By hand: hops root `.dockerignore` (7 lines) repeats none of the sensitive patterns
+`.gitignore` carries, and all three images build with the repo root as context. In the engine (plugin
+2.4.4, `detectors/security.ts`, `detectSensitiveFilesGitignored`): applicability = "does a `*.pem` /
+`credentials*.json` exist in the tree right now"; none does, so SKIP. The check can only measure repos
+that already have the problem on disk. Not filed upstream yet — review first, per the capability-1 rule.
+
+**Report.** `artifacts/cloud-security-report.html`, six tabs on the Phase 1 shell (same provectus.com
+tokens, single-theme by decision), published as a new artifact, marked DRAFT for the 09-04 sync. KPI
+tiles are scanner counts (742 = 49+97+530+17+18+31 FAIL rows; the bars use distinct checks, labelled) and
+the Prowler tile says "pending" rather than a number. Not verified: the live account, the platform
+repo, CIS texts, upstream `main` for AS-14 — all stated in the report's Methodology tab.
+
+## 2026-09-04 — Review feedback; the IaC had moved to GitHub
+
+Vladyslav's review of the draft: (1) five control groups, not six — Identity and OIDC · Network ·
+Detection and governance · AI workload on AWS · and one merged group for data/state + workload/image,
+named **"Data protection and workload hardening"** (chosen from three options); (2) the HOPS tab must
+carry a **percentage per repo** — basis chosen: AWOS-style control coverage (awarded ÷ applicable,
+partial = ½, N/A excluded) shown beside the measured Trivy pass-rate and, for the account, Prowler;
+(3) roadmap rows as **defined tasks with a why**; (4) "forget about GitLab, we fully moved to GitHub";
+(5) the SSO session is live. Two lessons recorded in `tasks/lessons.md`.
+
+**GitHub, checked first this time.** `gh repo list provectus-barhopping`: `hops-infra` (main
+9ce74cd45, 2026-07-16 — the GitLab head af090803c is an ancestor, **42 commits behind**), `core-infra`
+(36a127633, 2026-08-28 — **the platform repo**: VPC, EKS, CodeBuild runner projects and roles, External
+Secrets, nginx ingress, `Planner_Developers`), `sowinsights-infra` (3cc8a7a48, 2 commits ahead of the
+GitLab head), `hops-k8s-manifests` (733f3dd00, 2025-02). Scope decision: HOPS family + core-infra are
+scored; wireguard, langfuse, assessor, malt infra repos noted only. All four cloned read-only to
+`~/Documents/gh-infra/`, snapshotted, Trivy-scanned; every prior IaC claim is being re-verified at the
+GitHub heads by two Explore agents before any number is rewritten.
+
+**Trivy pass-rates** (successes ÷ (successes + failures), from `MisconfSummary`): core-infra 94.1 %,
+hops app 94.9 %, hops-k8s-manifests 95.4 %, sowinsights-infra 93.8 %, hops-infra 87.2 %, hops-mcp
+rendered 76.2 %, barley 68.4 %. Note the trap: hops-mcp *unrendered* reads 100 % on 27 checks — the
+Dockerfile only — which is why the rendered figure is the one reported.
+
+**Prowler 5.41.0** launched read-only against 941000539201 (`-f us-east-2 us-east-1`, 648 checks) at
+12:5x local; first attempt failed on a flag the pinned version does not have (`--ignore-unused-services`)
+and was relaunched without it. Identity confirmed before launch:
+`AWSReservedSSO_AdministratorAccess_…/vkatrychenko@provectus.com`.
+
+## 2026-09-04 — core-infra read, Prowler run, every repo scored, report rewritten
+
+**core-infra** (GitHub 36a127633) is the platform: the state everyone reads. Surveyed by an Explore agent,
+four critical claims re-verified by hand before anything was written — the EKS endpoint flags, the two
+`system:masters` mappings, the seven `service_role_arn` lines pointing at one role, the wildcard resources in
+that role's policy, the ESO `parameter/*` / `secret:*` scope, and six `base64encode` literals in a dead
+module (counted, never printed). `research/baseline/core-infra-baseline.md`.
+
+**Prowler 5.41.0**, read-only, `-f us-east-2 us-east-1`, 648 checks, 4,582 findings, 1,258 FAIL (14
+critical), pass-rate 72.5 %; CIS 5.0 67.5 %, Well-Architected security 72.3 %, FSBP 59.7 %, AI Security
+Framework 68.8 %. Identity confirmed before and after as the SSO admin role; the exported credential file
+deleted after the run; exit code 3 is Prowler's "findings present". The account-level answers the code
+could not give: CloudTrail and Config **on** (by hand), Bedrock invocation logging **on** and a guardrail
+exists (by hand); GuardDuty, Security Hub, Access Analyzer, account-level S3 block, EBS default encryption,
+flow logs, **root MFA** — off. All 14 criticals belong to other projects sharing the account.
+`artifacts/cloud/prowler-2026-09-04.md` (public IPs masked).
+
+**Scoring.** 23 controls in the five groups Vladyslav chose, judged per repo from the baselines, pass = 1 /
+partial = ½ / fail = 0 / N/A excluded — the AWOS convention. `scratch/cloud/score/{controls,scores}.json`,
+`score.py` → `research/baseline/cloud-control-scores.md` with the evidence string behind every cell.
+core-infra 24 %, hops-infra 29 %, hops 31 %, hops-mcp 36 %, barley 36 %, sowinsights-infra 38 %,
+sowinsights app 17 % (6 applicable controls — too few to mean much, said so). Shown beside Trivy's
+pass-rate and Prowler's, each labelled with its computation; a blended number was rejected.
+
+**Report, revision 2.** Five groups; the HOPS tab opens with the per-repo table and bars; the roadmap is
+six blocks of tasks with what-is-wrong / why / done-when / effort / owner; GitLab references replaced by
+the GitHub heads throughout. `artifacts/cloud-security-report.html`, republished to the same URL.
+
+**Corrections to the first draft, for the record.** (1) "35 CI variables unmasked" was true at the GitLab
+head and is no longer live — the module call was deleted in the migration; reframed as "deleted with
+nothing in its place". (2) "Tags: `staging` on prod" was fixed by the migration's provider `default_tags`.
+(3) "CloudTrail/GuardDuty absent" became "CloudTrail on by hand, GuardDuty off" once the account was read.
+(4) The hops-mcp zero, already corrected on 09-03, is now a methodology rule.
+
+## 2026-09-04 (later) — "How we score" tab added; readability pass
+
+Vladyslav on revision 2: better, but add a tab next to *HOPS implementation* explaining how the
+coverage percentage is calculated, what the infrastructure has and misses, and what an ideal one
+would have — and make the whole report readable by a non-technical reader.
+
+Built as a seventh tab, `How we score`: the method in four steps with a building-inspection framing;
+a **worked example** rendering all 21 applicable verdicts for `hops-infra` with the arithmetic
+(6.0 ÷ 21 = 29 %); why three numbers are shown instead of one blended figure (the sharpest case:
+hops-mcp scores 76 % with the scanner while being one merge from cluster-admin — the scanner cannot
+see identity); all 23 controls restated in plain words with a *why it matters*, an **org score** per
+control, and what we found; a target-state section per group; the method's honest limits; and a
+glossary of the report's vocabulary. Per-control org scores computed by running the same arithmetic
+down the columns (`score.py`), not typed.
+
+Backed by research files so the tab traces: the method and the per-control org-score table added to
+`research/baseline/cloud-control-scores.md`, the target state written as
+`research/findings/cloud-target-state.md`.
+
+**The distribution is itself a finding.** Four controls sit at 0 % across all seven repositories —
+CI role blast radius, human access to production, pod security, AI guardrails/logging in code — and
+one at 100 % (token alarms). Those are not repository problems; they are org-level absences, which is
+the argument for the shared-module and audit-dimension deliverables rather than 21 individual fixes.
+
+**Correction caught before publishing.** The target-state call-out claimed "eleven of the 23 checks
+are a one-line change" — a precise count I had eyeballed, not derived (the 2026-08-25 lesson).
+Replaced with "a large share", keeping only the four structural items, which are named and traceable
+to tasks T3, T4, T5 and T-I5.
+
+Readability pass on the rest: a plain-language pointer at the top of *Overview*, and an "In plain
+words" line opening *Industry standards*, *HOPS implementation* and *Gaps & tasks*. Republished to
+the same URL as revision 3; seven tabs, seven panels, tags balanced, no secret values.
+
+## 2026-09-04 (later still) — account ownership corrected; scores revised
+
+Vladyslav on revision 3: human access is SSO with role assumption, the AWS organization is run by the
+IT department, and CloudTrail is expected to be on but configured through the console rather than
+Terraform. All three checked live, read-only, with the still-valid SSO session:
+
+- `organizations describe-organization` → member account of **060183668755**, feature set ALL. (That is
+  also the account holding the cross-account SQS queue `hops-backend` writes to.)
+- `cloudtrail describe-trails --include-shadow-trails` → **two organization trails** owned by the
+  management account, multi-region, log-file validation on, KMS-encrypted — plus one *local* trail
+  `management-events-test`, still logging, no validation, no KMS. That third trail is what Prowler's
+  `cloudtrail_log_file_validation_enabled` FAIL was pointing at, not the company's recording.
+- `configservice describe-configuration-recorders` → recorders named `StackSet-AWSConfigGlobalRecorder-…`,
+  i.e. pushed from the management account; `allSupported = false`, a limited resource set.
+- `guardduty list-detectors` / `securityhub describe-hub` → empty in both regions: genuinely absent, not
+  delegated-and-invisible.
+- `iam get-account-summary` → root has no access keys; `iam list-users` → the only two users are machine
+  accounts from 2018 and 2024. `organizations list-policies` → AccessDenied, so SCPs cannot be confirmed
+  or denied from here, and the report now says that instead of implying none exist.
+
+**Scoring revised** (`scratch/cloud/score/scores.json`, regenerated by the new `render.py`): ID-4 human
+access fail → partial for core-infra, hops-infra and hops (SSO is the right mechanism; the standing
+grants underneath are still too broad), and DG-1 fail → partial for the three repos in the shared
+account (CloudTrail and Config are in place with a named owner). DG-1 was also renamed — "declared in
+code" → "in place with ownership explicit" — because in a member account, re-declaring an org-managed
+trail would be wrong, not better. Coverage: core-infra 24→**29 %**, hops-infra 29→**33 %**, hops
+31→**35 %**, sowinsights-infra 38→**41 %**. Controls at 0 % across all repos: four → **three** (ID-2,
+DP-5, AI-2).
+
+**Tasks revised.** T1 rewritten from "enable MFA on the root user, an hour, account owner" to "ask IT to
+close out the member account's root user, one email, IT department", with a note that it left the
+act-this-week list once ownership was checked. T6 rewritten from "detective baseline in code" to three
+labelled parts — already handled centrally (do not rebuild), genuinely off and owned by nobody
+(GuardDuty, Security Hub, Access Analyzer, flow logs), and local litter (the duplicate test trail) —
+with "ask IT first" as step one, so a module does not collide with a future org roll-out.
+
+To keep this from drifting again, the report's per-repo table and bars are now **generated from the
+score data** rather than typed, and `render.py` regenerates the whole scores document. Lesson recorded.
+Republished as revision 4.
+
+## 2026-09-04 (later) — four patterns adopted from ignition-consultants
+
+Vladyslav asked for a read-only security review of `proj-ignition-consultants/ignition-consultant-ai`
+`terraform/874962954956` — delivered in conversation, deliberately **not** written into this repo
+(another project's findings are not this capability's output, and the instruction was explicit). He
+then asked for four of the transferable patterns to be added to the report with the source cited.
+
+First correction: the directory is the **production** account (`README.md`, `locals.tf`
+`environment = "prod"`), not a dev one — the `dev` branch name misleads.
+
+Added to the task list, each citing `research/sources/cloud/ignition-consultants-patterns.md`:
+**T6** gains the `security_audit.tf` single-file convention and the Security-Hub-to-Slack pattern
+(FSBP subscription + EventBridge filtered to CRITICAL/HIGH and FAILED/WARNING → the existing SNS
+topic). **T-H2** and **T-I5** gain their pre-commit configuration — `antonbabenko/pre-commit-terraform`
+with fmt, docs, tflint and `terraform_trivy` at `--exit-code=0`, "warn-only at first" — which is the
+same warn-first ratchet this research proposed independently, plus their `.tflint.hcl`, a working
+replacement for `hops-infra`'s unloadable one. **T-I7** is new: tag-based AWS Backup, with the four
+things their version lacks (vault lock, cross-region copy, cold storage, CMK) specified as part of
+ours before it ships.
+
+**The finding that reframes T3.** Their GitLab-runner IAM role and the one in HOPS `core-infra` share
+**30 of 33 IAM actions** — including `iam:PassRole` on `*` alongside `ecs:RegisterTaskDefinition` and
+`ecs:UpdateService`, plus `lambda:UpdateFunctionCode` and `ecr:PutImage` on `*` — and both projects'
+EKS node roles carry the identical six AWS-managed `FullAccess` policies. Measured by diffing the two
+action sets, not by impression. So the privilege-escalation shape at the centre of T3 is an internal
+DevOps template propagating by copy between projects, not a HOPS mistake. That is now the lead argument
+for **T-C1**: a template that spreads a flaw this efficiently spreads the fix just as efficiently.
+
+Honesty note carried into the report's provenance box: adopting a pattern is not endorsing the project.
+That review found real problems there, they are not this report's subject, and where their version of a
+pattern is incomplete the task says so rather than copying the gap.
